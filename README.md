@@ -1,5 +1,7 @@
 # iDrive Plus — MINI Plus · BMW Plus · Supra Plus
 
+🇬🇧 [Read in English](README.en.md)
+
 Meteo, notizie, notizie locali, carburanti e traffico **dentro l'iDrive** delle auto con testata
 **NBT EVO (ID6)**, senza modificare nessuna centralina e senza toccare Android Auto.
 
