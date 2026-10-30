@@ -1,29 +1,23 @@
 #!/bin/sh
-# NBT Plus - chiavetta v19 - plugin iDrive v6: Meteo (con allerte), Notizie, Notizie locali,
+# NBT Plus - chiavetta v20 - plugin iDrive v6: Meteo (con allerte), Notizie, Notizie locali,
 # Carburanti, Traffico. Aggiornati dall'app del telefono. Android Auto (NbtAad) non viene toccato.
-# La chiavetta e' la stessa per tutte e tre le auto: cambia solo la marca scritta nel comando
-# (pagina e testo "in attesa del telefono").
+# La chiavetta e il comando sono gli stessi per MINI, BMW e Supra: la marca la riconosce l'app.
 # Le librerie in uso dall'HMI non si possono sovrascrivere: si rinominano (.vecchia_*) e si copia la nuova.
 # Da lanciare DENTRO la shell di omap (dopo mount + on -f). Invocazione:
-#   sh /mnt/umass*/00-installa.sh mini      (oppure bmw, oppure supra; senza niente vale mini)
-
-M=${1:-mini}
-case "$M" in
-  mini|bmw|supra) ;;
-  *) echo "ERRORE: marca '$M' sconosciuta - scrivi mini, bmw oppure supra"; exit 1 ;;
-esac
+#   sh /mnt/umass*/00-installa.sh
+# (la marca scritta dopo, come nelle chiavette fino alla v19, non serve piu' e viene ignorata)
 
 U=""
 for d in /mnt/umass*; do if [ -d "$d" ]; then U=${d#/mnt/}; break; fi; done
 if [ -z "$U" ]; then echo "ERRORE: chiavetta umass non trovata in /mnt"; exit 1; fi
-echo "Chiavetta: /mnt/$U - marca: $M"
+echo "Chiavetta: /mnt/$U"
 
 P=/opt/hmi/ID5/data/ro/Plugins
 if [ ! -d "$P/NbtAad" ]; then echo "ERRORE: $P/NbtAad non c'e' - sei sulla shell di omap?"; exit 1; fi
 
 for N in Meteo Notizie Locali Carburanti Traffico; do
   if [ ! -f "/mnt/$U/$N/lib$N.so" ]; then echo "ERRORE: /mnt/$U/$N/lib$N.so non c'e' - hai estratto lo zip nella radice?"; exit 1; fi
-  if [ ! -f "/mnt/$U/marche/$M/$N/attesa.png" ]; then echo "ERRORE: /mnt/$U/marche/$M/$N/attesa.png non c'e'"; exit 1; fi
+  if [ ! -f "/mnt/$U/$N/attesa.png" ]; then echo "ERRORE: /mnt/$U/$N/attesa.png non c'e'"; exit 1; fi
 done
 
 for N in Meteo Notizie Locali Carburanti Traffico; do
@@ -33,7 +27,6 @@ for N in Meteo Notizie Locali Carburanti Traffico; do
     mv "$P/$N/lib$N.so" "$P/$N/lib$N.so.vecchia_$$" && echo "OK: lib$N.so vecchia rinominata (in uso fino al riavvio)"
   fi
   cp "/mnt/$U/$N"/* "$P/$N/" || { echo "ERRORE: copia $N fallita"; exit 1; }
-  cp "/mnt/$U/marche/$M/$N"/* "$P/$N/" || { echo "ERRORE: copia dei file $M di $N fallita"; exit 1; }
   rm -f "/dev/shmem/$N.avvii"
   echo "OK: $N"
 done

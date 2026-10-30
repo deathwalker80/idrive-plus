@@ -1,7 +1,7 @@
 // NBT Plus per iDrive - v6 - plugin compilati (clang) per NBT EVO ID6
 // (MINI F5x/F60, BMW con NBT EVO, Toyota GR Supra J29).
-// v6: il testo "in attesa" della lista si legge da attesa.txt nella cartella del plugin (scritto dalla chiavetta
-//     secondo la marca scelta), cosi' le stesse librerie valgono per tutte e tre le auto.
+// v6: il testo "in attesa" della lista si legge da attesa.txt nella cartella del plugin (copiato dalla chiavetta),
+//     cosi' le stesse librerie valgono per tutte e tre le auto.
 // Lo stesso sorgente produce cinque plugin:
 //   pagina singola : -DPLUGIN_METEO (libMeteo.so), -DPLUGIN_CARBURANTI (libCarburanti.so), -DPLUGIN_TRAFFICO (libTraffico.so)
 //   elenco notizie : -DPLUGIN_NOTIZIE (libNotizie.so), -DPLUGIN_LOCALI (libLocali.so, percorsi /locali/...)

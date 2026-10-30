@@ -1,5 +1,11 @@
-NBT Plus - chiavetta v19 (app 3.0 + plugin iDrive v6)
+NBT Plus - chiavetta v20 (app 3.1 + plugin iDrive v6)
 =====================================================
+COSA CAMBIA RISPETTO ALLA v19
+ - Il comando di installazione non vuole piu' la marca: e' lo stesso per MINI, BMW e Supra
+   (se la scrivi lo stesso, come prima, viene ignorata).
+ - Le pagine "in attesa del telefono" stanno nelle cartelle dei plugin: la cartella "marche" non c'e' piu'.
+ - App 3.1: risponde solo alla testata sul Wi-Fi della macchina, non piu' a qualunque rete locale.
+
 COSA CAMBIA RISPETTO ALLA v18
  - Un'app sola, NBT Plus, al posto di MINI Plus, BMW Plus e Supra Plus.
    La marca si riconosce da sola dal nome Bluetooth dell'auto (o si sceglie nelle impostazioni):
@@ -8,7 +14,7 @@ COSA CAMBIA RISPETTO ALLA v18
  - I plugin sono gli stessi della v18 (v6): cambiano solo le pagine e i testi di attesa.
 
 TELEFONO
- - Installa NBTPlus-3.0-release.apk (poi arrivera' anche dal Play Store).
+ - Installa NBTPlus-3.1-release.apk (sopra la 3.0, se l'avevi) (poi arrivera' anche dal Play Store).
  - DISINSTALLA la vecchia app (MINI Plus, BMW Plus o Supra Plus): NBT Plus e' un'app nuova, non la
    aggiorna, e due app insieme si contenderebbero il collegamento con l'iDrive.
  - Le impostazioni (carburante, citta') vanno rimesse una volta.
@@ -18,8 +24,7 @@ AUTO
  1. PuTTY: host 169.254.199.99  porta 22  utente root
  2.   mount -o remount rw /net/hu-omap/fs/sda0
       on -f /net/hu-omap/ /bin/sh
- 3.   sh /mnt/umass*/00-installa.sh mini
-      (sulla BMW: ... 00-installa.sh bmw   -   sulla Supra: ... 00-installa.sh supra)
+ 3.   sh /mnt/umass*/00-installa.sh
  4. Riavvio: tasto power 30 secondi.
 
 BMW E SUPRA: DA VERIFICARE SULL'AUTO VERA

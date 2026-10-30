@@ -42,7 +42,7 @@ Data sources are Italian, so the news, fuel and traffic sections are for Italy; 
 ```
 app/        Android app (Kotlin, no external libraries)
 plugin/     source of the five iDrive plugins (C++ without the standard library, ARM/QNX)
-chiavetta/  USB-stick install scripts, plugin descriptions, per-brand "waiting" pages
+chiavetta/  USB-stick install scripts, plugin descriptions and "waiting" pages
 ```
 
 ## Building
@@ -70,11 +70,11 @@ The APK and the USB-stick zip are in the **Releases**. Install only NBT Plus on 
 old apps (MINI Plus, BMW Plus or Supra Plus) is still there, uninstall it, because two apps at once would
 fight over the link with iDrive.
 
-Step-by-step instructions (Italian) in [`chiavetta/LEGGIMI-v19.txt`](chiavetta/LEGGIMI-v19.txt); in short, on the head unit shell:
+Step-by-step instructions (Italian) in [`chiavetta/LEGGIMI-v20.txt`](chiavetta/LEGGIMI-v20.txt); in short, on the head unit shell:
 ```
 mount -o remount rw /net/hu-omap/fs/sda0
 on -f /net/hu-omap/ /bin/sh
-sh /mnt/umass*/00-installa.sh mini     # or bmw, or supra
+sh /mnt/umass*/00-installa.sh          # same for MINI, BMW and Supra
 ```
 Then restart the head unit (hold the power button for 30 seconds). To remove everything: `sh /mnt/umass*/10-togli.sh`.
 

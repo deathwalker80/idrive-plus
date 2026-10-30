@@ -40,7 +40,7 @@ dell'auto (oppure si sceglie nelle impostazioni) e cambia il colore dell'app e i
 ```
 app/        app Android (Kotlin, nessuna libreria esterna)
 plugin/     sorgente dei cinque plugin iDrive (C++ senza libreria standard, ARM/QNX)
-chiavetta/  script di installazione, descrizioni dei plugin, pagine "in attesa" per marca
+chiavetta/  script di installazione, descrizioni dei plugin e pagine "in attesa"
 ```
 
 ## Compilare
@@ -68,11 +68,11 @@ L'APK e lo zip della chiavetta sono nelle **Release**. Sul telefono va installat
 se c'è ancora una delle vecchie app (MINI Plus, BMW Plus o Supra Plus) va disinstallata, perché
 due app insieme si contenderebbero il collegamento con l'iDrive.
 
-Istruzioni passo passo in [`chiavetta/LEGGIMI-v19.txt`](chiavetta/LEGGIMI-v19.txt); in breve, sulla shell della testata:
+Istruzioni passo passo in [`chiavetta/LEGGIMI-v20.txt`](chiavetta/LEGGIMI-v20.txt); in breve, sulla shell della testata:
 ```
 mount -o remount rw /net/hu-omap/fs/sda0
 on -f /net/hu-omap/ /bin/sh
-sh /mnt/umass*/00-installa.sh mini     # oppure bmw, oppure supra
+sh /mnt/umass*/00-installa.sh          # uguale per MINI, BMW e Supra
 ```
 Per togliere tutto: `sh /mnt/umass*/10-togli.sh`.
 

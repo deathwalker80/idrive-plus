@@ -18,7 +18,8 @@ import java.util.concurrent.Executors
  *   GET /notizia/<i>.png  -> pagina della notizia i (0..7)
  *   GET /mini/<i>.png     -> miniatura 63x54 della notizia i
  *   GET /anteprima/<i>.png -> scheda 640x480 della notizia i (accanto alla lista, quando la riga e' selezionata)
- * Risponde solo a indirizzi della rete locale (Wi-Fi della macchina o casa), mai a internet.
+ * Risponde solo alla testata sul Wi-Fi della macchina (e al telefono stesso): su qualunque altra rete,
+ * anche locale (casa, bar, albergo), le connessioni si chiudono subito senza rispondere niente.
  */
 class Server(private val quandoChiede: () -> Unit) {
 
@@ -52,16 +53,21 @@ class Server(private val quandoChiede: () -> Unit) {
         }
     }
 
-    private fun locale(sock: Socket): Boolean {
+    /** true solo per il telefono stesso o per un indirizzo della stessa rete /24 del Wi-Fi della macchina
+     *  (172.16.224.x o 172.16.222.x, vedi Rete.ipWifiAuto), e solo se il telefono e' davvero su quella rete */
+    private fun dallAuto(sock: Socket): Boolean {
         val a = sock.inetAddress ?: return false
-        return a.isSiteLocalAddress || a.isLoopbackAddress || a.isLinkLocalAddress
+        if (a.isLoopbackAddress) return true
+        val cliente = a.hostAddress ?: return false
+        val telefono = Rete.ipWifiAuto() ?: return false
+        return cliente.substringBeforeLast('.') == telefono.substringBeforeLast('.')
     }
 
     private fun servi(sock: Socket) {
         sock.use { s ->
             try {
                 s.soTimeout = 8000
-                if (!locale(s)) return
+                if (!dallAuto(s)) return
                 val riga = leggiRichiesta(BufferedInputStream(s.getInputStream())) ?: return
                 val parti = riga.split(' ')
                 if (parti.size < 2 || parti[0] != "GET") { rispondi(s.getOutputStream(), 405, "text/plain", "solo GET\n".toByteArray()); return }
