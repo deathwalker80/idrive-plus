@@ -70,6 +70,12 @@ Dipartimento della Protezione Civile (criticality bulletins, CC BY-SA 4.0).
 The app reads the data live, on the phone; the repository does not contain it
 (except one sample bulletin for the tests).
 
+## License
+[PolyForm Noncommercial 1.0.0](LICENSE.md), the same as nbt-aad: free to use, change and share for
+non-commercial purposes. Selling it, or bundling it with anything sold, is not permitted.
+
+Required Notice: Copyright (c) 2026 DeathWalkeR - iDrive Plus (https://github.com/deathwalker80/idrive-plus)
+
 ## Notes
 Personal project, not affiliated with MINI, BMW or Toyota: the brand names belong to their owners and only say
 which cars it works with. Use at your own risk.

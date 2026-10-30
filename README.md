@@ -68,6 +68,12 @@ Dipartimento della Protezione Civile (bollettini di criticità, CC BY-SA 4.0).
 I dati vengono letti dall'app al momento, sul telefono; il repository non li contiene
 (salvo un bollettino di esempio per i test).
 
+## Licenza
+[PolyForm Noncommercial 1.0.0](LICENSE.md), la stessa di nbt-aad: uso, modifiche e condivisione liberi
+per scopi non commerciali. Venderlo, o includerlo in qualcosa che si vende, non è permesso.
+
+Required Notice: Copyright (c) 2026 DeathWalkeR - iDrive Plus (https://github.com/deathwalker80/idrive-plus)
+
 ## Note
 Progetto personale, non collegato a MINI, BMW o Toyota: i nomi delle marche sono dei rispettivi proprietari
 e indicano solo con quali auto funziona. Si usa a proprio rischio.
