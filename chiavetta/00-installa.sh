@@ -1,8 +1,8 @@
 #!/bin/sh
-# MINI Plus / BMW Plus / Supra Plus v18 - plugin iDrive v6: Meteo (con allerte), Notizie, Notizie locali,
+# NBT Plus - chiavetta v19 - plugin iDrive v6: Meteo (con allerte), Notizie, Notizie locali,
 # Carburanti, Traffico. Aggiornati dall'app del telefono. Android Auto (NbtAad) non viene toccato.
 # La chiavetta e' la stessa per tutte e tre le auto: cambia solo la marca scritta nel comando
-# (pagina e testo "in attesa del telefono" con il nome della app giusta).
+# (pagina e testo "in attesa del telefono").
 # Le librerie in uso dall'HMI non si possono sovrascrivere: si rinominano (.vecchia_*) e si copia la nuova.
 # Da lanciare DENTRO la shell di omap (dopo mount + on -f). Invocazione:
 #   sh /mnt/umass*/00-installa.sh mini      (oppure bmw, oppure supra; senza niente vale mini)

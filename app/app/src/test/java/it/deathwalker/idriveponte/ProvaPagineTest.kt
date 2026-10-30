@@ -17,7 +17,7 @@ import java.net.Socket
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class ProvaPagineTest {
 
-    private val uscita = File("build/pagine/" + BuildConfig.FLAVOR).apply { mkdirs() }
+    private val uscita = File("build/pagine").apply { mkdirs() }
 
     @Test
     fun zoneAllerta() {
@@ -34,6 +34,12 @@ class ProvaPagineTest {
         assertTrue(!AutoBtReceiver.eAuto("Saphe Drive Mini")); assertTrue(!AutoBtReceiver.eAuto("Mini speaker"))
         assertTrue(AutoBtReceiver.eAuto("Supra 24680")); assertTrue(AutoBtReceiver.eAuto("TOYOTA SUPRA 24680")); assertTrue(AutoBtReceiver.eAuto("Toyota 24680"))
         assertTrue(!AutoBtReceiver.eAuto("Toyota Yaris")); assertTrue(!AutoBtReceiver.eAuto("BMW Motorrad"))
+        // marca dal nome Bluetooth
+        assertTrue(AutoBtReceiver.marca("MINI28359") === Marca.MINI); assertTrue(AutoBtReceiver.marca("bmw 12345") === Marca.BMW)
+        assertTrue(AutoBtReceiver.marca("Toyota Supra 24680") === Marca.SUPRA); assertTrue(AutoBtReceiver.marca("Toyota 24680") === Marca.SUPRA)
+        assertTrue(AutoBtReceiver.marca("Saphe Drive Mini") == null)
+        Marca.attuale = Marca.NESSUNA; assertEquals("Portami all'auto", "Portami ${Marca.alla()}")
+        Marca.attuale = Marca.BMW; assertEquals("Wi-Fi della BMW", "Wi-Fi ${Marca.della()}")
     }
 
     @Test
@@ -111,15 +117,36 @@ class ProvaPagineTest {
         Stato.notizie.esito = "OK alle 14:30 - 8 notizie, 1 con foto"
         Stato.servizioAttivo = true; Stato.avviatoDa = "Bluetooth ${Marca.AUTO} 28359"; Stato.wifiAuto = "172.16.224.104"
         Stato.ultimaRichiestaAuto = System.currentTimeMillis(); Stato.richiesteAuto = 42
+        // una schermata per ogni marca e una senza marca (app appena installata)
+        for (tipo in Marca.TUTTE + Marca.NESSUNA) {
+            Marca.imposta(ctx, tipo)
+            Stato.avviatoDa = if (tipo === Marca.NESSUNA) "a mano" else "Bluetooth ${tipo.auto} 28359"
+            val att = org.robolectric.Robolectric.buildActivity(MainActivity::class.java).setup().get()
+            val radice = att.window.decorView.findViewById<android.view.View>(android.R.id.content)
+            val sv = (radice as android.view.ViewGroup).getChildAt(0) as android.widget.ScrollView
+            val col = sv.getChildAt(0)
+            val ws = android.view.View.MeasureSpec.makeMeasureSpec(1080, android.view.View.MeasureSpec.EXACTLY)
+            val hs = android.view.View.MeasureSpec.makeMeasureSpec(0, android.view.View.MeasureSpec.UNSPECIFIED)
+            col.measure(ws, hs); col.layout(0, 0, col.measuredWidth, col.measuredHeight)
+            val shot = android.graphics.Bitmap.createBitmap(col.measuredWidth, col.measuredHeight, android.graphics.Bitmap.Config.ARGB_8888)
+            val cv = android.graphics.Canvas(shot); cv.drawColor(android.graphics.Color.rgb(10, 12, 15)); col.draw(cv)
+            val nome = if (tipo === Marca.NESSUNA) "app_senza_marca.png" else "app_${tipo.codice}.png"
+            File(uscita, nome).outputStream().use { shot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+        }
+
+        // informativa sulla posizione (quella che chiede Google Play prima della posizione in background)
+        Marca.imposta(ctx, Marca.MINI)
         val att = org.robolectric.Robolectric.buildActivity(MainActivity::class.java).setup().get()
-        val radice = att.window.decorView.findViewById<android.view.View>(android.R.id.content)
-        val sv = (radice as android.view.ViewGroup).getChildAt(0) as android.widget.ScrollView
-        val col = sv.getChildAt(0)
-        val ws = android.view.View.MeasureSpec.makeMeasureSpec(1080, android.view.View.MeasureSpec.EXACTLY)
-        val hs = android.view.View.MeasureSpec.makeMeasureSpec(0, android.view.View.MeasureSpec.UNSPECIFIED)
-        col.measure(ws, hs); col.layout(0, 0, col.measuredWidth, col.measuredHeight)
-        val shot = android.graphics.Bitmap.createBitmap(col.measuredWidth, col.measuredHeight, android.graphics.Bitmap.Config.ARGB_8888)
-        val cv = android.graphics.Canvas(shot); cv.drawColor(android.graphics.Color.rgb(10, 12, 15)); col.draw(cv)
-        File(uscita, "app.png").outputStream().use { shot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+        val m = MainActivity::class.java.getDeclaredMethod("informativaPosizione", Function0::class.java).apply { isAccessible = true }
+        m.invoke(att, {})
+        val dlg = org.robolectric.shadows.ShadowDialog.getLatestDialog()
+        assertTrue(dlg.isShowing)
+        val v = dlg.window!!.decorView
+        val wd = android.view.View.MeasureSpec.makeMeasureSpec(1000, android.view.View.MeasureSpec.EXACTLY)
+        val hd = android.view.View.MeasureSpec.makeMeasureSpec(0, android.view.View.MeasureSpec.UNSPECIFIED)
+        v.measure(wd, hd); v.layout(0, 0, v.measuredWidth, v.measuredHeight)
+        val shotD = android.graphics.Bitmap.createBitmap(v.measuredWidth, v.measuredHeight, android.graphics.Bitmap.Config.ARGB_8888)
+        val cd = android.graphics.Canvas(shotD); cd.drawColor(android.graphics.Color.rgb(10, 12, 15)); v.draw(cd)
+        File(uscita, "informativa_posizione.png").outputStream().use { shotD.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
     }
 }

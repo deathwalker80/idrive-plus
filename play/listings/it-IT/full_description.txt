@@ -1,0 +1,31 @@
+NBT Plus porta sullo schermo dell'auto le informazioni che la testata non sa più scaricare da sola: meteo, notizie, prezzi dei carburanti e traffico. È pensata per MINI, BMW e Toyota GR Supra con testata NBT EVO (ID6).
+
+La testata non ha una connessione a internet propria: NBT Plus scarica i dati con la connessione del telefono, prepara le pagine e le passa all'auto sulla rete Wi-Fi di Android Auto wireless. Le pagine si aggiornano da sole mentre guidi.
+
+COSA VEDI IN AUTO
+• Meteo della zona in cui ti trovi, con previsioni e allerte della Protezione Civile
+• Notizie nazionali e notizie locali della città che scegli, con foto
+• Distributori vicini con i prezzi ufficiali MIMIT, dal più economico
+• Traffico sulle autostrade vicine (Autostrade per l'Italia)
+
+SUL TELEFONO
+• Dove ho parcheggiato: quando scendi dall'auto la posizione si salva da sola, con "Portami all'auto" a piedi
+• Si accende da sola quando il telefono si collega al Bluetooth dell'auto e si spegne quando scendi
+• Riconosce la marca dal nome Bluetooth: azzurro per MINI, giallo per BMW, rosso per Supra
+• Anteprima di tutte le pagine che vede l'auto
+
+PRIMA DI INSTALLARE: COSA SERVE
+NBT Plus da sola non basta. Serve una testata NBT EVO già predisposta:
+• accesso SSH root alla testata;
+• Android Auto wireless sulla testata (progetto open source nbt-aad);
+• i plugin di NBT Plus installati sulla testata dalla chiavetta USB, gratuiti e open source: github.com/deathwalker80/idrive-plus
+Senza questi passaggi l'app funziona solo sul telefono (parcheggio e anteprime).
+
+Notizie, carburanti, traffico e allerte usano fonti italiane e valgono per l'Italia; il meteo funziona ovunque.
+
+PRIVACY
+Nessun account, nessuna pubblicità, nessuna statistica d'uso. La posizione serve solo a chiedere ai servizi pubblici (open-meteo.com, MIMIT) i dati della zona; il parcheggio resta sul telefono.
+
+Fonti dei dati: open-meteo.com, ANSA, MIMIT Osservaprezzi carburanti, Autostrade per l'Italia, Dipartimento della Protezione Civile.
+
+NBT Plus è un progetto indipendente e non è collegato a BMW AG, MINI o Toyota. I nomi delle marche indicano solo con quali auto funziona. Le modifiche alla testata si fanno a proprio rischio.

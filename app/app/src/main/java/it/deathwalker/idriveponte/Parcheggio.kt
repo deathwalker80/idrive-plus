@@ -15,7 +15,7 @@ import java.util.Locale
 /**
  * Dove ho parcheggiato: quando il telefono si scollega dal Bluetooth dell'auto si salva la posizione
  * (l'ultima nota del telefono, fresca perche' fino a un attimo prima eri in auto) e compare una notifica
- * con "Portami alla MINI/BMW/Supra" (navigazione a piedi).
+ * con "Portami alla MINI/BMW/Supra" (o "all'auto" se la marca non e' nota; navigazione a piedi).
  */
 object Parcheggio {
 
@@ -90,7 +90,7 @@ object Parcheggio {
             .setContentTitle("${p.auto.ifEmpty { Marca.AUTO }} parcheggiata")
             .setContentText(p.indirizzo.ifEmpty { "Tocca per vedere dove" })
             .setContentIntent(apri)
-            .addAction(Notification.Action.Builder(null, "Portami alla ${Marca.AUTO}", pi).build())
+            .addAction(Notification.Action.Builder(null, "Portami ${Marca.alla()}", pi).build())
             .setAutoCancel(false)
             .build()
         nm.notify(ID_NOTIFICA, n)

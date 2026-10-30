@@ -12,7 +12,7 @@ import android.os.Build
 import android.os.IBinder
 
 /**
- * Servizio in primo piano dell'app (MINI Plus, BMW Plus o Supra Plus) (notifica minima, silenziosa).
+ * Servizio in primo piano di NBT Plus (notifica minima, silenziosa).
  * - tiene acceso il server HTTP per l'iDrive;
  * - quando il telefono e' sul Wi-Fi della macchina (o l'iDrive ha chiesto qualcosa da poco)
  *   scarica i dati con la connessione del telefono e prepara le pagine, ognuna col suo ritmo:
@@ -58,6 +58,11 @@ class PonteService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    override fun onCreate() {
+        super.onCreate()
+        Marca.carica(this)
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         creaCanale()
         val da = intent?.getStringExtra(EXTRA_DA) ?: "riavvio di Android"
@@ -70,7 +75,7 @@ class PonteService : Service() {
             attivo = true
             Stato.servizioAttivo = true
             server = Server { synchronized(sveglia) { sveglia.notifyAll() } }.also { it.avvia() }
-            lavoro = Thread({ ciclo() }, "miniplus-lavoro").apply { isDaemon = true; start() }
+            lavoro = Thread({ ciclo() }, "nbtplus-lavoro").apply { isDaemon = true; start() }
         }
         if (intent?.action == AZIONE_AGGIORNA) {
             forza = true

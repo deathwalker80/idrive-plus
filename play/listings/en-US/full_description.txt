@@ -1,0 +1,31 @@
+NBT Plus brings to your car's screen the information the head unit can no longer download by itself: weather, news, fuel prices and traffic. It is made for MINI, BMW and Toyota GR Supra with the NBT EVO (ID6) head unit.
+
+The head unit has no internet connection of its own: NBT Plus downloads the data over the phone's connection, prepares the pages and hands them to the car over the wireless Android Auto Wi-Fi network. The pages update by themselves while you drive.
+
+IN THE CAR
+• Weather where you are, with forecast and Italian Civil Protection warnings
+• National news and local news for the city you choose, with photos
+• Nearby fuel stations with official MIMIT prices, cheapest first
+• Traffic on nearby motorways (Autostrade per l'Italia)
+
+ON THE PHONE
+• Where I parked: when you get out of the car the position is saved automatically, with "Take me to the car" on foot
+• Starts by itself when the phone connects to the car's Bluetooth and stops when you get out
+• Recognises the brand from the Bluetooth name: light blue for MINI, yellow for BMW, red for Supra
+• Preview of every page the car shows
+
+BEFORE INSTALLING: REQUIREMENTS
+NBT Plus alone is not enough. You need an NBT EVO head unit that is already prepared:
+• root SSH access to the head unit;
+• wireless Android Auto on the head unit (open-source nbt-aad project);
+• the NBT Plus plugins installed on the head unit from the USB stick, free and open source: github.com/deathwalker80/idrive-plus
+Without these steps the app only works on the phone (parking and previews).
+
+News, fuel prices, traffic and warnings use Italian sources and cover Italy; the weather works anywhere. The app is in Italian.
+
+PRIVACY
+No account, no ads, no usage analytics. Your location is only used to ask public services (open-meteo.com, MIMIT) for data about the area; the parking spot stays on the phone.
+
+Data sources: open-meteo.com, ANSA, MIMIT Osservaprezzi carburanti, Autostrade per l'Italia, Italian Civil Protection Department.
+
+NBT Plus is an independent project and is not affiliated with BMW AG, MINI or Toyota. Brand names only indicate which cars it works with. Modifying the head unit is at your own risk.

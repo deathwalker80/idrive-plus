@@ -8,7 +8,8 @@ import android.os.Build
 
 /**
  * Accende l'app quando il telefono si collega al Bluetooth di una MINI, BMW o Toyota Supra; quando si scollega
- * lo spegne e salva dove hai parcheggiato. Le auto si riconoscono dal nome Bluetooth ("MINI 12345", "BMW 67890", "Supra 24680", ...).
+ * lo spegne e salva dove hai parcheggiato. Le auto si riconoscono dal nome Bluetooth ("MINI 12345", "BMW 67890", "Supra 24680", ...),
+ * e dallo stesso nome si ricava la marca (colori e testi dell'app).
  */
 class AutoBtReceiver : BroadcastReceiver() {
 
@@ -21,6 +22,17 @@ class AutoBtReceiver : BroadcastReceiver() {
         fun eAuto(nome: String?): Boolean {
             val n = nome?.trim()?.uppercase() ?: return false
             return NOME_AUTO.matches(n)
+        }
+
+        /** marca dal nome Bluetooth: MINI, BMW, oppure Supra per "Supra..." e "Toyota..."; null se non e' un'auto */
+        fun marca(nome: String?): Marca.Tipo? {
+            val n = nome?.trim()?.uppercase() ?: return null
+            val m = NOME_AUTO.matchEntire(n) ?: return null
+            return when (m.groupValues[1]) {
+                "MINI" -> Marca.MINI
+                "BMW" -> Marca.BMW
+                else -> Marca.SUPRA
+            }
         }
 
         fun registra(ctx: Context, testo: String) {
@@ -36,10 +48,12 @@ class AutoBtReceiver : BroadcastReceiver() {
         else
             @Suppress("DEPRECATION") intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
         val nome = try { dev?.name } catch (e: SecurityException) { null }
-        if (!eAuto(nome)) return
+        val tipo = marca(nome) ?: return
+        Marca.carica(ctx)
 
         when (intent.action) {
             BluetoothDevice.ACTION_ACL_CONNECTED -> {
+                if (tipo !== Marca.attuale) Marca.imposta(ctx, tipo)
                 try {
                     PonteService.avvia(ctx, "Bluetooth $nome")
                     registra(ctx, "acceso da $nome")

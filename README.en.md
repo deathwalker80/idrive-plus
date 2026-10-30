@@ -1,4 +1,4 @@
-# iDrive Plus — MINI Plus · BMW Plus · Supra Plus
+# NBT Plus
 
 🇮🇹 [Leggi in italiano](README.md)
 
@@ -9,13 +9,14 @@ The head unit has no internet of its own: the phone app downloads the data (over
 and hands it to iDrive over the wireless Android Auto Wi-Fi. The iDrive plugins ask the app for ready-made pages
 (port 8765) and update themselves.
 
-| Car | App | Colour |
-|---|---|---|
-| MINI (F5x / F60) | MINI Plus | light blue |
-| BMW with NBT EVO | BMW Plus | yellow |
-| Toyota GR Supra (J29) | Supra Plus | red |
+One app, **NBT Plus**, for all three cars. The brand is recognised from the car's Bluetooth name
+(or chosen in the settings) and sets the app's colour and the car's name in the texts:
 
-One codebase for all three: only the name, icon, colour and the car's name in the texts change.
+| Car | Colour |
+|---|---|
+| MINI (F5x / F60) | light blue |
+| BMW with NBT EVO | yellow |
+| Toyota GR Supra (J29) | red |
 
 > **Status:** tested on a MINI F60 (8.8" screen). On BMW and Supra these still need checking on a real car:
 > the online-services menu where the entries appear, the car's Bluetooth name and, for the 10.25" screen
@@ -39,7 +40,7 @@ Data sources are Italian, so the news, fuel and traffic sections are for Italy; 
 
 ## Layout
 ```
-app/        Android app (Kotlin, no external libraries) - flavors mini / bmw / supra
+app/        Android app (Kotlin, no external libraries)
 plugin/     source of the five iDrive plugins (C++ without the standard library, ARM/QNX)
 chiavetta/  USB-stick install scripts, plugin descriptions, per-brand "waiting" pages
 ```
@@ -48,15 +49,28 @@ chiavetta/  USB-stick install scripts, plugin descriptions, per-brand "waiting" 
 **App**
 ```
 cd app
-./gradlew assembleRelease          # app/build/outputs/apk/{mini,bmw,supra}/release/
-./gradlew testMiniDebugUnitTest    # tests + sample pages in app/app/build/pagine/mini/
+./gradlew assembleRelease          # APK in app/build/outputs/apk/release/
+./gradlew bundleRelease            # AAB for Google Play in app/build/outputs/bundle/release/
+./gradlew testDebugUnitTest        # tests + sample pages in app/app/build/pagine/
 ```
 **Plugins** — see `plugin/compila.sh`. The HMI libraries (`libAppFramework.A.so`,
 `libCoreFramework.A.so`) are not in the repository: copy them from your own head unit.
 
+To sign the release with your own key, create `app/keystore.properties` (not in the repository):
+```
+storeFile=your-key.jks
+storePassword=...
+keyAlias=...
+keyPassword=...
+```
+Without that file the release is signed with the debug key.
+
 ## Installing
-The APKs and the USB-stick zip are in the **Releases**. Step-by-step instructions (Italian) in
-[`chiavetta/LEGGIMI-v18.txt`](chiavetta/LEGGIMI-v18.txt); in short, on the head unit shell:
+The APK and the USB-stick zip are in the **Releases**. Install only NBT Plus on the phone: if one of the
+old apps (MINI Plus, BMW Plus or Supra Plus) is still there, uninstall it, because two apps at once would
+fight over the link with iDrive.
+
+Step-by-step instructions (Italian) in [`chiavetta/LEGGIMI-v19.txt`](chiavetta/LEGGIMI-v19.txt); in short, on the head unit shell:
 ```
 mount -o remount rw /net/hu-omap/fs/sda0
 on -f /net/hu-omap/ /bin/sh
@@ -74,7 +88,10 @@ The app reads the data live, on the phone; the repository does not contain it
 [PolyForm Noncommercial 1.0.0](LICENSE.md), the same as nbt-aad: free to use, change and share for
 non-commercial purposes. Selling it, or bundling it with anything sold, is not permitted.
 
-Required Notice: Copyright (c) 2026 DeathWalkeR - iDrive Plus (https://github.com/deathwalker80/idrive-plus)
+Required Notice: Copyright (c) 2026 DeathWalkeR - NBT Plus (https://github.com/deathwalker80/idrive-plus)
+
+## Privacy
+The app has no accounts, collects no data and sends nothing to any server of ours: [privacy policy](PRIVACY.md).
 
 ## Notes
 Personal project, not affiliated with MINI, BMW or Toyota: the brand names belong to their owners and only say

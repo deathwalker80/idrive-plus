@@ -1,0 +1,34 @@
+NBT Plus - chiavetta v19 (app 3.0 + plugin iDrive v6)
+=====================================================
+COSA CAMBIA RISPETTO ALLA v18
+ - Un'app sola, NBT Plus, al posto di MINI Plus, BMW Plus e Supra Plus.
+   La marca si riconosce da sola dal nome Bluetooth dell'auto (o si sceglie nelle impostazioni):
+   colore azzurro per MINI, giallo per BMW, rosso per Supra, e il nome dell'auto nei testi ("Portami alla BMW").
+ - Le pagine "in attesa del telefono" nell'iDrive ora dicono "app NBT Plus".
+ - I plugin sono gli stessi della v18 (v6): cambiano solo le pagine e i testi di attesa.
+
+TELEFONO
+ - Installa NBTPlus-3.0-release.apk (poi arrivera' anche dal Play Store).
+ - DISINSTALLA la vecchia app (MINI Plus, BMW Plus o Supra Plus): NBT Plus e' un'app nuova, non la
+   aggiorna, e due app insieme si contenderebbero il collegamento con l'iDrive.
+ - Le impostazioni (carburante, citta') vanno rimesse una volta.
+
+AUTO
+ 0. Estrai TUTTO questo zip nella RADICE della chiavetta (sovrascrivi).
+ 1. PuTTY: host 169.254.199.99  porta 22  utente root
+ 2.   mount -o remount rw /net/hu-omap/fs/sda0
+      on -f /net/hu-omap/ /bin/sh
+ 3.   sh /mnt/umass*/00-installa.sh mini
+      (sulla BMW: ... 00-installa.sh bmw   -   sulla Supra: ... 00-installa.sh supra)
+ 4. Riavvio: tasto power 30 secondi.
+
+BMW E SUPRA: DA VERIFICARE SULL'AUTO VERA
+ - Le voci compaiono nel menu dei servizi online (MINI Connected / ConnectedDrive / Toyota Supra Connect):
+   sulla MINI e' provato, su BMW e Supra va controllato che ci siano.
+ - Schermo da 10,25" (1440x540, molte BMW): le pagine sono disegnate per 1280x480 e vanno ricalibrate.
+ - Il nome Bluetooth dell'auto: se l'app non si accende da sola, va letto il nome esatto.
+
+TOGLIERE
+ - sh /mnt/umass*/10-togli.sh  (+ riavvio)
+ - spegnere senza togliere: echo 1 > /opt/aa/ponte.disable  (+ riavvio)
+ Android Auto (NbtAad) non viene mai toccato.

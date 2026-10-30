@@ -10,3 +10,8 @@ plugin/link/libCoreFramework.A.so
 # compilati: vanno nelle Release, non nel codice
 chiavetta/*/lib*.so
 *.apk
+*.aab
+# chiave di caricamento per Google Play: mai nel repository
+app/keystore.properties
+*.jks
+*.keystore

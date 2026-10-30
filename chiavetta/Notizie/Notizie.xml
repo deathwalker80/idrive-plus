@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <pluginApps>
   <pluginApp applicationType="Custom" applicationWeight="200" entryButtonFocusID="32764" insertStateID="50" text="Notizie">
-    <comment>Notizie v6 compilato - lista a tutta larghezza con miniature, aggiornati dall'app del telefono (MINI Plus, BMW Plus o Supra Plus)</comment>
+    <comment>Notizie v6 compilato - lista a tutta larghezza con miniature, aggiornati dall'app del telefono (NBT Plus)</comment>
     <entryButton action="5" id="1" model="3" imageModel="4">
       <properties/>
     </entryButton>

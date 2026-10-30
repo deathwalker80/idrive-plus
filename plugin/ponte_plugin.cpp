@@ -1,13 +1,13 @@
-// MINI Plus / BMW Plus / Supra Plus per iDrive - v6 - plugin compilati (clang) per NBT EVO ID6
+// NBT Plus per iDrive - v6 - plugin compilati (clang) per NBT EVO ID6
 // (MINI F5x/F60, BMW con NBT EVO, Toyota GR Supra J29).
 // v6: il testo "in attesa" della lista si legge da attesa.txt nella cartella del plugin (scritto dalla chiavetta
-//     secondo la marca scelta), cosi' le stesse librerie valgono per tutte e tre le app.
+//     secondo la marca scelta), cosi' le stesse librerie valgono per tutte e tre le auto.
 // Lo stesso sorgente produce cinque plugin:
 //   pagina singola : -DPLUGIN_METEO (libMeteo.so), -DPLUGIN_CARBURANTI (libCarburanti.so), -DPLUGIN_TRAFFICO (libTraffico.so)
 //   elenco notizie : -DPLUGIN_NOTIZIE (libNotizie.so), -DPLUGIN_LOCALI (libLocali.so, percorsi /locali/...)
 //
 // Cosa fanno: trovano il telefono sul Wi-Fi della macchina (tabella ARP, altrimenti scansione 172.16.224.x),
-// chiedono all'app del telefono (MINI Plus, BMW Plus o Supra Plus, porta 8765) le pagine gia' pronte e aggiornano la schermata da soli:
+// chiedono all'app del telefono (NBT Plus, porta 8765) le pagine gia' pronte e aggiornano la schermata da soli:
 //   Meteo   : GET /meteo.png                     -> raImageModel 12
 //   Notizie : GET /notizie.txt                   -> titoli dei pulsanti (raDataModel 41..48)
 //             GET /mini/<i>.png                  -> miniature dei pulsanti (raImageModel 61..68)

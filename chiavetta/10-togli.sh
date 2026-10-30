@@ -1,5 +1,5 @@
 #!/bin/sh
-# Toglie tutti i plugin MINI Plus / BMW Plus / Supra Plus (spostati in /opt/aa/plugins_off, recuperabili). Android Auto non viene toccato.
+# Toglie tutti i plugin di NBT Plus (spostati in /opt/aa/plugins_off, recuperabili). Android Auto non viene toccato.
 # Spegnimento senza togliere niente:  echo 1 > /opt/aa/ponte.disable   (+ riavvio)
 # Da lanciare DENTRO la shell di omap (dopo mount + on -f). Invocazione:
 #   sh /mnt/umass*/10-togli.sh

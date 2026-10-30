@@ -2,12 +2,14 @@ package it.deathwalker.idriveponte
 
 import android.Manifest
 import android.app.Activity
+import android.app.Dialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Build
@@ -22,6 +24,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+import android.view.Window
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import android.widget.FrameLayout
@@ -34,26 +37,29 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * MINI Plus / BMW Plus / Supra Plus: schermata del telefono. Stato del collegamento con l'iDrive, dove hai parcheggiato,
+ * NBT Plus: schermata del telefono. Stato del collegamento con l'iDrive, dove hai parcheggiato,
  * anteprima di ogni pagina che vede l'auto, impostazioni e permessi.
  * Si aggiorna da sola ogni 1,5 s senza toccare i campi di testo (non interrompe mai la scrittura).
+ * Se cambia la marca dell'auto (Bluetooth o impostazioni) si ridisegna coi colori nuovi, ma mai mentre stai scrivendo.
  */
 class MainActivity : Activity() {
 
-    // tavolozza: nero, schede grafite, colore del "+" dell'icona (azzurro MINI, giallo BMW, rosso Supra)
+    // tavolozza: nero, schede grafite, colore della marca (azzurro MINI, giallo BMW, rosso Supra, grigio chiaro se non e' nota)
     private val SFONDO = Color.rgb(10, 12, 15)
     private val SCHEDA = Color.rgb(24, 28, 34)
     private val BORDO = Color.rgb(40, 46, 55)
     private val TESTO = Color.rgb(236, 240, 244)
     private val TENUE = Color.rgb(150, 160, 172)
-    private val ACCENTO = Marca.ACCENTO
-    private val SU_ACCENTO = Marca.SU_ACCENTO
+    private var ACCENTO = Marca.ACCENTO
+    private var SU_ACCENTO = Marca.SU_ACCENTO
     private val VERDE = Color.rgb(76, 200, 120)
     private val ROSSO = Color.rgb(240, 90, 80)
     private val ARANCIO = Color.rgb(250, 160, 50)
 
     private val mano = Handler(Looper.getMainLooper())
     private var dp = 1f
+    private var vistaScorri: ScrollView? = null
+    private var marcaDisegnata: Marca.Tipo? = null
 
     // stato
     private lateinit var puntoServizio: View
@@ -75,6 +81,7 @@ class MainActivity : Activity() {
     private val riquadri = HashMap<String, Riquadro>()
 
     // impostazioni
+    private val chipMarca = HashMap<String, TextView>()
     private val chipCarburante = HashMap<Int, TextView>()
     private val chipRaggio = HashMap<Int, TextView>()
     private lateinit var campoLocali: EditText
@@ -101,6 +108,16 @@ class MainActivity : Activity() {
         window.statusBarColor = SFONDO
         @Suppress("DEPRECATION")
         window.navigationBarColor = SFONDO
+        Marca.carica(this)
+        costruisci()
+    }
+
+    /** costruisce tutta la schermata coi colori della marca attuale */
+    private fun costruisci() {
+        marcaDisegnata = Marca.attuale
+        ACCENTO = Marca.ACCENTO
+        SU_ACCENTO = Marca.SU_ACCENTO
+        riquadri.clear(); chipMarca.clear(); chipCarburante.clear(); chipRaggio.clear(); permessi.clear()
         val col = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(px(16), px(20), px(16), px(28))
@@ -110,7 +127,7 @@ class MainActivity : Activity() {
         // ---- stato del collegamento
         col.addView(scheda(R.drawable.ic_auto, "In auto") { s ->
             val (p1, t1) = rigaStato(s, "Servizio"); puntoServizio = p1; testoServizio = t1
-            val (p2, t2) = rigaStato(s, "Wi-Fi della ${Marca.AUTO}"); puntoWifi = p2; testoWifi = t2
+            val (p2, t2) = rigaStato(s, "Wi-Fi ${Marca.della()}"); puntoWifi = p2; testoWifi = t2
             val (p3, t3) = rigaStato(s, "iDrive"); puntoIdrive = p3; testoIdrive = t3
             testoBt = piccolo(s, "")
             testoInCorso = piccolo(s, "").apply { setTextColor(ACCENTO) }
@@ -125,7 +142,7 @@ class MainActivity : Activity() {
         col.addView(scheda(R.drawable.ic_parcheggio, "Dove ho parcheggiato") { s ->
             testoParcheggio = testo(s, "")
             val tasti = rigaTasti(s)
-            tastoPortami = tasto(tasti, "Portami alla ${Marca.AUTO}", true) { Parcheggio.ultimo(this)?.let { Parcheggio.portami(this, it) } }
+            tastoPortami = tasto(tasti, "Portami ${Marca.alla()}", true) { Parcheggio.ultimo(this)?.let { Parcheggio.portami(this, it) } }
         })
 
         // ---- pagine che vede l'iDrive
@@ -157,6 +174,14 @@ class MainActivity : Activity() {
         // ---- impostazioni
         val prefs = getSharedPreferences("ponte", MODE_PRIVATE)
         col.addView(scheda(R.drawable.ic_impostazioni, "Impostazioni") { s ->
+            etichetta(s, "Auto (si riconosce da sola dal Bluetooth)")
+            val r0 = rigaChip(s)
+            for (tipo in Marca.TUTTE) chipMarca[tipo.codice] = chip(r0, tipo.auto) {
+                // hai toccato la marca, quindi non stai scrivendo: il campo perde il fuoco (il testo resta) e si ridisegna subito
+                currentFocus?.clearFocus()
+                Marca.imposta(this, tipo); ridisegnaPerMarca()
+            }
+
             etichetta(s, "Carburante")
             val r1 = rigaChip(s)
             for ((codice, nome) in Fonti.CARBURANTI) chipCarburante[codice] = chip(r1, nome) {
@@ -196,11 +221,13 @@ class MainActivity : Activity() {
             }
             permesso(s, "batteria", "Batteria senza restrizioni", "per non essere fermata da Android") { chiediBatteria() }
             permesso(s, "posizione", "Posizione precisa", "meteo, carburanti, traffico e parcheggio") {
-                chiedi(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                informativaPosizione { chiedi(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)) }
             }
             permesso(s, "sempre", "Posizione anche in auto", "scegli \"Consenti sempre\"") {
-                if (!Posizione.permesso(this)) chiedi(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
-                else chiedi(arrayOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION))
+                informativaPosizione {
+                    if (!Posizione.permesso(this)) chiedi(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                    else chiedi(arrayOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION))
+                }
             }
         })
 
@@ -235,7 +262,25 @@ class MainActivity : Activity() {
             insets
         }
         setContentView(scorri)
+        vistaScorri = scorri
         aggiornaChip()
+    }
+
+    /** marca cambiata: si ricostruisce la schermata tenendo testi scritti, esiti e punto di scorrimento.
+     *  Se stai scrivendo in un campo non si tocca niente: ci si riprova al giro successivo. */
+    private fun ridisegnaPerMarca() {
+        if (campoLocali.hasFocus() || campoRiserva.hasFocus()) return
+        val y = vistaScorri?.scrollY ?: 0
+        val locali = campoLocali.text.toString()
+        val riserva = campoRiserva.text.toString()
+        val esLocali = esitoLocali.text
+        val esRiserva = esitoRiserva.text
+        costruisci()
+        campoLocali.setText(locali)
+        campoRiserva.setText(riserva)
+        esitoLocali.text = esLocali
+        esitoRiserva.text = esRiserva
+        vistaScorri?.let { v -> v.post { v.scrollTo(0, y) } }
     }
 
     override fun onResume() {
@@ -377,6 +422,7 @@ class MainActivity : Activity() {
 
     private fun aggiornaChip() {
         val p = getSharedPreferences("ponte", MODE_PRIVATE)
+        chipMarca.forEach { (k, v) -> scegli(v, k == Marca.attuale.codice) }
         val carb = p.getInt("carburante", 1)
         chipCarburante.forEach { (k, v) -> scegli(v, k == carb) }
         val r = p.getInt("raggio_carburanti", 5)
@@ -426,11 +472,12 @@ class MainActivity : Activity() {
     }
 
     private fun aggiornaSchermo() {
+        if (Marca.attuale !== marcaDisegnata) ridisegnaPerMarca()
         val prefs = getSharedPreferences("ponte", MODE_PRIVATE)
         val ora = SimpleDateFormat("HH:mm:ss", Locale.ITALY)
 
         punto(puntoServizio, if (Stato.servizioAttivo) VERDE else TENUE)
-        testoServizio.text = if (Stato.servizioAttivo) "acceso (${Stato.avviatoDa})" else "spento: si accende da solo col Bluetooth della ${Marca.AUTO}"
+        testoServizio.text = if (Stato.servizioAttivo) "acceso (${Stato.avviatoDa})" else "spento: si accende da solo col Bluetooth ${Marca.della()}"
         tastoAccendi.text = if (Stato.servizioAttivo) "Spegni" else "Accendi"
         val wifi = Stato.wifiAuto
         punto(puntoWifi, if (wifi != null) VERDE else TENUE)
@@ -447,7 +494,7 @@ class MainActivity : Activity() {
 
         val p = Parcheggio.ultimo(this)
         testoParcheggio.text = p?.let { Parcheggio.descrizione(it) }
-            ?: "Ancora nessun parcheggio salvato: si salva da solo quando scendi dalla ${Marca.AUTO}."
+            ?: "Ancora nessun parcheggio salvato: si salva da solo quando scendi ${Marca.dalla()}."
         tastoPortami.isEnabled = p != null
         tastoPortami.setTextColor(if (p != null) SU_ACCENTO else TENUE)
         tastoPortami.background = if (p != null) tondo(ACCENTO, 22) else tondo(Color.TRANSPARENT, 22, BORDO)
@@ -491,6 +538,42 @@ class MainActivity : Activity() {
 
     private fun chiedi(lista: Array<String>) {
         requestPermissions(lista, 1)
+    }
+
+    /** informativa ben visibile prima di chiedere la posizione: Google Play la vuole per la posizione in background.
+     *  "Continua" porta alla richiesta di Android, "No, grazie" chiude senza chiedere niente. */
+    private fun informativaPosizione(poi: () -> Unit) {
+        val d = Dialog(this)
+        d.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        val s = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = tondo(SCHEDA, 16, BORDO)
+            setPadding(px(20), px(18), px(20), px(18))
+        }
+        val testa = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        testa.addView(ImageView(this).apply {
+            setImageResource(R.drawable.ic_permessi)
+            imageTintList = ColorStateList.valueOf(ACCENTO)
+        }, LinearLayout.LayoutParams(px(22), px(22)))
+        testa.addView(TextView(this).apply {
+            text = "Uso della posizione"; setTextColor(TESTO); textSize = 18f; typeface = Typeface.DEFAULT_BOLD
+            setPadding(px(10), 0, 0, 0)
+        })
+        s.addView(testa)
+        s.addView(View(this), LinearLayout.LayoutParams(MATCH_PARENT, px(10)))
+        testo(s, "${Marca.APP} raccoglie i dati sulla posizione del telefono per mostrare nell'iDrive meteo, allerte, " +
+            "distributori e traffico della zona in cui ti trovi e per salvare dove hai parcheggiato, " +
+            "anche quando l'app è chiusa o non in uso.")
+        piccolo(s, "Le coordinate vanno solo a open-meteo.com e a MIMIT Osservaprezzi per avere i dati della zona; " +
+            "il parcheggio resta sul telefono. Nessun dato va allo sviluppatore. " +
+            "Se non consenti, l'app usa la città di riserva e non salva il parcheggio.").setPadding(0, px(10), 0, 0)
+        val tasti = rigaTasti(s)
+        tasto(tasti, "Continua", true) { d.dismiss(); poi() }
+        tasto(tasti, "No, grazie", false) { d.dismiss() }
+        d.setContentView(s)
+        d.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        d.show()
+        d.window?.setLayout(minOf(resources.displayMetrics.widthPixels - px(32), px(440)), WRAP_CONTENT)
     }
 
     @Suppress("BatteryLife")
