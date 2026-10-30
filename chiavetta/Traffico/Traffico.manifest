@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<plugin>
+	<name>Traffico</name>
+	<type>App</type>
+	<file>{pluginDir}/Traffico</file>
+	<config>
+		<autoStart>yes</autoStart>
+		<dependencies>
+			<pluginAppConnector>
+				<type>Etch</type>
+				<id>216</id>
+				<asyncCallbacks>yes</asyncCallbacks>
+			</pluginAppConnector>
+		</dependencies>
+		<parameters>
+			<DescFile>{pluginDir}/Traffico.xml</DescFile>
+			<TextDBFile>{pluginDir}/Traffico_ALL_Texts.zip</TextDBFile>
+			<ImageDBFile>{pluginDir}/Traffico_ALL_Images.zip</ImageDBFile>
+		</parameters>
+	</config>
+</plugin>

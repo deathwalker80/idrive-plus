@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pluginApps>
+  <pluginApp applicationType="Custom" applicationWeight="200" entryButtonFocusID="32764" insertStateID="50" text="Notizie">
+    <comment>Notizie v6 compilato - lista a tutta larghezza con miniature, aggiornati dall'app del telefono (MINI Plus, BMW Plus o Supra Plus)</comment>
+    <entryButton action="5" id="1" model="3" imageModel="4">
+      <properties/>
+    </entryButton>
+    <actions>
+      <hmiAction id="5" target="100"/>
+      <hmiAction id="6" target="110"/>
+      <hmiAction id="7" target="111"/>
+      <hmiAction id="8" target="112"/>
+      <hmiAction id="9" target="113"/>
+      <hmiAction id="10" target="114"/>
+      <hmiAction id="11" target="115"/>
+      <hmiAction id="12" target="116"/>
+      <hmiAction id="13" target="117"/>
+    </actions>
+    <models>
+      <textIdModel id="3" textId="1">
+        <synonyms/>
+      </textIdModel>
+      <imageIdModel id="4" imageId="58001"/>
+      <raDataModel id="41"/>
+      <raDataModel id="42"/>
+      <raDataModel id="43"/>
+      <raDataModel id="44"/>
+      <raDataModel id="45"/>
+      <raDataModel id="46"/>
+      <raDataModel id="47"/>
+      <raDataModel id="48"/>
+      <raImageModel id="51"/>
+      <raImageModel id="52"/>
+      <raImageModel id="53"/>
+      <raImageModel id="54"/>
+      <raImageModel id="55"/>
+      <raImageModel id="56"/>
+      <raImageModel id="57"/>
+      <raImageModel id="58"/>
+      <raImageModel id="61"/>
+      <raImageModel id="62"/>
+      <raImageModel id="63"/>
+      <raImageModel id="64"/>
+      <raImageModel id="65"/>
+      <raImageModel id="66"/>
+      <raImageModel id="67"/>
+      <raImageModel id="68"/>
+    </models>
+    <events/>
+    <hmiStates>
+      <hmiState id="100" text="Notizie" textModel="3">
+        <properties>
+          <property id="24" value="3"/>
+        </properties>
+        <components>
+          <button action="6" id="200" model="41" imageModel="61" text="Notizia 1"/>
+          <button action="7" id="201" model="42" imageModel="62" text="Notizia 2"/>
+          <button action="8" id="202" model="43" imageModel="63" text="Notizia 3"/>
+          <button action="9" id="203" model="44" imageModel="64" text="Notizia 4"/>
+          <button action="10" id="204" model="45" imageModel="65" text="Notizia 5"/>
+          <button action="11" id="205" model="46" imageModel="66" text="Notizia 6"/>
+          <button action="12" id="206" model="47" imageModel="67" text="Notizia 7"/>
+          <button action="13" id="207" model="48" imageModel="68" text="Notizia 8"/>
+        </components>
+      </hmiState>
+      <hmiState id="110" parentId="100" text="Notizie" textModel="3">
+        <properties>
+          <property id="24" value="3"/>
+        </properties>
+        <components>
+          <image id="210" model="51">
+            <properties>
+              <property id="3" value="true"/>
+              <property id="9" value="1280"/>
+              <property id="10" value="480"/>
+              <property id="20" value="0"/>
+              <property id="21" value="0"/>
+            </properties>
+          </image>
+        </components>
+      </hmiState>
+      <hmiState id="111" parentId="100" text="Notizie" textModel="3">
+        <properties>
+          <property id="24" value="3"/>
+        </properties>
+        <components>
+          <image id="211" model="52">
+            <properties>
+              <property id="3" value="true"/>
+              <property id="9" value="1280"/>
+              <property id="10" value="480"/>
+              <property id="20" value="0"/>
+              <property id="21" value="0"/>
+            </properties>
+          </image>
+        </components>
+      </hmiState>
+      <hmiState id="112" parentId="100" text="Notizie" textModel="3">
+        <properties>
+          <property id="24" value="3"/>
+        </properties>
+        <components>
+          <image id="212" model="53">
+            <properties>
+              <property id="3" value="true"/>
+              <property id="9" value="1280"/>
+              <property id="10" value="480"/>
+              <property id="20" value="0"/>
+              <property id="21" value="0"/>
+            </properties>
+          </image>
+        </components>
+      </hmiState>
+      <hmiState id="113" parentId="100" text="Notizie" textModel="3">
+        <properties>
+          <property id="24" value="3"/>
+        </properties>
+        <components>
+          <image id="213" model="54">
+            <properties>
+              <property id="3" value="true"/>
+              <property id="9" value="1280"/>
+              <property id="10" value="480"/>
+              <property id="20" value="0"/>
+              <property id="21" value="0"/>
+            </properties>
+          </image>
+        </components>
+      </hmiState>
+      <hmiState id="114" parentId="100" text="Notizie" textModel="3">
+        <properties>
+          <property id="24" value="3"/>
+        </properties>
+        <components>
+          <image id="214" model="55">
+            <properties>
+              <property id="3" value="true"/>
+              <property id="9" value="1280"/>
+              <property id="10" value="480"/>
+              <property id="20" value="0"/>
+              <property id="21" value="0"/>
+            </properties>
+          </image>
+        </components>
+      </hmiState>
+      <hmiState id="115" parentId="100" text="Notizie" textModel="3">
+        <properties>
+          <property id="24" value="3"/>
+        </properties>
+        <components>
+          <image id="215" model="56">
+            <properties>
+              <property id="3" value="true"/>
+              <property id="9" value="1280"/>
+              <property id="10" value="480"/>
+              <property id="20" value="0"/>
+              <property id="21" value="0"/>
+            </properties>
+          </image>
+        </components>
+      </hmiState>
+      <hmiState id="116" parentId="100" text="Notizie" textModel="3">
+        <properties>
+          <property id="24" value="3"/>
+        </properties>
+        <components>
+          <image id="216" model="57">
+            <properties>
+              <property id="3" value="true"/>
+              <property id="9" value="1280"/>
+              <property id="10" value="480"/>
+              <property id="20" value="0"/>
+              <property id="21" value="0"/>
+            </properties>
+          </image>
+        </components>
+      </hmiState>
+      <hmiState id="117" parentId="100" text="Notizie" textModel="3">
+        <properties>
+          <property id="24" value="3"/>
+        </properties>
+        <components>
+          <image id="217" model="58">
+            <properties>
+              <property id="3" value="true"/>
+              <property id="9" value="1280"/>
+              <property id="10" value="480"/>
+              <property id="20" value="0"/>
+              <property id="21" value="0"/>
+            </properties>
+          </image>
+        </components>
+      </hmiState>
+    </hmiStates>
+  </pluginApp>
+</pluginApps>

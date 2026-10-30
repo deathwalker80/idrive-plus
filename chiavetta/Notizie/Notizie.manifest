@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<plugin>
+	<name>Notizie</name>
+	<type>App</type>
+	<file>{pluginDir}/Notizie</file>
+	<config>
+		<autoStart>yes</autoStart>
+		<dependencies>
+			<pluginAppConnector>
+				<type>Etch</type>
+				<id>213</id>
+				<asyncCallbacks>yes</asyncCallbacks>
+			</pluginAppConnector>
+		</dependencies>
+		<parameters>
+			<DescFile>{pluginDir}/Notizie.xml</DescFile>
+			<TextDBFile>{pluginDir}/Notizie_ALL_Texts.zip</TextDBFile>
+			<ImageDBFile>{pluginDir}/Notizie_ALL_Images.zip</ImageDBFile>
+		</parameters>
+	</config>
+</plugin>
