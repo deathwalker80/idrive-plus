@@ -18,7 +18,7 @@ PRIMA DI INSTALLARE: COSA SERVE
 NBT Plus da sola non basta. Serve una testata NBT EVO già predisposta:
 • accesso SSH root alla testata;
 • Android Auto wireless sulla testata (progetto open source nbt-aad);
-• i plugin di NBT Plus installati sulla testata dalla chiavetta USB, gratuiti e open source: github.com/deathwalker80/idrive-plus
+• i plugin di NBT Plus installati sulla testata dalla chiavetta USB, gratuiti e open source: github.com/deathwalker80/idrive-plus/tree/nbt-plus
 Senza questi passaggi l'app funziona solo sul telefono (parcheggio e anteprime).
 
 Notizie, carburanti, traffico e allerte usano fonti italiane e valgono per l'Italia; il meteo funziona ovunque.

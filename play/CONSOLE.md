@@ -8,7 +8,7 @@ Testi pronti da incollare nei moduli della Play Console. I testi della scheda so
 - **Pacchetto:** `it.deathwalker.nbtplus`
 - **Categoria:** Auto e veicoli
 - **Gratuita**, senza pubblicità, senza acquisti in-app
-- **Informativa sulla privacy:** https://github.com/deathwalker80/idrive-plus/blob/main/PRIVACY.md
+- **Informativa sulla privacy:** https://github.com/deathwalker80/idrive-plus/blob/nbt-plus/PRIVACY.md
 - **Pubblico di destinazione:** 18 anni e oltre (l'app è per chi guida)
 - **Classificazione dei contenuti:** questionario IARC con "Utilità", tutte le risposte No
 
@@ -57,7 +57,7 @@ cronologia o statistiche.
 
 ## Accesso all'app (istruzioni per la revisione)
 > NBT Plus serve un'auto con testata NBT EVO modificata (plugin installati dalla chiavetta USB, vedi
-> github.com/deathwalker80/idrive-plus), quindi la parte in auto non si può provare senza l'auto. La parte sul
+> github.com/deathwalker80/idrive-plus/tree/nbt-plus), quindi la parte in auto non si può provare senza l'auto. La parte sul
 > telefono si prova così, senza account:
 > 1. aprire l'app e concedere i permessi dalla scheda "Permessi";
 > 2. toccare "Accendi", poi "Aggiorna tutto";

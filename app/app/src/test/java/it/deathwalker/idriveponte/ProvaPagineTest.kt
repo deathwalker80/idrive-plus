@@ -137,8 +137,8 @@ class ProvaPagineTest {
         // informativa sulla posizione (quella che chiede Google Play prima della posizione in background)
         Marca.imposta(ctx, Marca.MINI)
         val att = org.robolectric.Robolectric.buildActivity(MainActivity::class.java).setup().get()
-        val m = MainActivity::class.java.getDeclaredMethod("informativaPosizione", Function0::class.java).apply { isAccessible = true }
-        m.invoke(att, {})
+        val metodo = MainActivity::class.java.getDeclaredMethod("informativaPosizione", Function0::class.java).apply { isAccessible = true }
+        metodo.invoke(att, {})
         val dlg = org.robolectric.shadows.ShadowDialog.getLatestDialog()
         assertTrue(dlg.isShowing)
         val v = dlg.window!!.decorView

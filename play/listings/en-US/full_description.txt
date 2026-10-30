@@ -18,7 +18,7 @@ BEFORE INSTALLING: REQUIREMENTS
 NBT Plus alone is not enough. You need an NBT EVO head unit that is already prepared:
 • root SSH access to the head unit;
 • wireless Android Auto on the head unit (open-source nbt-aad project);
-• the NBT Plus plugins installed on the head unit from the USB stick, free and open source: github.com/deathwalker80/idrive-plus
+• the NBT Plus plugins installed on the head unit from the USB stick, free and open source: github.com/deathwalker80/idrive-plus/tree/nbt-plus
 Without these steps the app only works on the phone (parking and previews).
 
 News, fuel prices, traffic and warnings use Italian sources and cover Italy; the weather works anywhere. The app is in Italian.
