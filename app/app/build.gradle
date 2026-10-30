@@ -1,0 +1,88 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'it.deathwalker.idriveponte'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "it.deathwalker.idriveponte"
+        minSdk 26
+        targetSdk 35
+        versionCode 250
+        versionName "2.5"
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    // stesso codice, tre app: cambiano nome, icona, colore e il nome dell'auto nei testi
+    flavorDimensions "marca"
+    productFlavors {
+        mini {
+            dimension "marca"
+            applicationId "it.deathwalker.idriveponte"
+            resValue "string", "nome_app", "MINI Plus"
+            buildConfigField "String", "MARCA_AUTO", '"MINI"'
+            buildConfigField "String", "MARCA_APP", '"MINI Plus"'
+            buildConfigField "int", "MARCA_ACCENTO", "0xFF29B6F6"
+            buildConfigField "int", "MARCA_SU_ACCENTO", "0xFF000000"
+            ext.file = "MINIPlus"
+        }
+        bmw {
+            dimension "marca"
+            applicationId "it.deathwalker.bmwplus"
+            resValue "string", "nome_app", "BMW Plus"
+            buildConfigField "String", "MARCA_AUTO", '"BMW"'
+            buildConfigField "String", "MARCA_APP", '"BMW Plus"'
+            buildConfigField "int", "MARCA_ACCENTO", "0xFFFFCE00"
+            buildConfigField "int", "MARCA_SU_ACCENTO", "0xFF000000"
+            ext.file = "BMWPlus"
+        }
+        supra {
+            dimension "marca"
+            applicationId "it.deathwalker.supraplus"
+            resValue "string", "nome_app", "Supra Plus"
+            buildConfigField "String", "MARCA_AUTO", '"Supra"'
+            buildConfigField "String", "MARCA_APP", '"Supra Plus"'
+            buildConfigField "int", "MARCA_ACCENTO", "0xFFEB0A1E"
+            buildConfigField "int", "MARCA_SU_ACCENTO", "0xFFFFFFFF"
+            ext.file = "SupraPlus"
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    applicationVariants.configureEach { variant ->
+        variant.outputs.each { output ->
+            output.outputFileName = "${variant.productFlavors[0].ext.file}-${variant.versionName}-${variant.buildType.name}.apk"
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+        }
+    }
+}
+
+dependencies {
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.robolectric:robolectric:4.13'
+}

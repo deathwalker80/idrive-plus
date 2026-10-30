@@ -1,0 +1,12 @@
+# build
+app/.gradle/
+app/build/
+app/app/build/
+app/local.properties
+plugin/out/
+# librerie dell'HMI copiate dalla testata: non si ridistribuiscono
+plugin/link/libAppFramework.A.so
+plugin/link/libCoreFramework.A.so
+# compilati: vanno nelle Release, non nel codice
+chiavetta/*/lib*.so
+*.apk
