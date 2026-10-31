@@ -55,7 +55,7 @@ class AutoBtReceiver : BroadcastReceiver() {
         val nome = try { dev?.name } catch (e: SecurityException) { null }
         val tipo = marca(nome) ?: return
         Marca.carica(ctx)
-        NomeAuto.ricorda(ctx, nome)
+        Parco.ricorda(ctx, nome)
 
         when (intent.action) {
             BluetoothDevice.ACTION_ACL_CONNECTED -> {
@@ -74,7 +74,7 @@ class AutoBtReceiver : BroadcastReceiver() {
                 val attesa = goAsync()
                 Thread {
                     try {
-                        val p = Parcheggio.salva(ctx, nome ?: Marca.AUTO)
+                        val p = Parcheggio.salva(ctx, nome)
                         registra(ctx, "spento, $nome scollegata" + if (p != null) " - parcheggio salvato" else " - posizione non disponibile")
                     } finally {
                         attesa.finish()

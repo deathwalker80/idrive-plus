@@ -31,14 +31,20 @@ object Marca {
     val ACCENTO: Int get() = attuale.accento
     val SU_ACCENTO: Int get() = attuale.suAccento
 
-    /** "alla MINI" / "all'auto" */
-    fun alla(): String = if (attuale === NESSUNA) "all'auto" else "alla ${attuale.auto}"
+    /** "alla MINI" / "all'auto"; con bt la marca di quell'auto del parco (dal suo nome Bluetooth) */
+    fun alla(bt: String? = null): String {
+        val t = AutoBtReceiver.marca(bt) ?: attuale
+        return if (t === NESSUNA) "all'auto" else "alla ${t.auto}"
+    }
 
     /** "della MINI" / "dell'auto" */
     fun della(): String = if (attuale === NESSUNA) "dell'auto" else "della ${attuale.auto}"
 
-    /** "dalla MINI" / "dall'auto" */
-    fun dalla(): String = if (attuale === NESSUNA) "dall'auto" else "dalla ${attuale.auto}"
+    /** "dalla MINI" / "dall'auto"; con bt la marca di quell'auto del parco (dal suo nome Bluetooth) */
+    fun dalla(bt: String? = null): String {
+        val t = AutoBtReceiver.marca(bt) ?: attuale
+        return if (t === NESSUNA) "dall'auto" else "dalla ${t.auto}"
+    }
 
     fun daCodice(codice: String?): Tipo = TUTTE.firstOrNull { it.codice == codice } ?: NESSUNA
 
