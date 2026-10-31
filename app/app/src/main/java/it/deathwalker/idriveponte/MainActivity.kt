@@ -3,6 +3,7 @@ package it.deathwalker.idriveponte
 import android.Manifest
 import android.app.Activity
 import android.app.Dialog
+import android.bluetooth.BluetoothManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
@@ -26,7 +27,6 @@ import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.view.Window
-import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import android.widget.FrameLayout
@@ -74,15 +74,16 @@ class MainActivity : Activity() {
     private lateinit var tastoAccendi: TextView
 
     // parcheggio
-    private lateinit var testoParcheggio: TextView
-    private lateinit var tastoPortami: TextView
+    private lateinit var boxParcheggi: LinearLayout
+    private lateinit var boxParco: LinearLayout
+    private var firmaParcheggi = ""
+    private var firmaParco = ""
 
     // pagine dell'auto
     private class Riquadro(val esito: TextView, val immagine: ImageView, var epoch: Long = -1)
     private val riquadri = HashMap<String, Riquadro>()
 
     // impostazioni
-    private val chipCarburante = HashMap<Int, TextView>()
     private val chipRaggio = HashMap<Int, TextView>()
     private lateinit var campoLocali: EditText
     private lateinit var esitoLocali: TextView
@@ -119,10 +120,10 @@ class MainActivity : Activity() {
             val (p0, t0) = rigaStato(s, "Auto"); puntoAuto = p0; testoAuto = t0
             (t0.parent as LinearLayout).apply {
                 addView(TextView(this@MainActivity).apply {
-                    text = "Rinomina"; setTextColor(ACCENTO); textSize = 14f; typeface = Typeface.DEFAULT_BOLD
+                    text = "Modifica"; setTextColor(ACCENTO); textSize = 14f; typeface = Typeface.DEFAULT_BOLD
                 })
                 isClickable = true
-                setOnClickListener { rinominaAuto() }
+                setOnClickListener { modificaAuto(Parco.ultima(this@MainActivity)) }
             }
             val (p1, t1) = rigaStato(s, "Servizio"); puntoServizio = p1; testoServizio = t1
             val (p2, t2) = rigaStato(s, "Wi-Fi della ${Marca.AUTO}"); puntoWifi = p2; testoWifi = t2
@@ -138,9 +139,14 @@ class MainActivity : Activity() {
 
         // ---- parcheggio
         col.addView(scheda(R.drawable.ic_parcheggio, "Dove ho parcheggiato") { s ->
-            testoParcheggio = testo(s, "")
+            boxParcheggi = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }.also { s.addView(it) }
+        })
+
+        // ---- parco vetture
+        col.addView(scheda(R.drawable.ic_auto, "Le mie auto", "Ognuna col suo nome, carburante e parcheggio") { s ->
+            boxParco = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }.also { s.addView(it) }
             val tasti = rigaTasti(s)
-            tastoPortami = tasto(tasti, "Portami alla ${Marca.AUTO}", true) { Parcheggio.ultimo(this)?.let { Parcheggio.portami(this, it) } }
+            tasto(tasti, "Aggiungi dal Bluetooth", false) { aggiungiDaBluetooth() }
         })
 
         // ---- pagine che vede l'iDrive
@@ -172,11 +178,6 @@ class MainActivity : Activity() {
         // ---- impostazioni
         val prefs = getSharedPreferences("ponte", MODE_PRIVATE)
         col.addView(scheda(R.drawable.ic_impostazioni, "Impostazioni") { s ->
-            etichetta(s, "Carburante")
-            val r1 = rigaChip(s)
-            for ((codice, nome) in Fonti.CARBURANTI) chipCarburante[codice] = chip(r1, nome) {
-                prefs.edit().putInt("carburante", codice).apply(); aggiornaChip(); PonteService.aggiornaOra(this)
-            }
             etichetta(s, "Distributori entro")
             val r2 = rigaChip(s)
             for (km in listOf(3, 5, 10, 20)) chipRaggio[km] = chip(r2, "$km km") {
@@ -392,8 +393,6 @@ class MainActivity : Activity() {
 
     private fun aggiornaChip() {
         val p = getSharedPreferences("ponte", MODE_PRIVATE)
-        val carb = p.getInt("carburante", 1)
-        chipCarburante.forEach { (k, v) -> scegli(v, k == carb) }
         val r = p.getInt("raggio_carburanti", 5)
         chipRaggio.forEach { (k, v) -> scegli(v, k == r) }
         val gps = p.getBoolean("usa_posizione", true)
@@ -445,9 +444,9 @@ class MainActivity : Activity() {
         val ora = SimpleDateFormat("HH:mm:ss", Locale.ITALY)
 
         punto(puntoAuto, ACCENTO)
-        testoAuto.text = NomeAuto.mostra(this, NomeAuto.ultima(this)).ifEmpty { "non ancora collegata" }
+        testoAuto.text = Parco.mostra(this, Parco.ultima(this)).ifEmpty { "non ancora collegata" }
         punto(puntoServizio, if (Stato.servizioAttivo) VERDE else TENUE)
-        testoServizio.text = if (Stato.servizioAttivo) "acceso (${NomeAuto.nelTesto(this, Stato.avviatoDa)})" else "spento: si accende da solo col Bluetooth della ${Marca.AUTO}"
+        testoServizio.text = if (Stato.servizioAttivo) "acceso (${Parco.nelTesto(this, Stato.avviatoDa)})" else "spento: si accende da solo col Bluetooth della ${Marca.AUTO}"
         tastoAccendi.text = if (Stato.servizioAttivo) "Spegni" else "Accendi"
         val wifi = Stato.wifiAuto
         punto(puntoWifi, if (wifi != null) VERDE else TENUE)
@@ -456,18 +455,14 @@ class MainActivity : Activity() {
         punto(puntoIdrive, if (Stato.ultimaRichiestaAuto == 0L) TENUE else if (recente) VERDE else ARANCIO)
         testoIdrive.text = if (Stato.ultimaRichiestaAuto == 0L) "nessuna richiesta"
         else "ultima richiesta ${ora.format(Date(Stato.ultimaRichiestaAuto))} (${Stato.richiesteAuto} in tutto)"
-        testoBt.text = "Bluetooth: " + (prefs.getString("ultimo_bt", null)?.let { NomeAuto.nelTesto(this, it) } ?: "nessun evento ancora") +
+        testoBt.text = "Bluetooth: " + (prefs.getString("ultimo_bt", null)?.let { Parco.nelTesto(this, it) } ?: "nessun evento ancora") +
             (if (Stato.erroreServer.isNotEmpty()) "\nServer: ${Stato.erroreServer}" else "")
         val inCorso = Stato.aggiornamentoInCorso
         testoInCorso.text = if (inCorso.isNotEmpty()) "Sto aggiornando: $inCorso..." else ""
         testoInCorso.visibility = if (inCorso.isNotEmpty()) View.VISIBLE else View.GONE
 
-        val p = Parcheggio.ultimo(this)
-        testoParcheggio.text = p?.let { Parcheggio.descrizione(it) }
-            ?: "Ancora nessun parcheggio salvato: si salva da solo quando scendi dalla ${Marca.AUTO}."
-        tastoPortami.isEnabled = p != null
-        tastoPortami.setTextColor(if (p != null) SU_ACCENTO else TENUE)
-        tastoPortami.background = if (p != null) tondo(ACCENTO, 22) else tondo(Color.TRANSPARENT, 22, BORDO)
+        disegnaParcheggi()
+        disegnaParco()
 
         mostra("Meteo", Stato.meteo.esito + (if (Stato.allerta.isNotEmpty()) "\nAllerta: ${Stato.allerta}" else ""), Stato.meteo.epoch, Stato.meteo.png)
         mostra("Notizie", Stato.notizie.esito, Stato.notizie.epoch, Stato.notizie.notizie.firstOrNull()?.pagina)
@@ -519,9 +514,64 @@ class MainActivity : Activity() {
         }
     }
 
-    /** il nome dell'auto si cambia toccando la riga "Auto": e' solo da mostrare, l'auto resta riconosciuta dal Bluetooth */
-    private fun rinominaAuto() {
-        val bt = NomeAuto.ultima(this)
+    /** un riquadro per ogni auto parcheggiata; si ridisegna solo quando cambia qualcosa, cosi' non disturba chi tocca */
+    private fun disegnaParcheggi() {
+        val posti = Parcheggio.tutti(this)
+        val firma = posti.joinToString("|") { "${it.auto}/${it.quando}/${Parco.mostra(this, it.auto)}" }
+        if (firma == firmaParcheggi && boxParcheggi.childCount > 0) return
+        firmaParcheggi = firma
+        boxParcheggi.removeAllViews()
+        if (posti.isEmpty()) {
+            testo(boxParcheggi, "Ancora nessun parcheggio salvato: si salva da solo quando scendi ${Marca.dalla()}.")
+            val tasti = rigaTasti(boxParcheggi)
+            tasto(tasti, "Portami ${Marca.alla()}", false) {}.apply { isEnabled = false; setTextColor(TENUE) }
+            return
+        }
+        posti.forEachIndexed { i, p ->
+            if (p.auto.isNotEmpty() || posti.size > 1) titoletto(boxParcheggi, Parco.mostra(this, p.auto).ifEmpty { Marca.AUTO }, i > 0)
+            testo(boxParcheggi, Parcheggio.descrizione(p))
+            val tasti = rigaTasti(boxParcheggi)
+            tasto(tasti, "Portami ${Marca.alla(p.auto)}", true) { Parcheggio.portami(this, p) }
+        }
+    }
+
+    /** l'elenco delle auto con Modifica e Togli, sempre nello stesso ordine; si ridisegna solo quando cambia qualcosa */
+    private fun disegnaParco() {
+        val auto = Parco.elenco(this)
+        val attuale = Parco.ultima(this)
+        val firma = auto.joinToString("|") { "$it/${Parco.mostra(this, it)}/${Parco.carburante(this, it)}/${Parco.vista(this, it)}" } + "/$attuale"
+        if (firma == firmaParco && boxParco.childCount > 0) return
+        firmaParco = firma
+        boxParco.removeAllViews()
+        if (auto.isEmpty()) {
+            piccolo(boxParco, "Nessuna auto ancora: ogni auto si aggiunge da sola la prima volta che il telefono si collega al suo Bluetooth, " +
+                "oppure con il tasto qui sotto.")
+            return
+        }
+        val ora = SimpleDateFormat("dd/MM HH:mm", Locale.ITALY)
+        auto.forEachIndexed { i, bt ->
+            val nome = Parco.mostra(this, bt)
+            titoletto(boxParco, nome, i > 0)
+            val vista = Parco.vista(this, bt)
+            piccolo(boxParco, listOfNotNull(
+                if (nome != bt) bt else null,
+                Fonti.CARBURANTI[Parco.carburante(this, bt)],
+                if (bt == attuale) "in uso adesso" else null,
+                if (vista > 0) "ultimo collegamento ${ora.format(Date(vista))}" else null
+            ).joinToString(" · "))
+            val tasti = rigaTasti(boxParco)
+            tasto(tasti, "Modifica", false) { modificaAuto(bt) }
+            tasto(tasti, "Togli", false) { togliAuto(bt) }
+        }
+    }
+
+    private fun titoletto(s: ViewGroup, t: String, staccato: Boolean) = TextView(this).apply {
+        text = t; setTextColor(TESTO); textSize = 16f; typeface = Typeface.DEFAULT_BOLD
+        setPadding(0, if (staccato) px(18) else 0, 0, px(2))
+    }.also { s.addView(it) }
+
+    /** finestra con icona e titolo nello stile delle schede; il contenuto va aggiunto a s, poi mostraFinestra */
+    private fun finestra(icona: Int, titolo: String): Pair<Dialog, LinearLayout> {
         val d = Dialog(this)
         d.requestWindowFeature(Window.FEATURE_NO_TITLE)
         val s = LinearLayout(this).apply {
@@ -531,33 +581,97 @@ class MainActivity : Activity() {
         }
         val testa = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         testa.addView(ImageView(this).apply {
-            setImageResource(R.drawable.ic_auto)
+            setImageResource(icona)
             imageTintList = ColorStateList.valueOf(ACCENTO)
         }, LinearLayout.LayoutParams(px(22), px(22)))
         testa.addView(TextView(this).apply {
-            text = "Nome dell'auto"; setTextColor(TESTO); textSize = 18f; typeface = Typeface.DEFAULT_BOLD
+            text = titolo; setTextColor(TESTO); textSize = 18f; typeface = Typeface.DEFAULT_BOLD
             setPadding(px(10), 0, 0, 0)
         })
         s.addView(testa)
-        s.addView(View(this), LinearLayout.LayoutParams(MATCH_PARENT, px(12)))
-        val nome = campo(s, NomeAuto.scelto(this, bt)).apply {
+        s.addView(View(this), LinearLayout.LayoutParams(MATCH_PARENT, px(4)))
+        return d to s
+    }
+
+    private fun mostraFinestra(d: Dialog, s: LinearLayout) {
+        d.setContentView(s)
+        d.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        d.show()
+        d.window?.setLayout(minOf(resources.displayMetrics.widthPixels - px(32), px(440)), WRAP_CONTENT)
+    }
+
+    /** nome (solo da mostrare) e carburante di un'auto del parco; bt null = nessuna auto ancora: vale per tutte */
+    private fun modificaAuto(bt: String?) {
+        val (d, s) = finestra(R.drawable.ic_auto, if (bt != null) Parco.mostra(this, bt) else "La tua auto")
+        etichetta(s, "Nome nell'app")
+        val nome = campo(s, Parco.scelto(this, bt)).apply {
             hint = bt ?: "es. La mia ${Marca.AUTO}"
-            filters = arrayOf(InputFilter.LengthFilter(NomeAuto.MASSIMO))
+            filters = arrayOf(InputFilter.LengthFilter(Parco.MASSIMO))
             setSelection(text.length)
         }
         piccolo(s, (if (bt != null) "Al posto di \"$bt\". Lascia vuoto per tornare al nome Bluetooth." else "Vale per l'auto che collegherai.") +
             " Cambia solo ciò che vedi nell'app: l'auto si riconosce sempre dal Bluetooth.")
-        val salva = { NomeAuto.imposta(this, bt, nome.text.toString()); d.dismiss(); aggiornaSchermo() }
+        etichetta(s, "Carburante (distributori nell'iDrive)")
+        var carburante = Parco.carburante(this, bt)
+        val chips = HashMap<Int, TextView>()
+        val r = rigaChip(s)
+        for ((codice, n) in Fonti.CARBURANTI) chips[codice] = chip(r, n) {
+            carburante = codice
+            chips.forEach { (k, v) -> scegli(v, k == carburante) }
+        }
+        chips.forEach { (k, v) -> scegli(v, k == carburante) }
+        val salva = {
+            val prima = Parco.carburante(this, bt)
+            Parco.imposta(this, bt, nome.text.toString())
+            Parco.impostaCarburante(this, bt, carburante)
+            d.dismiss()
+            aggiornaSchermo()
+            if (carburante != prima && bt == Parco.ultima(this) && Stato.servizioAttivo) PonteService.aggiornaOra(this)
+        }
         nome.setOnEditorActionListener { _, azione, _ -> if (azione == EditorInfo.IME_ACTION_DONE) { salva(); true } else false }
         val tasti = rigaTasti(s)
         tasto(tasti, "Salva", true) { salva() }
         tasto(tasti, "Annulla", false) { d.dismiss() }
-        d.setContentView(s)
-        d.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-        d.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
-        d.show()
-        d.window?.setLayout(minOf(resources.displayMetrics.widthPixels - px(32), px(440)), WRAP_CONTENT)
-        nome.requestFocus()
+        mostraFinestra(d, s)
+    }
+
+    private fun togliAuto(bt: String) {
+        val (d, s) = finestra(R.drawable.ic_auto, "Togliere ${Parco.mostra(this, bt)}?")
+        testo(s, "Si cancellano nome, carburante e parcheggio di questa auto. " +
+            "Se il telefono si ricollega al suo Bluetooth ($bt), torna nell'elenco da sola.").setPadding(0, px(8), 0, 0)
+        val tasti = rigaTasti(s)
+        tasto(tasti, "Togli", true) { Parco.togli(this, bt); d.dismiss(); aggiornaSchermo() }
+        tasto(tasti, "Annulla", false) { d.dismiss() }
+        mostraFinestra(d, s)
+    }
+
+    /** le auto gia' associate al telefono (nome Bluetooth da auto) che non sono ancora nell'elenco */
+    private fun aggiungiDaBluetooth() {
+        val (d, s) = finestra(R.drawable.ic_auto, "Aggiungi dal Bluetooth")
+        if (Build.VERSION.SDK_INT >= 31 && !ha(Manifest.permission.BLUETOOTH_CONNECT)) {
+            testo(s, "Serve il permesso Bluetooth: concedilo nel riquadro Permessi, poi riprova.").setPadding(0, px(8), 0, 0)
+        } else {
+            val gia = Parco.elenco(this).toSet()
+            val nuove = try {
+                getSystemService(BluetoothManager::class.java)?.adapter?.bondedDevices.orEmpty()
+                    .mapNotNull { it.name?.trim() }.filter { AutoBtReceiver.eAuto(it) && it !in gia }.distinct().sorted()
+            } catch (e: SecurityException) {
+                emptyList()
+            }
+            if (nuove.isEmpty()) {
+                testo(s, "Nessuna auto nuova fra i dispositivi associati al telefono. Ogni auto si aggiunge comunque da sola " +
+                    "la prima volta che il telefono si collega al suo Bluetooth.").setPadding(0, px(8), 0, 0)
+            } else {
+                piccolo(s, "Auto associate al telefono e non ancora nell'elenco:")
+                for (n in nuove) {
+                    val riga = rigaTasti(s)
+                    tasto(riga, n, false) { Parco.aggiungi(this, n); d.dismiss(); aggiornaSchermo() }
+                }
+            }
+        }
+        val tasti = rigaTasti(s)
+        tasto(tasti, "Chiudi", false) { d.dismiss() }
+        mostraFinestra(d, s)
     }
 
     /** cerca la citta' con la geocodifica di open-meteo; locali = notizie locali (salva anche regione e provincia) */

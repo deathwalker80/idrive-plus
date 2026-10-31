@@ -55,6 +55,7 @@ class PonteService : Service() {
     private var allertaLetta = 0L
     private var latCarburanti = 0.0
     private var lonCarburanti = 0.0
+    private var tipoCarburanti = 0
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -192,16 +193,17 @@ class PonteService : Service() {
         }
 
         // carburanti: ogni 30 minuti, oppure subito se ti sei spostato di almeno 3 km
-        val spostato = Fonti.km(latCarburanti, lonCarburanti, qui.lat, qui.lon) > 3.0
+        // e subito anche quando cambia il carburante (un'altra auto del parco, o l'hai cambiato nell'app)
+        val tipo = Parco.carburante(this, Parco.ultima(this))
+        val spostato = Fonti.km(latCarburanti, lonCarburanti, qui.lat, qui.lon) > 3.0 || tipo != tipoCarburanti
         sezione("Carburanti", if (spostato) 0L else Stato.carburanti.ultimo, 30 * MIN, tutto) {
-            val tipo = prefs.getInt("carburante", 1)
             val raggio = prefs.getInt("raggio_carburanti", 5)
             val nome = Fonti.CARBURANTI[tipo] ?: "Benzina"
             try {
                 val lista = Fonti.carburanti(this, qui.lat, qui.lon, tipo, raggio)
                 Stato.carburanti.metti(disegno.paginaCarburanti(lista, nome, qui.nome, raggio))
                 Stato.carburanti.ultimo = System.currentTimeMillis()
-                latCarburanti = qui.lat; lonCarburanti = qui.lon
+                latCarburanti = qui.lat; lonCarburanti = qui.lon; tipoCarburanti = tipo
                 Stato.carburanti.esito = "OK alle ${oraAdesso()} - $nome, ${lista.size} distributori entro $raggio km" +
                     (lista.firstOrNull()?.let { String.format(java.util.Locale.ITALY, ", il migliore %.3f €", it.prezzo) } ?: "")
             } catch (e: Exception) {
