@@ -34,6 +34,7 @@ One codebase for all three: only the name, icon, colour and the car's name in th
 - **Traffic** nearby (Autostrade per l'Italia).
 - **Where I parked**: when the phone disconnects from the car's Bluetooth, the position is saved.
 - The app starts by itself with the car's Bluetooth and stops when you get out.
+- **Car name** of your choice in the settings (e.g. "Lucy" instead of "MINI12345"): it only changes what the app shows.
 
 Data sources are Italian, so the news, fuel and traffic sections are for Italy; the weather works anywhere.
 

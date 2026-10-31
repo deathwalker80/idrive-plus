@@ -34,6 +34,7 @@ Stesso codice per tutte e tre: cambiano solo nome, icona, colore e il nome dell'
 - **Traffico** vicino (Autostrade per l'Italia).
 - **Dove ho parcheggiato**: quando il telefono si scollega dal Bluetooth dell'auto salva la posizione.
 - L'app si accende da sola col Bluetooth dell'auto e si spegne quando scendi.
+- **Nome dell'auto** a scelta nelle impostazioni (es. "Lucy" invece di "MINI12345"): cambia solo cosa si vede nell'app.
 
 ## Struttura
 ```

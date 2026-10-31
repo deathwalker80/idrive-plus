@@ -87,7 +87,7 @@ object Parcheggio {
         val apri = PendingIntent.getActivity(ctx, 2, Intent(ctx, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val n = Notification.Builder(ctx, CANALE)
             .setSmallIcon(R.drawable.ic_parcheggio)
-            .setContentTitle("${p.auto.ifEmpty { Marca.AUTO }} parcheggiata")
+            .setContentTitle("${NomeAuto.mostra(ctx, p.auto).ifEmpty { Marca.AUTO }} parcheggiata")
             .setContentText(p.indirizzo.ifEmpty { "Tocca per vedere dove" })
             .setContentIntent(apri)
             .addAction(Notification.Action.Builder(null, "Portami alla ${Marca.AUTO}", pi).build())
