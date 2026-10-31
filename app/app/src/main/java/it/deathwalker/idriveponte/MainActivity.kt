@@ -2,12 +2,14 @@ package it.deathwalker.idriveponte
 
 import android.Manifest
 import android.app.Activity
+import android.app.Dialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Build
@@ -23,8 +25,9 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+import android.view.Window
+import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
-import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -58,6 +61,8 @@ class MainActivity : Activity() {
     private var dp = 1f
 
     // stato
+    private lateinit var puntoAuto: View
+    private lateinit var testoAuto: TextView
     private lateinit var puntoServizio: View
     private lateinit var testoServizio: TextView
     private lateinit var puntoWifi: View
@@ -79,8 +84,6 @@ class MainActivity : Activity() {
     // impostazioni
     private val chipCarburante = HashMap<Int, TextView>()
     private val chipRaggio = HashMap<Int, TextView>()
-    private lateinit var campoNome: EditText
-    private lateinit var esitoNome: TextView
     private lateinit var campoLocali: EditText
     private lateinit var esitoLocali: TextView
     private lateinit var campoRiserva: EditText
@@ -113,6 +116,14 @@ class MainActivity : Activity() {
 
         // ---- stato del collegamento
         col.addView(scheda(R.drawable.ic_auto, "In auto") { s ->
+            val (p0, t0) = rigaStato(s, "Auto"); puntoAuto = p0; testoAuto = t0
+            (t0.parent as LinearLayout).apply {
+                addView(TextView(this@MainActivity).apply {
+                    text = "Rinomina"; setTextColor(ACCENTO); textSize = 14f; typeface = Typeface.DEFAULT_BOLD
+                })
+                isClickable = true
+                setOnClickListener { rinominaAuto() }
+            }
             val (p1, t1) = rigaStato(s, "Servizio"); puntoServizio = p1; testoServizio = t1
             val (p2, t2) = rigaStato(s, "Wi-Fi della ${Marca.AUTO}"); puntoWifi = p2; testoWifi = t2
             val (p3, t3) = rigaStato(s, "iDrive"); puntoIdrive = p3; testoIdrive = t3
@@ -161,17 +172,6 @@ class MainActivity : Activity() {
         // ---- impostazioni
         val prefs = getSharedPreferences("ponte", MODE_PRIVATE)
         col.addView(scheda(R.drawable.ic_impostazioni, "Impostazioni") { s ->
-            etichetta(s, "Nome dell'auto nell'app")
-            val bt = NomeAuto.ultima(this)
-            campoNome = campo(s, NomeAuto.scelto(this, bt)).apply {
-                hint = bt ?: "es. La mia ${Marca.AUTO}"
-                filters = arrayOf(InputFilter.LengthFilter(NomeAuto.MASSIMO))
-                setOnEditorActionListener { _, azione, _ -> if (azione == EditorInfo.IME_ACTION_DONE) { salvaNome(); true } else false }
-            }
-            val t0 = rigaTasti(s)
-            tasto(t0, "Salva nome", false) { salvaNome() }
-            esitoNome = piccolo(s, spiegaNome(bt))
-
             etichetta(s, "Carburante")
             val r1 = rigaChip(s)
             for ((codice, nome) in Fonti.CARBURANTI) chipCarburante[codice] = chip(r1, nome) {
@@ -444,6 +444,8 @@ class MainActivity : Activity() {
         val prefs = getSharedPreferences("ponte", MODE_PRIVATE)
         val ora = SimpleDateFormat("HH:mm:ss", Locale.ITALY)
 
+        punto(puntoAuto, ACCENTO)
+        testoAuto.text = NomeAuto.mostra(this, NomeAuto.ultima(this)).ifEmpty { "non ancora collegata" }
         punto(puntoServizio, if (Stato.servizioAttivo) VERDE else TENUE)
         testoServizio.text = if (Stato.servizioAttivo) "acceso (${NomeAuto.nelTesto(this, Stato.avviatoDa)})" else "spento: si accende da solo col Bluetooth della ${Marca.AUTO}"
         tastoAccendi.text = if (Stato.servizioAttivo) "Spegni" else "Accendi"
@@ -517,20 +519,45 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun spiegaNome(bt: String?): String =
-        (if (bt != null) "Al posto di \"$bt\". Vuoto = torna al nome Bluetooth." else "Vale per l'auto che collegherai.") +
-            " Cambia solo ciò che vedi nell'app: l'auto si riconosce sempre dal Bluetooth."
-
-    /** nome solo da mostrare: l'auto resta riconosciuta dal suo nome Bluetooth */
-    private fun salvaNome() {
+    /** il nome dell'auto si cambia toccando la riga "Auto": e' solo da mostrare, l'auto resta riconosciuta dal Bluetooth */
+    private fun rinominaAuto() {
         val bt = NomeAuto.ultima(this)
-        NomeAuto.imposta(this, bt, campoNome.text.toString())
-        val nome = NomeAuto.scelto(this, bt)
-        campoNome.setText(nome); campoNome.setSelection(nome.length); campoNome.clearFocus()
-        (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).hideSoftInputFromWindow(campoNome.windowToken, 0)
-        esitoNome.text = if (nome.isEmpty()) "Nome tolto: si vede " + (bt?.let { "\"$it\"" } ?: "il nome Bluetooth") + "."
-        else "Salvato: si vede \"$nome\"" + (bt?.let { " al posto di \"$it\"" } ?: "") + "."
-        aggiornaSchermo()
+        val d = Dialog(this)
+        d.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        val s = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = tondo(SCHEDA, 16, BORDO)
+            setPadding(px(20), px(18), px(20), px(18))
+        }
+        val testa = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        testa.addView(ImageView(this).apply {
+            setImageResource(R.drawable.ic_auto)
+            imageTintList = ColorStateList.valueOf(ACCENTO)
+        }, LinearLayout.LayoutParams(px(22), px(22)))
+        testa.addView(TextView(this).apply {
+            text = "Nome dell'auto"; setTextColor(TESTO); textSize = 18f; typeface = Typeface.DEFAULT_BOLD
+            setPadding(px(10), 0, 0, 0)
+        })
+        s.addView(testa)
+        s.addView(View(this), LinearLayout.LayoutParams(MATCH_PARENT, px(12)))
+        val nome = campo(s, NomeAuto.scelto(this, bt)).apply {
+            hint = bt ?: "es. La mia ${Marca.AUTO}"
+            filters = arrayOf(InputFilter.LengthFilter(NomeAuto.MASSIMO))
+            setSelection(text.length)
+        }
+        piccolo(s, (if (bt != null) "Al posto di \"$bt\". Lascia vuoto per tornare al nome Bluetooth." else "Vale per l'auto che collegherai.") +
+            " Cambia solo ciò che vedi nell'app: l'auto si riconosce sempre dal Bluetooth.")
+        val salva = { NomeAuto.imposta(this, bt, nome.text.toString()); d.dismiss(); aggiornaSchermo() }
+        nome.setOnEditorActionListener { _, azione, _ -> if (azione == EditorInfo.IME_ACTION_DONE) { salva(); true } else false }
+        val tasti = rigaTasti(s)
+        tasto(tasti, "Salva", true) { salva() }
+        tasto(tasti, "Annulla", false) { d.dismiss() }
+        d.setContentView(s)
+        d.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        d.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
+        d.show()
+        d.window?.setLayout(minOf(resources.displayMetrics.widthPixels - px(32), px(440)), WRAP_CONTENT)
+        nome.requestFocus()
     }
 
     /** cerca la citta' con la geocodifica di open-meteo; locali = notizie locali (salva anche regione e provincia) */
