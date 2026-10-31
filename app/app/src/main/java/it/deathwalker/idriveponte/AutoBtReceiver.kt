@@ -35,6 +35,11 @@ class AutoBtReceiver : BroadcastReceiver() {
             }
         }
 
+        private val AUTO_NEL_TESTO = Regex("(?<![A-Z0-9])(MINI|BMW|SUPRA|TOYOTA)[ _-]?(SUPRA[ _-]?)?\\d{3,}", RegexOption.IGNORE_CASE)
+
+        /** il primo nome Bluetooth di un'auto dentro un testo ("acceso da MINI12345 - 31/10 19:00" -> "MINI12345") */
+        fun trovaAuto(testo: String?): String? = testo?.let { AUTO_NEL_TESTO.find(it)?.value }
+
         fun registra(ctx: Context, testo: String) {
             ctx.getSharedPreferences("ponte", Context.MODE_PRIVATE).edit()
                 .putString("ultimo_bt", testo + " - " + java.text.SimpleDateFormat("dd/MM HH:mm", java.util.Locale.ITALY).format(java.util.Date()))
@@ -50,6 +55,7 @@ class AutoBtReceiver : BroadcastReceiver() {
         val nome = try { dev?.name } catch (e: SecurityException) { null }
         val tipo = marca(nome) ?: return
         Marca.carica(ctx)
+        NomeAuto.ricorda(ctx, nome)
 
         when (intent.action) {
             BluetoothDevice.ACTION_ACL_CONNECTED -> {

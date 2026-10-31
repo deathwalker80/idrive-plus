@@ -18,6 +18,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
 import android.provider.Settings
+import android.text.InputFilter
 import android.text.InputType
 import android.view.Gravity
 import android.view.View
@@ -26,6 +27,7 @@ import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.view.Window
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -84,6 +86,8 @@ class MainActivity : Activity() {
     private val chipMarca = HashMap<String, TextView>()
     private val chipCarburante = HashMap<Int, TextView>()
     private val chipRaggio = HashMap<Int, TextView>()
+    private lateinit var campoNome: EditText
+    private lateinit var esitoNome: TextView
     private lateinit var campoLocali: EditText
     private lateinit var esitoLocali: TextView
     private lateinit var campoRiserva: EditText
@@ -181,6 +185,17 @@ class MainActivity : Activity() {
                 currentFocus?.clearFocus()
                 Marca.imposta(this, tipo); ridisegnaPerMarca()
             }
+
+            etichetta(s, "Nome dell'auto nell'app")
+            val bt = NomeAuto.ultima(this)
+            campoNome = campo(s, NomeAuto.scelto(this, bt)).apply {
+                hint = bt ?: "es. La mia ${Marca.AUTO}"
+                filters = arrayOf(InputFilter.LengthFilter(NomeAuto.MASSIMO))
+                setOnEditorActionListener { _, azione, _ -> if (azione == EditorInfo.IME_ACTION_DONE) { salvaNome(); true } else false }
+            }
+            val t0 = rigaTasti(s)
+            tasto(t0, "Salva nome", false) { salvaNome() }
+            esitoNome = piccolo(s, spiegaNome(bt))
 
             etichetta(s, "Carburante")
             val r1 = rigaChip(s)
@@ -477,7 +492,7 @@ class MainActivity : Activity() {
         val ora = SimpleDateFormat("HH:mm:ss", Locale.ITALY)
 
         punto(puntoServizio, if (Stato.servizioAttivo) VERDE else TENUE)
-        testoServizio.text = if (Stato.servizioAttivo) "acceso (${Stato.avviatoDa})" else "spento: si accende da solo col Bluetooth ${Marca.della()}"
+        testoServizio.text = if (Stato.servizioAttivo) "acceso (${NomeAuto.nelTesto(this, Stato.avviatoDa)})" else "spento: si accende da solo col Bluetooth ${Marca.della()}"
         tastoAccendi.text = if (Stato.servizioAttivo) "Spegni" else "Accendi"
         val wifi = Stato.wifiAuto
         punto(puntoWifi, if (wifi != null) VERDE else TENUE)
@@ -486,7 +501,7 @@ class MainActivity : Activity() {
         punto(puntoIdrive, if (Stato.ultimaRichiestaAuto == 0L) TENUE else if (recente) VERDE else ARANCIO)
         testoIdrive.text = if (Stato.ultimaRichiestaAuto == 0L) "nessuna richiesta"
         else "ultima richiesta ${ora.format(Date(Stato.ultimaRichiestaAuto))} (${Stato.richiesteAuto} in tutto)"
-        testoBt.text = "Bluetooth: " + (prefs.getString("ultimo_bt", null) ?: "nessun evento ancora") +
+        testoBt.text = "Bluetooth: " + (prefs.getString("ultimo_bt", null)?.let { NomeAuto.nelTesto(this, it) } ?: "nessun evento ancora") +
             (if (Stato.erroreServer.isNotEmpty()) "\nServer: ${Stato.erroreServer}" else "")
         val inCorso = Stato.aggiornamentoInCorso
         testoInCorso.text = if (inCorso.isNotEmpty()) "Sto aggiornando: $inCorso..." else ""
@@ -583,6 +598,22 @@ class MainActivity : Activity() {
         } catch (e: Exception) {
             startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
         }
+    }
+
+    private fun spiegaNome(bt: String?): String =
+        (if (bt != null) "Al posto di \"$bt\". Vuoto = torna al nome Bluetooth." else "Vale per l'auto che collegherai.") +
+            " Cambia solo ciò che vedi nell'app: l'auto si riconosce sempre dal Bluetooth."
+
+    /** nome solo da mostrare: l'auto resta riconosciuta dal suo nome Bluetooth */
+    private fun salvaNome() {
+        val bt = NomeAuto.ultima(this)
+        NomeAuto.imposta(this, bt, campoNome.text.toString())
+        val nome = NomeAuto.scelto(this, bt)
+        campoNome.setText(nome); campoNome.setSelection(nome.length); campoNome.clearFocus()
+        (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).hideSoftInputFromWindow(campoNome.windowToken, 0)
+        esitoNome.text = if (nome.isEmpty()) "Nome tolto: si vede " + (bt?.let { "\"$it\"" } ?: "il nome Bluetooth") + "."
+        else "Salvato: si vede \"$nome\"" + (bt?.let { " al posto di \"$it\"" } ?: "") + "."
+        aggiornaSchermo()
     }
 
     /** cerca la citta' con la geocodifica di open-meteo; locali = notizie locali (salva anche regione e provincia) */
