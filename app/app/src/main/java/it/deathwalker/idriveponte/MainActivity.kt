@@ -79,6 +79,7 @@ class MainActivity : Activity() {
     // parcheggio
     private lateinit var boxParcheggi: LinearLayout
     private lateinit var boxParco: LinearLayout
+    private lateinit var schedaParco: View
     private var firmaParcheggi = ""
     private var firmaParco = ""
 
@@ -157,12 +158,13 @@ class MainActivity : Activity() {
             boxParcheggi = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }.also { s.addView(it) }
         })
 
-        // ---- parco vetture
-        col.addView(scheda(R.drawable.ic_auto, "Le mie auto", "Ognuna col suo nome, carburante e parcheggio") { s ->
+        // ---- parco vetture: compare solo quando il telefono ha visto piu' di un'auto
+        schedaParco = scheda(R.drawable.ic_auto, "Le mie auto", "Ognuna col suo nome, carburante e parcheggio") { s ->
             boxParco = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }.also { s.addView(it) }
             val tasti = rigaTasti(s)
             tasto(tasti, "Aggiungi dal Bluetooth", false) { aggiungiDaBluetooth() }
-        })
+        }
+        col.addView(schedaParco)
 
         // ---- pagine che vede l'iDrive
         val pagine = listOf(
@@ -616,19 +618,16 @@ class MainActivity : Activity() {
         }
     }
 
-    /** l'elenco delle auto con Modifica e Togli, sempre nello stesso ordine; si ridisegna solo quando cambia qualcosa */
+    /** l'elenco delle auto con Modifica e Togli, sempre nello stesso ordine; si ridisegna solo quando cambia qualcosa.
+     *  Con una sola auto la scheda non c'e': nome e carburante si cambiano da Modifica nella riga Auto */
     private fun disegnaParco() {
         val auto = Parco.elenco(this)
+        schedaParco.visibility = if (auto.size > 1) View.VISIBLE else View.GONE
         val attuale = Parco.ultima(this)
         val firma = auto.joinToString("|") { "$it/${Parco.mostra(this, it)}/${Parco.carburante(this, it)}/${Parco.vista(this, it)}" } + "/$attuale"
-        if (firma == firmaParco && boxParco.childCount > 0) return
+        if (auto.size < 2 || (firma == firmaParco && boxParco.childCount > 0)) return
         firmaParco = firma
         boxParco.removeAllViews()
-        if (auto.isEmpty()) {
-            piccolo(boxParco, "Nessuna auto ancora: ogni auto si aggiunge da sola la prima volta che il telefono si collega al suo Bluetooth, " +
-                "oppure con il tasto qui sotto.")
-            return
-        }
         val ora = SimpleDateFormat("dd/MM HH:mm", Locale.ITALY)
         auto.forEachIndexed { i, bt ->
             val nome = Parco.mostra(this, bt)
