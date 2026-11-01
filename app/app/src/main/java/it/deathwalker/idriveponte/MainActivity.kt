@@ -66,6 +66,7 @@ class MainActivity : Activity() {
     // stato
     private lateinit var puntoAuto: View
     private lateinit var testoAuto: TextView
+    private lateinit var tastoModificaAuto: TextView
     private lateinit var puntoServizio: View
     private lateinit var testoServizio: TextView
     private lateinit var puntoWifi: View
@@ -134,12 +135,15 @@ class MainActivity : Activity() {
         // ---- stato del collegamento
         col.addView(scheda(R.drawable.ic_auto, "In auto") { s ->
             val (p0, t0) = rigaStato(s, "Auto"); puntoAuto = p0; testoAuto = t0
+            // Modifica compare solo quando un'auto si e' collegata almeno una volta: prima non c'e' niente da modificare
+            tastoModificaAuto = TextView(this).apply {
+                text = "Modifica"; setTextColor(ACCENTO); textSize = 14f; typeface = Typeface.DEFAULT_BOLD
+                visibility = View.GONE
+            }
             (t0.parent as LinearLayout).apply {
-                addView(TextView(this@MainActivity).apply {
-                    text = "Modifica"; setTextColor(ACCENTO); textSize = 14f; typeface = Typeface.DEFAULT_BOLD
-                })
-                isClickable = true
-                setOnClickListener { modificaAuto(Parco.ultima(this@MainActivity)) }
+                addView(tastoModificaAuto)
+                setOnClickListener { Parco.ultima(this@MainActivity)?.let { modificaAuto(it) } }
+                isClickable = false
             }
             val (p1, t1) = rigaStato(s, "Servizio"); puntoServizio = p1; testoServizio = t1
             val (p2, t2) = rigaStato(s, "Wi-Fi ${Marca.della()}"); puntoWifi = p2; testoWifi = t2
@@ -491,7 +495,10 @@ class MainActivity : Activity() {
         val ora = SimpleDateFormat("HH:mm:ss", Locale.ITALY)
 
         punto(puntoAuto, ACCENTO)
-        testoAuto.text = Parco.mostra(this, Parco.ultima(this)).ifEmpty { "non ancora collegata" }
+        val autoNota = Parco.ultima(this)
+        testoAuto.text = if (autoNota != null) Parco.mostra(this, autoNota) else "non ancora collegata"
+        tastoModificaAuto.visibility = if (autoNota != null) View.VISIBLE else View.GONE
+        (tastoModificaAuto.parent as View).isClickable = autoNota != null
         punto(puntoServizio, if (Stato.servizioAttivo) VERDE else TENUE)
         testoServizio.text = if (Stato.servizioAttivo) "acceso (${Parco.nelTesto(this, Stato.avviatoDa)})" else "spento: si accende da solo col Bluetooth ${Marca.della()}"
         tastoAccendi.text = if (Stato.servizioAttivo) "Spegni" else "Accendi"
@@ -680,17 +687,17 @@ class MainActivity : Activity() {
         d.window?.setLayout(minOf(resources.displayMetrics.widthPixels - px(32), px(440)), WRAP_CONTENT)
     }
 
-    /** nome (solo da mostrare) e carburante di un'auto del parco; bt null = nessuna auto ancora: vale per tutte */
-    private fun modificaAuto(bt: String?) {
-        val (d, s) = finestra(R.drawable.ic_auto, if (bt != null) Parco.mostra(this, bt) else "La tua auto")
+    /** nome (solo da mostrare) e carburante di un'auto del parco (solo auto gia' collegate almeno una volta) */
+    private fun modificaAuto(bt: String) {
+        val (d, s) = finestra(R.drawable.ic_auto, Parco.mostra(this, bt))
         etichetta(s, "Nome nell'app")
         val nome = campo(s, Parco.scelto(this, bt)).apply {
-            hint = bt ?: "es. La mia ${Marca.AUTO}"
+            hint = bt
             filters = arrayOf(InputFilter.LengthFilter(Parco.MASSIMO))
             setSelection(text.length)
         }
-        piccolo(s, (if (bt != null) "Al posto di \"$bt\". Lascia vuoto per tornare al nome Bluetooth." else "Vale per l'auto che collegherai.") +
-            " Cambia solo ciò che vedi nell'app: l'auto si riconosce sempre dal Bluetooth.")
+        piccolo(s, "Al posto di \"$bt\". Lascia vuoto per tornare al nome Bluetooth. " +
+            "Cambia solo ciò che vedi nell'app: l'auto si riconosce sempre dal Bluetooth.")
         etichetta(s, "Carburante (distributori nell'iDrive)")
         var carburante = Parco.carburante(this, bt)
         val chips = HashMap<Int, TextView>()
