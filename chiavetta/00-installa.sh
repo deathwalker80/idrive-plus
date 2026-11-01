@@ -1,6 +1,6 @@
 #!/bin/sh
-# MINI Plus / BMW Plus / Supra Plus v18 - plugin iDrive v6: Meteo (con allerte), Notizie, Notizie locali,
-# Carburanti, Traffico. Aggiornati dall'app del telefono. Android Auto (NbtAad) non viene toccato.
+# MINI Plus / BMW Plus / Supra Plus v19 - plugin iDrive v7: Meteo (con allerte e dati dell'auto per l'app),
+# Notizie, Notizie locali, Carburanti, Traffico. Aggiornati dall'app del telefono. Android Auto (NbtAad) non viene toccato.
 # La chiavetta e' la stessa per tutte e tre le auto: cambia solo la marca scritta nel comando
 # (pagina e testo "in attesa del telefono" con il nome della app giusta).
 # Le librerie in uso dall'HMI non si possono sovrascrivere: si rinominano (.vecchia_*) e si copia la nuova.
@@ -38,9 +38,11 @@ for N in Meteo Notizie Locali Carburanti Traffico; do
   echo "OK: $N"
 done
 if [ -e /opt/aa/ponte.disable ]; then echo "ATTENZIONE: esiste /opt/aa/ponte.disable, i plugin resteranno spenti"; fi
+if [ -e /opt/aa/auto.disable ]; then echo "NOTA: esiste /opt/aa/auto.disable, il Meteo non leggera' i dati dell'auto"; fi
 
 echo "===== PLUGIN ATTIVI ====="
 ls "$P"
 echo ""
 echo "########## FATTO - ORA RIAVVIA: tasto power premuto 30 secondi ##########"
 echo "Resoconto: cat /dev/shmem/Meteo.log /dev/shmem/Notizie.log /dev/shmem/Locali.log /dev/shmem/Carburanti.log /dev/shmem/Traffico.log"
+echo "Dati dell'auto: grep auto: /dev/shmem/Meteo.log"

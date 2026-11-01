@@ -600,7 +600,7 @@ class MainActivity : Activity() {
         righeViaggio(boxViaggio, v)
     }
 
-    /** le righe del viaggio: partenza, durata e, coi dati di AAIdrive, km, carburante, temperature e aperture */
+    /** le righe del viaggio: partenza, durata e, coi dati dell'auto dall'iDrive, km, carburante, temperature e aperture */
     private fun righeViaggio(box: LinearLayout, v: Viaggio.Dati) {
         val oggi = SimpleDateFormat("ddMMyyyy", Locale.ITALY).format(Date())
         val giorno = SimpleDateFormat("ddMMyyyy", Locale.ITALY).format(Date(v.partenza))
@@ -609,8 +609,8 @@ class MainActivity : Activity() {
         val minuti = v.durata() / 60000
         rigaValore(box, "Durata", if (minuti < 60) "$minuti min" else "${minuti / 60} h ${"%02d".format(minuti % 60)} min")
         if (v.grezzi.isEmpty()) {
-            piccolo(box, if (DatiAuto.aaidrive(this)) "In attesa dei dati dell'auto da AAIdrive (deve essere collegato all'auto)."
-            else "Km, carburante, temperature e aperture arrivano da AAIdrive: installalo e collegalo all'auto.")
+            piccolo(box, "Km, carburante, temperature e aperture arrivano dall'iDrive (plugin Meteo della chiavetta aggiornata) " +
+                "quando il telefono è sul Wi-Fi dell'auto.")
             return
         }
         val ora = v.ora()

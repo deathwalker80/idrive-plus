@@ -10,6 +10,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
+import java.net.Socket
+import java.net.URLEncoder
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -66,5 +68,39 @@ class ViaggioTest {
         Parco.ricorda(ctx, "MINI28359")
         Parco.togli(ctx, "MINI28359")
         assertNull(Viaggio.di(ctx, "MINI28359"))
+    }
+
+    private fun chiedi(percorso: String): String {
+        Socket("127.0.0.1", Stato.PORTA).use { s ->
+            s.getOutputStream().write("GET $percorso HTTP/1.0\r\nHost: telefono\r\n\r\n".toByteArray())
+            return s.getInputStream().readBytes().toString(Charsets.ISO_8859_1)
+        }
+    }
+
+    @Test
+    fun datiDalPlugin() {
+        // il plugin Meteo manda un valore per richiesta, come fa ponte_plugin.cpp (mandaDatiAuto)
+        DatiAuto.azzera()
+        var ricevuti: Map<String, String> = emptyMap()
+        val server = Server {}
+        server.datiAuto = { ricevuti = it }
+        server.avvia()
+        try {
+            var risposta = ""
+            for (i in 0 until 50) {
+                risposta = try { chiedi("/auto?n=sensors.fuel&v=" + URLEncoder.encode("""{"fuel":{"tanklevel":30,"range":420}}""", "UTF-8")) } catch (e: Exception) { "" }
+                if (risposta.isNotEmpty()) break
+                Thread.sleep(100)
+            }
+            assertTrue(risposta, risposta.startsWith("HTTP/1.0 200"))
+            assertEquals("""{"fuel":{"tanklevel":30,"range":420}}""", ricevuti["sensors.fuel"])
+            assertEquals(30.0, DatiAuto.istantanea(DatiAuto.grezzi).litri!!, 0.01)
+            // proprieta' sconosciuta o valore che non e' JSON: rifiutati
+            assertTrue(chiedi("/auto?n=vehicle.VIN&v=%7B%7D").startsWith("HTTP/1.0 400"))
+            assertTrue(chiedi("/auto?n=sensors.trunk&v=ciao").startsWith("HTTP/1.0 400"))
+            assertEquals(1, DatiAuto.grezzi.size)
+        } finally {
+            server.ferma()
+        }
     }
 }

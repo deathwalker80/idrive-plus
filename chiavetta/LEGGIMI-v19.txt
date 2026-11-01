@@ -1,5 +1,14 @@
-MINI Plus / BMW Plus / Supra Plus v18 (app 2.5 + plugin iDrive v6)
-=================================================================
+MINI Plus / BMW Plus / Supra Plus v19 (app 2.12 + plugin iDrive v7)
+==================================================================
+COSA CAMBIA RISPETTO ALLA v18
+ - Il plugin Meteo legge anche i dati dell'auto (chilometri, carburante, consumo medio, temperature esterna e
+   interna, porte, portellone, cofano, finestrini e tetto) e li manda all'app sul Wi-Fi dell'auto: l'app ne fa
+   il riquadro "In viaggio" e lo stato dell'auto nel riquadro del parcheggio. Sola lettura, come NbtAad legge la
+   marcia; niente AAIdrive e nessun collegamento Bluetooth in piu'.
+ - Serve l'app 2.12 (le versioni precedenti non ricevono i dati: il plugin se ne accorge e smette di mandarli).
+ - Dopo il primo viaggio:  grep auto: /dev/shmem/Meteo.log  mostra i primi valori ricevuti dall'auto
+   (o il file Meteo.log sulla chiavetta, se e' inserita): mandameli, servono a confermare porte e portellone.
+
 COSA CAMBIA RISPETTO ALLA v17
  - Tre app dallo stesso codice: MINI Plus (azzurro), BMW Plus (giallo), Supra Plus (rosso).
    Cambiano nome, icona, colore e il nome dell'auto nei testi ("Portami alla BMW"). Tutto il resto e' identico.
@@ -9,9 +18,9 @@ COSA CAMBIA RISPETTO ALLA v17
  - L'app si accende da sola anche col Bluetooth di una Supra ("Supra 12345", "Toyota Supra 12345").
 
 TELEFONO (installane UNA sola, quella della tua auto)
- - MINI:  MINIPlus-2.5-release.apk   (si installa sopra la 2.3 o la 2.4, tiene le impostazioni)
- - BMW:   BMWPlus-2.5-release.apk
- - Supra: SupraPlus-2.5-release.apk
+ - MINI:  MINIPlus-2.12-release.apk  (si installa sopra la 2.6 e successive, tiene le impostazioni)
+ - BMW:   BMWPlus-2.12-release.apk
+ - Supra: SupraPlus-2.12-release.apk
  Due app insieme sullo stesso telefono si contenderebbero il collegamento con l'iDrive.
 
 AUTO
@@ -32,4 +41,5 @@ BMW E SUPRA: DA VERIFICARE SULL'AUTO VERA
 TOGLIERE
  - sh /mnt/umass*/10-togli.sh  (+ riavvio)
  - spegnere senza togliere: echo 1 > /opt/aa/ponte.disable  (+ riavvio)
+ - solo i dati dell'auto: echo 1 > /opt/aa/auto.disable  (+ riavvio); per riaccenderli: rm /opt/aa/auto.disable
  Android Auto (NbtAad) non viene mai toccato.

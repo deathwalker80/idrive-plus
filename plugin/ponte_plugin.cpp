@@ -16,6 +16,10 @@
 //              resta nel codice dietro SCHEDA_LATERALE 0)
 //             GET /anteprima/<i>.png             -> scheda accanto alla lista (raImageModel 71), cambiata
 //                                                   quando una riga viene selezionata (selectAction -> raAction 20..27)
+//   Meteo   : anche i dati dell'auto (v7): chilometri, carburante, consumo, temperature, porte, finestrini e tetto
+//             letti dal CDS dell'iDrive (lo stesso meccanismo di NBT-AAD per driving.gear) e mandati al telefono
+//             con GET /auto?n=<proprieta'>&v=<valore JSON>: l'app ne fa il viaggio e lo stato al parcheggio.
+//             /opt/aa/auto.disable presente -> il plugin non legge i dati dell'auto (meteo invariato).
 // Il telefono scarica i dati con la sua connessione (open-meteo, ANSA): la testata non ha internet suo.
 // Senza telefono resta la pagina "in attesa" (attesa.png nella cartella del plugin).
 //
@@ -34,6 +38,7 @@
 
 #if defined(PLUGIN_METEO)
 #define PLUGIN_PAGINA 1
+#define DATI_AUTO 1
 #define NOME_PLUGIN "Meteo"
 #define PAGINA_PNG "/meteo.png"
 #define CHIAVE_EPOCH "meteo="
@@ -60,7 +65,7 @@
 #else
 #error "compilare con -DPLUGIN_METEO / _CARBURANTI / _TRAFFICO (pagina singola) oppure -DPLUGIN_NOTIZIE / _LOCALI (elenco)"
 #endif
-#define VERSIONE_PLUGIN "v5"
+#define VERSIONE_PLUGIN "v7"
 
 typedef unsigned int  u32;
 typedef unsigned short u16;
@@ -129,6 +134,9 @@ private:
     T* m_data;
 };
 
+// Delegate<bool, const BasicString<unsigned short>&>: valore di una proprieta' CDS come testo JSON UTF-16 (NBT-AAD)
+struct DelegatoCds { void* oggetto; bool (*funzione)(void* oggetto, const BasicString<u16>& valore); };
+
 class BufferStream {
 public:
     ~BufferStream();                               // _ZN3bmw12BufferStreamD1Ev
@@ -153,6 +161,9 @@ public:
     void updateModel(u32 modelId, const char* text);             // _ZN3bmw9PluginApp11updateModelEjPKc
     void updateModel(u32 modelId, const Image& image);           // _ZN3bmw9PluginApp11updateModelEjRKNS_5ImageE
     void addHandler(u32 actionId, const DelegatoAzione& handler) __asm__("_ZN3bmw9PluginApp10addHandlerEjRKNS_8DelegateIbRKNS_6ParcelEvvvEE");
+    // dati dell'auto (la stessa chiamata di NBT-AAD per driving.gear, di SecurityMenu per specialvehicle.menucontrol)
+    void cdsAddPropertyChangedEventHandler(BasicString<char>& proprieta, u32 id, const DelegatoCds& handler)
+        __asm__("_ZN3bmw9PluginApp33cdsAddPropertyChangedEventHandlerERNS_11BasicStringIcEEjRKNS_8DelegateIbRKNS1_ItEEvvvEE");
     bool onInit();
     void onFinalize();
 private:
@@ -463,9 +474,14 @@ void* scarica(u32 ip, const char* percorso, int* codice) {
     int err = 0;
     int s = collegaTcp(ip, kPortaPonte, 3000, &err);
     if (s < 0) { *codice = -err; return 0; }
-    char req[160];
-    snprintf(req, sizeof(req), "GET %s HTTP/1.0\r\nHost: telefono\r\nUser-Agent: iDrive-%s/1\r\n\r\n", percorso, NOME_PLUGIN);
-    if (send(s, req, strlen(req), 0) < 0) { close(s); *codice = -erroreAttuale(); return 0; }
+    // la richiesta sta nella memoria del processo, non sulla pila del thread (i percorsi /auto sono lunghi)
+    u32 capReq = strlen(percorso) + 96;
+    char* req = (char*)malloc(capReq);
+    if (!req) { close(s); return 0; }
+    snprintf(req, capReq, "GET %s HTTP/1.0\r\nHost: telefono\r\nUser-Agent: iDrive-%s/1\r\n\r\n", percorso, NOME_PLUGIN);
+    int inviati = send(s, req, strlen(req), 0);
+    free(req);
+    if (inviati < 0) { close(s); *codice = -erroreAttuale(); return 0; }
     u32 cap = 64 * 1024, tot = 0;
     unsigned char* b = (unsigned char*)malloc(cap + 1);
     while (b) {
@@ -597,6 +613,123 @@ u32 valore(const char* s, const char* chiave) {
     return v;
 }
 
+// ---- dati dell'auto (solo Meteo) ----------------------------------------------------------------------------
+#if DATI_AUTO
+const char* const kDisableAuto = "/opt/aa/auto.disable";
+// nomi da IDriveConnectKit (CDSProperty.kt); gli stessi della tabella di libhmiremoting.so dell'iDrive
+const char* const kProprieta[] = {
+    "driving.odometer", "sensors.fuel", "driving.averageConsumption",
+    "sensors.temperatureExterior", "sensors.temperatureInterior",
+    "sensors.doors", "sensors.trunk", "sensors.lid", "controls.sunroof",
+    "controls.windowDriverFront", "controls.windowPassengerFront",
+    "controls.windowDriverRear", "controls.windowPassengerRear",
+};
+const u32 kNumProprieta = sizeof(kProprieta) / sizeof(kProprieta[0]);
+const u32 kMaxValore = 400;                // i valori CDS sono JSON brevi (il piu' lungo, un finestrino, ~70 caratteri)
+const u32 kGiroCds = 3;                    // registrazione 1,5 s dopo onInit, come NBT-AAD
+const u32 kLogPerProprieta = 2;            // i primi valori di ogni proprieta' finiscono nel log (per vederne il formato)
+
+void* volatile g_valori[kNumProprieta];    // ultimo valore arrivato e non ancora mandato (thread dell'HMI -> rete)
+char g_mandato[kNumProprieta][kMaxValore]; // ultimo valore mandato al telefono (solo thread di rete)
+u32 g_loggati[kNumProprieta];
+bool g_cdsRegistrati = false;
+bool g_autoSenzaApp = false;               // il telefono ha un'app che non conosce /auto: si smette di mandare
+
+// sul thread dell'HMI: niente rete, niente attese; si lascia il valore (ASCII) al thread di rete
+bool cambioCds(void* oggetto, const bmw::BasicString<u16>& valore) {
+    u32 i = (u32)(unsigned long)oggetto;   // l'indice della proprieta' viaggia al posto dell'oggetto
+    if (i >= kNumProprieta) return true;
+    const u16* p = valore.raw();
+    u32 n = 0;
+    while (p && p[n] && n < kMaxValore - 1) ++n;
+    unsigned char* b = (unsigned char*)malloc(4 + n + 1);    // blocco [u32 lunghezza][testo][0], come nuovoBlocco
+    if (!b) return true;
+    memcpy(b, &n, 4);
+    for (u32 k = 0; k < n; ++k) b[4 + k] = p[k] < 0x80 ? (unsigned char)p[k] : '?';
+    b[4 + n] = 0;
+    void* vecchio = __atomic_exchange_n(&g_valori[i], (void*)b, __ATOMIC_ACQ_REL);
+    if (vecchio) free(vecchio);
+    return true;
+}
+
+void registraCds() {
+    if (g_cdsRegistrati || !g_app) return;
+    g_cdsRegistrati = true;
+    if (access(kDisableAuto, F_OK_Q) == 0) { scriviLog("dati dell'auto disattivati da %s", kDisableAuto); return; }
+    for (u32 i = 0; i < kNumProprieta; ++i) {
+        bmw::BasicString<char> nome(kProprieta[i]);
+        bmw::DelegatoCds d;
+        d.oggetto = (void*)(unsigned long)i;
+        d.funzione = &cambioCds;
+        g_app->cdsAddPropertyChangedEventHandler(nome, 0, d);
+    }
+    scriviLog("dati dell'auto: %u proprieta' CDS registrate", kNumProprieta);
+}
+
+// "%XX" per tutto cio' che non e' lettera, cifra o - _ . ~ (il JSON ha { } " : ,)
+void codifica(char* out, u32 cap, const char* in) {
+    static const char esa[] = "0123456789ABCDEF";
+    u32 k = 0;
+    for (const unsigned char* p = (const unsigned char*)in; *p && k + 4 < cap; ++p) {
+        unsigned char c = *p;
+        bool libero = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.' || c == '~';
+        if (libero) out[k++] = (char)c;
+        else { out[k++] = '%'; out[k++] = esa[c >> 4]; out[k++] = esa[c & 15]; }
+    }
+    out[k] = 0;
+}
+
+// sul thread di rete: manda al telefono i valori cambiati; se il telefono non risponde il valore resta per il giro dopo
+void mandaDatiAuto(u32 ip) {
+    if (g_autoSenzaApp) return;
+    for (u32 i = 0; i < kNumProprieta && !g_finito; ++i) {
+        void* b = __atomic_exchange_n(&g_valori[i], (void*)0, __ATOMIC_ACQ_REL);
+        if (!b) continue;
+        const char* v = testo(b);
+        if (strncmp(v, g_mandato[i], kMaxValore) == 0) { free(b); continue; }
+        // solo il thread di rete passa di qui: memoria statica, niente di grosso sulla pila del thread
+        static char valore[3 * kMaxValore + 1];
+        static char percorso[3 * kMaxValore + 80];
+        codifica(valore, sizeof(valore), v);
+        snprintf(percorso, sizeof(percorso), "/auto?n=%s&v=%s", kProprieta[i], valore);
+        int codice = 0;
+        void* r = scarica(ip, percorso, &codice);
+        if (r) free(r);
+        if (codice == 200) {
+            if (g_loggati[i] < kLogPerProprieta) { ++g_loggati[i]; scriviLog("auto: %s = %s", kProprieta[i], v); }
+            u32 n = strlen(v);
+            if (n >= kMaxValore) n = kMaxValore - 1;
+            memcpy(g_mandato[i], v, n);
+            g_mandato[i][n] = 0;
+            free(b);
+            continue;
+        }
+        if (codice == 404) {
+            scriviLog("auto: l'app del telefono non riceve i dati dell'auto (404): aggiornala");
+            g_autoSenzaApp = true;
+            free(b);
+            return;
+        }
+        // non arrivato: si rimette, a meno che nel frattempo ne sia arrivato uno piu' nuovo
+        void* atteso = 0;
+        if (!__atomic_compare_exchange_n(&g_valori[i], &atteso, b, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) free(b);
+        return;
+    }
+}
+#endif
+
+// attesa tra un giro di rete e l'altro; intanto (Meteo) i dati dell'auto partono ogni 2 secondi
+void attendi(u32 secondi, u32 ip) {
+    for (u32 i = 0; i < secondi && !g_finito; ++i) {
+#if DATI_AUTO
+        if (ip && (i % 2) == 0) mandaDatiAuto(ip);
+#else
+        (void)ip;
+#endif
+        sleep(1);
+    }
+}
+
 // ---- aggiornamento dei dati --------------------------------------------------------------------------------
 u32 g_epochFatto = 0;     // ultimo epoch del telefono gia' portato sulla schermata
 
@@ -665,20 +798,20 @@ void* threadRete(void*) {
     while (!g_finito) {
         if (!g_telefono) {
             g_telefono = trovaTelefono();
-            if (!g_telefono) { for (int i = 0; i < 20 && !g_finito; ++i) sleep(1); continue; }
+            if (!g_telefono) { attendi(20, 0); continue; }
         }
         int codice = 0;
         void* ponte = scarica(g_telefono, "/ponte", &codice);
         if (!ponte || strncmp(testo(ponte), "IDRIVEPONTE", 11) != 0) {
             if (ponte) free(ponte);
             if (++errori >= 2) { scriviLog("telefono non risponde (errore %d): lo cerco di nuovo", codice); g_telefono = 0; errori = 0; }
-            for (int i = 0; i < 10 && !g_finito; ++i) sleep(1);
+            attendi(10, 0);
             continue;
         }
         errori = 0;
         bool ok = aggiornaDati(g_telefono, testo(ponte));
         free(ponte);
-        for (int i = 0; i < (ok ? 30 : 10) && !g_finito; ++i) sleep(1);
+        attendi(ok ? 30 : 10, g_telefono);
     }
     return 0;
 }
@@ -694,6 +827,9 @@ void giroRun(void*) {
     if (!g_app || g_finito) return;
     ++g_giri;
     svuotaCaselle();
+#if DATI_AUTO
+    if (g_giri == kGiroCds) registraCds();
+#endif
     if (g_giri == kSecondiSano) { scriviAvvii(0); scriviLog("%u s di funzionamento: avvio considerato riuscito", kSecondiSano / 2); }
     g_app->post(reinterpret_cast<bmw::Runnable*>(&g_giro), kTickMs);
 }

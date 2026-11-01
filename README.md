@@ -34,7 +34,7 @@ Stesso codice per tutte e tre: cambiano solo nome, icona, colore e il nome dell'
 - **Traffico** vicino (Autostrade per l'Italia).
 - **Dove ho parcheggiato**: quando il telefono si scollega dal Bluetooth dell'auto salva la posizione.
 - L'app si accende da sola col Bluetooth dell'auto e si spegne quando scendi.
-- **Viaggio**: mentre guidi e poi nel riquadro del parcheggio, partenza e durata; con [AAIdrive](https://github.com/BimmerGestalt/AAIdrive) installato e collegato all'auto anche km percorsi, carburante consumato e nel serbatoio, temperature e aperture (porte, finestrini, tetto) lette dai suoi dati (sola lettura).
+- **Viaggio**: mentre guidi e poi nel riquadro del parcheggio, partenza, durata, km percorsi, carburante consumato e nel serbatoio, temperature e aperture (porte, finestrini, tetto). I dati dell'auto li legge il plugin Meteo nell'iDrive (sola lettura) e li manda all'app sul Wi-Fi dell'auto: niente AAIdrive, nessun Bluetooth in più.
 - **Le mie auto**: più auto, ognuna riconosciuta dal suo nome Bluetooth, col suo nome nell'app (es. "Lucy" invece di "MINI12345", solo visivo), il suo carburante e il suo parcheggio. Si aggiungono da sole al primo collegamento, o dalle auto associate al telefono.
 
 ## Struttura
@@ -56,7 +56,7 @@ cd app
 
 ## Installare
 Le APK e lo zip della chiavetta sono nelle **Release**. Istruzioni passo passo in
-[`chiavetta/LEGGIMI-v18.txt`](chiavetta/LEGGIMI-v18.txt); in breve, sulla shell della testata:
+[`chiavetta/LEGGIMI-v19.txt`](chiavetta/LEGGIMI-v19.txt); in breve, sulla shell della testata:
 ```
 mount -o remount rw /net/hu-omap/fs/sda0
 on -f /net/hu-omap/ /bin/sh

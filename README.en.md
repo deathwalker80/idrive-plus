@@ -34,7 +34,7 @@ One codebase for all three: only the name, icon, colour and the car's name in th
 - **Traffic** nearby (Autostrade per l'Italia).
 - **Where I parked**: when the phone disconnects from the car's Bluetooth, the position is saved.
 - The app starts by itself with the car's Bluetooth and stops when you get out.
-- **Trip**: while driving and then in the parking box, start place and duration; with [AAIdrive](https://github.com/BimmerGestalt/AAIdrive) installed and connected to the car also distance, fuel used and left, temperatures and openings (doors, windows, roof) read from its data (read only).
+- **Trip**: while driving and then in the parking box, start place, duration, distance, fuel used and left, temperatures and openings (doors, windows, roof). The car data is read by the Meteo plugin inside iDrive (read only) and sent to the app over the car's Wi-Fi: no AAIdrive, no extra Bluetooth link.
 - **My cars**: several cars, each recognised by its Bluetooth name, with its own name in the app (e.g. "Lucy" instead of "MINI12345", display only), fuel and parking spot. They add themselves on first connection, or from the cars paired with the phone.
 
 Data sources are Italian, so the news, fuel and traffic sections are for Italy; the weather works anywhere.
@@ -58,7 +58,7 @@ cd app
 
 ## Installing
 The APKs and the USB-stick zip are in the **Releases**. Step-by-step instructions (Italian) in
-[`chiavetta/LEGGIMI-v18.txt`](chiavetta/LEGGIMI-v18.txt); in short, on the head unit shell:
+[`chiavetta/LEGGIMI-v19.txt`](chiavetta/LEGGIMI-v19.txt); in short, on the head unit shell:
 ```
 mount -o remount rw /net/hu-omap/fs/sda0
 on -f /net/hu-omap/ /bin/sh
