@@ -120,7 +120,10 @@ object Fonti {
 
     // ------------------------------------------------------------------ loghi dei marchi ----
     private val loghi = HashMap<String, android.graphics.Bitmap?>()
-    private var loghiLetti = false
+    private var loghiTentativo = 0L
+    private const val LOGHI_URL = "https://carburanti.mise.gov.it/ospzApi/registry/alllogos"
+    /** l'elenco del Ministero porta tutti i loghi in base64 e pesa circa 10 MB */
+    private const val LOGHI_MASSIMO = 24 * 1024 * 1024
 
     private fun chiaveMarchio(s: String) = Dati.normalizza(s).replace(" ", "")
 
@@ -128,11 +131,12 @@ object Fonti {
     fun logo(ctx: Context, marchio: String): android.graphics.Bitmap? {
         val cartella = java.io.File(ctx.filesDir, "loghi").apply { mkdirs() }
         val segno = java.io.File(cartella, ".scaricati")
-        if (!loghiLetti || (!segno.exists() || System.currentTimeMillis() - segno.lastModified() > 7L * 24 * 60 * 60 * 1000)) {
-            loghiLetti = true
-            if (!segno.exists() || System.currentTimeMillis() - segno.lastModified() > 7L * 24 * 60 * 60 * 1000) {
-                try { scaricaLoghi(ctx, cartella); segno.writeText(System.currentTimeMillis().toString()) } catch (e: Exception) { }
-            }
+        val adesso = System.currentTimeMillis()
+        val daRifare = !segno.exists() || adesso - segno.lastModified() > 7L * 24 * 60 * 60 * 1000
+        // se lo scaricamento non riesce si riprova tra mezz'ora, non a ogni distributore
+        if (daRifare && adesso - loghiTentativo > 30 * 60 * 1000L) {
+            loghiTentativo = adesso
+            try { scaricaLoghi(ctx, cartella); segno.writeText(adesso.toString()) } catch (e: Exception) { }
         }
         val k = chiaveMarchio(marchio)
         if (k.isEmpty()) return null
@@ -144,7 +148,14 @@ object Fonti {
     }
 
     private fun scaricaLoghi(ctx: Context, cartella: java.io.File) {
-        val testo = Rete.scaricaTesto(ctx, "https://carburanti.mise.gov.it/ospzApi/registry/alllogos", 20000)
+        val testo = String(Rete.scarica(ctx, LOGHI_URL, 30000, LOGHI_MASSIMO), Charsets.UTF_8)
+        if (salvaLoghi(testo, cartella) == 0) throw IllegalStateException("nessun logo nell'elenco MIMIT")
+        loghi.clear()
+    }
+
+    /** salva in cartella un PNG per marchio ("agipeni.png", "q8.png", ...); ritorna quanti */
+    fun salvaLoghi(testo: String, cartella: java.io.File): Int {
+        var salvati = 0
         val t = testo.trim()
         val elenco = if (t.startsWith("[")) org.json.JSONArray(t) else JSONObject(t).optJSONArray("loghi") ?: org.json.JSONArray()
         for (i in 0 until elenco.length()) {
@@ -162,10 +173,11 @@ object Fonti {
                 val bmp = android.graphics.BitmapFactory.decodeByteArray(byte, 0, byte.size) ?: continue
                 java.io.File(cartella, "$k.png").outputStream().use { bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
                 bmp.recycle()
+                salvati++
                 break
             }
         }
-        loghi.clear()
+        return salvati
     }
 
     // ------------------------------------------------------------------ traffico (Autostrade per l'Italia) ----
