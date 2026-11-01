@@ -2,7 +2,7 @@
 
 🇬🇧 [English below](#nbt-plus--privacy-policy)
 
-Ultimo aggiornamento: 30 ottobre 2026
+Ultimo aggiornamento: 1 novembre 2026
 
 NBT Plus è un'app gratuita e senza pubblicità, sviluppata da DeathWalkeR come progetto personale.
 Porta meteo, notizie, prezzi dei carburanti e traffico nell'iDrive delle auto con testata NBT EVO.
@@ -19,6 +19,7 @@ della zona in cui ti trovi.
 | Città scritte nelle impostazioni | notizie locali e città di riserva per il meteo | il nome viene cercato su open-meteo.com (geocodifica) |
 | Posizione del parcheggio | ritrovare l'auto | resta solo sul telefono |
 | Nome Bluetooth dell'auto | accendere l'app quando sali e riconoscere la marca (MINI, BMW, Supra) | resta solo sul telefono |
+| Dati dell'auto da AAIdrive (solo se installato): chilometri, carburante, consumo medio, temperature, porte, finestrini e tetto | il riquadro del viaggio e lo stato dell'auto al parcheggio | letti sul telefono dall'app AAIdrive, restano solo sul telefono |
 
 Notizie (ANSA), traffico (Autostrade per l'Italia) e allerte (Dipartimento della Protezione Civile) vengono
 scaricati senza mandare la posizione: l'app li filtra sul telefono.
@@ -49,7 +50,7 @@ Tutte le connessioni sono cifrate (HTTPS).
 - **Notifiche**: stato del collegamento e parcheggio.
 
 ## Conservazione e cancellazione
-Impostazioni e ultimo parcheggio restano nella memoria dell'app sul telefono. Si cancellano tutti
+Impostazioni, ultimo parcheggio e ultimo viaggio di ogni auto restano nella memoria dell'app sul telefono. Si cancellano tutti
 disinstallando l'app o con "Cancella dati" nelle impostazioni di Android.
 
 ## Minori
@@ -64,7 +65,7 @@ Le modifiche a questa informativa vengono pubblicate in questa pagina con la nuo
 
 # NBT Plus — Privacy policy
 
-Last updated: 30 October 2026
+Last updated: 1 November 2026
 
 NBT Plus is a free, ad-free app developed by DeathWalkeR as a personal project.
 It brings weather, news, fuel prices and traffic into iDrive on cars with the NBT EVO head unit.
@@ -80,6 +81,7 @@ developer. Your location is only used to ask the public services listed below fo
 | Cities typed in the settings | local news and fallback city for the weather | the name is looked up on open-meteo.com (geocoding) |
 | Parking position | finding the car again | stays on the phone |
 | Car's Bluetooth name | starting the app when you get in and recognising the brand (MINI, BMW, Supra) | stays on the phone |
+| Car data from AAIdrive (only if installed): odometer, fuel, average consumption, temperatures, doors, windows and roof | the trip box and the car's state when parked | read on the phone from the AAIdrive app, stays on the phone |
 
 News (ANSA), traffic (Autostrade per l'Italia) and warnings (Italian Civil Protection Department) are
 downloaded without sending your location: the app filters them on the phone.
@@ -109,7 +111,7 @@ All connections are encrypted (HTTPS).
 - **Notifications**: connection status and parking.
 
 ## Retention and deletion
-Settings and the last parking spot are kept in the app's storage on the phone. Uninstalling the app or using
+Settings, the last parking spot and the last trip of each car are kept in the app's storage on the phone. Uninstalling the app or using
 "Clear data" in Android's settings deletes all of them.
 
 ## Children

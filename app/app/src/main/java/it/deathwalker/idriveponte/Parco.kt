@@ -57,6 +57,7 @@ object Parco {
         }
         e.apply()
         Parcheggio.cancella(ctx, b)
+        Viaggio.cancella(ctx, b)
     }
 
     /** ultima auto vista; per chi aggiorna l'app la si ritrova nel parcheggio o nell'ultimo evento Bluetooth */

@@ -42,6 +42,18 @@ object Posizione {
         return if (System.currentTimeMillis() - m.time < VECCHIA_MS) m else null
     }
 
+    /** "Via Roma 1, La Spezia" dalla geocodifica del telefono; "" se non si trova */
+    fun indirizzo(ctx: Context, lat: Double, lon: Double): String = try {
+        @Suppress("DEPRECATION")
+        val a = Geocoder(ctx, Locale.ITALY).getFromLocation(lat, lon, 1)?.firstOrNull()
+        if (a == null) "" else listOfNotNull(
+            listOfNotNull(a.thoroughfare, a.subThoroughfare).joinToString(" ").ifEmpty { null },
+            a.locality
+        ).joinToString(", ")
+    } catch (e: Exception) {
+        ""
+    }
+
     /** citta' per il meteo: posizione del telefono con il nome del comune, altrimenti null */
     fun citta(ctx: Context): Citta? {
         val l = ultima(ctx) ?: return null

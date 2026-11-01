@@ -26,6 +26,8 @@ Testi pronti da incollare nei moduli della Play Console. I testi della scheda so
 "Condivisi" perché le coordinate vanno a servizi di terzi (open-meteo.com, MIMIT) per avere i dati della zona.
 Nessun altro tipo di dati: niente informazioni personali, foto, file, contatti, identificativi del dispositivo,
 cronologia o statistiche.
+I dati dell'auto che l'app legge da AAIdrive (km, carburante, temperature, aperture) restano sul telefono e non
+escono mai dal dispositivo: per Google Play non sono "raccolti" e non vanno dichiarati.
 
 ## Autorizzazioni: posizione in background
 **Funzionalità che la usa:** Dove ho parcheggiato; meteo, carburanti e traffico della zona mentre si guida.
