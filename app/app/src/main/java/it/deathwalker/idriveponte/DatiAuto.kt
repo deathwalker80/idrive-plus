@@ -1,112 +1,52 @@
 package it.deathwalker.idriveponte
 
-import android.content.Context
-import android.database.ContentObserver
-import android.net.Uri
-import android.os.Handler
-import android.os.HandlerThread
 import org.json.JSONObject
+import java.net.URLDecoder
 
 /**
- * Dati dell'auto letti da AAIdrive, se e' installato e collegato all'auto: AAIdrive li espone agli altri programmi
- * del telefono nel suo ContentProvider io.bimmergestalt.cardata.provider (permesso CDS_normal, livello normal:
- * concesso all'installazione). Solo lettura, all'auto non arriva niente. Senza AAIdrive l'app funziona come prima.
+ * Dati dell'auto: li legge il plugin Meteo dentro l'iDrive dal CDS della testata (lo stesso meccanismo con cui
+ * NBT-AAD legge la marcia) e li manda qui sul Wi-Fi dell'auto, con GET /auto?n=<proprieta'>&v=<valore JSON>.
+ * Nessun collegamento Bluetooth in piu' e nessuna app BMW: solo lettura, all'auto non arriva niente.
  *
- * Nomi e numeri delle proprieta': IDriveConnectKit (CDSProperty.kt); formati dei valori: AAIdrive (CDSMetrics.kt).
+ * Nomi delle proprieta': IDriveConnectKit (CDSProperty.kt); formati dei valori: AAIdrive (CDSMetrics.kt).
  * I valori arrivano nelle unita' dell'auto: km, litri, gradi C, consumo in l/100 km.
  */
 object DatiAuto {
 
-    const val AUTORITA = "io.bimmergestalt.cardata.provider"
-    private const val BASE = "content://$AUTORITA/cds"
-    /** AAIdrive smette di seguire una proprieta' che nessuno legge da 10 s: la si rilegge prima */
-    private const val MANTENIMENTO_MS = 5000L
-
-    val PROPRIETA = linkedMapOf(
-        39 to "driving.odometer",
-        71 to "sensors.fuel",
-        30 to "driving.averageConsumption",
-        78 to "sensors.temperatureExterior",
-        79 to "sensors.temperatureInterior",
-        70 to "sensors.doors",
-        81 to "sensors.trunk",
-        104 to "sensors.lid",
-        21 to "controls.sunroof",
-        23 to "controls.windowDriverFront",
-        25 to "controls.windowPassengerFront",
-        24 to "controls.windowDriverRear",
-        26 to "controls.windowPassengerRear",
+    /** le proprieta' che il plugin manda (stesso elenco di kProprieta in plugin/ponte_plugin.cpp) */
+    val PROPRIETA = setOf(
+        "driving.odometer", "sensors.fuel", "driving.averageConsumption",
+        "sensors.temperatureExterior", "sensors.temperatureInterior",
+        "sensors.doors", "sensors.trunk", "sensors.lid", "controls.sunroof",
+        "controls.windowDriverFront", "controls.windowPassengerFront",
+        "controls.windowDriverRear", "controls.windowPassengerRear",
     )
+    private const val MAX_VALORE = 400
 
-    /** ultimo valore ricevuto per ogni proprieta' (testo JSON di AAIdrive) */
+    /** ultimo valore ricevuto per ogni proprieta' (testo JSON del CDS) */
     @Volatile var grezzi: Map<String, String> = emptyMap()
     @Volatile var ultimoDato = 0L
 
-    fun aaidrive(ctx: Context): Boolean = try {
-        ctx.packageManager.resolveContentProvider(AUTORITA, 0) != null
-    } catch (e: Exception) {
-        false
+    /** a ogni accensione del servizio si riparte da zero: il primo valore che arriva e' quello di partenza */
+    fun azzera() {
+        grezzi = emptyMap()
+        ultimoDato = 0L
     }
 
-    /** legge le proprieta' da AAIdrive finche' il servizio e' acceso; dopo() riceve i valori a ogni cambio */
-    class Lettore(ctx: Context, private val dopo: (Map<String, String>) -> Unit) {
-        private val app = ctx.applicationContext
-        private val filo = HandlerThread("datiauto").apply { start() }
-        private val mano = Handler(filo.looper)
-        @Volatile private var attivo = false
-
-        private val osservatore = object : ContentObserver(mano) {
-            override fun onChange(selfChange: Boolean, uri: Uri?) {
-                // AAIdrive avvisa sia per numero sia per nome: basta seguire il numero
-                val n = uri?.lastPathSegment?.toIntOrNull() ?: return
-                if (attivo && n in PROPRIETA) leggi(n)
-            }
+    /** una richiesta /auto del plugin ("n=sensors.fuel&v=%7B...%7D"): true se il valore e' stato preso */
+    fun ricevi(query: String): Boolean {
+        var nome = ""
+        var valore = ""
+        for (coppia in query.split('&')) {
+            val k = coppia.substringBefore('=')
+            val v = try { URLDecoder.decode(coppia.substringAfter('=', ""), "UTF-8") } catch (e: Exception) { return false }
+            if (k == "n") nome = v else if (k == "v") valore = v
         }
-
-        private val giro = object : Runnable {
-            override fun run() {
-                if (!attivo) return
-                for (n in PROPRIETA.keys) leggi(n)
-                mano.postDelayed(this, MANTENIMENTO_MS)
-            }
-        }
-
-        fun avvia() {
-            if (attivo || !aaidrive(app)) return
-            attivo = true
-            grezzi = emptyMap()                  // ogni accensione riparte da zero: il primo valore e' quello di partenza
-            try {
-                app.contentResolver.registerContentObserver(Uri.parse(BASE), true, osservatore)
-            } catch (e: Exception) {
-                // senza permesso o senza AAIdrive si resta col giro di lettura, che a sua volta non trova niente
-            }
-            mano.post(giro)
-        }
-
-        fun ferma() {
-            attivo = false
-            try { app.contentResolver.unregisterContentObserver(osservatore) } catch (e: Exception) { }
-            mano.removeCallbacksAndMessages(null)
-            filo.quitSafely()
-        }
-
-        private fun leggi(n: Int) {
-            val nome = PROPRIETA[n] ?: return
-            try {
-                app.contentResolver.query(Uri.parse("$BASE/$n"), null, null, null, null)?.use { c ->
-                    if (!c.moveToFirst()) return
-                    val i = c.getColumnIndex("value")
-                    if (i < 0) return
-                    val v = c.getString(i) ?: return
-                    if (grezzi[nome] == v) return
-                    grezzi = grezzi + (nome to v)
-                    ultimoDato = System.currentTimeMillis()
-                    dopo(grezzi)
-                }
-            } catch (e: Exception) {
-                // permesso mancante, AAIdrive non collegato o valore non ancora arrivato: si riprova al prossimo giro
-            }
-        }
+        if (nome !in PROPRIETA || valore.isEmpty() || valore.length > MAX_VALORE) return false
+        if (try { JSONObject(valore); false } catch (e: Exception) { true }) return false
+        grezzi = grezzi + (nome to valore)
+        ultimoDato = System.currentTimeMillis()
+        return true
     }
 
     // ---- lettura dei valori ---------------------------------------------------------------------------------------

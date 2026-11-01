@@ -11,6 +11,12 @@ class H(http.server.BaseHTTPRequestHandler):
         self.send_header('Connection', 'close'); self.end_headers(); self.wfile.write(corpo)
     def do_GET(self):
         p = self.path
+        if p.startswith('/auto?'):
+            # dati dell'auto dal plugin Meteo: si scrivono decodificati, cosi' la prova li puo' controllare
+            from urllib.parse import urlparse, parse_qs
+            q = parse_qs(urlparse(p).query)
+            with open('/tmp/finto_telefono_auto.txt', 'a') as f: f.write(q['n'][0] + ' = ' + q['v'][0] + '\n')
+            return self.manda(200, 'text/plain', b'OK\n')
         if p == '/ponte': return self.manda(200, 'text/plain', b'IDRIVEPONTE 2.2 meteo=111 notizie=222 n=8 locali=333 carburanti=444 traffico=555\n')
         if p in ('/meteo.png', '/carburanti.png', '/traffico.png'): return self.manda(200, 'image/png', open(D + p, 'rb').read())
         if p.startswith('/locali/'): p = p[7:]

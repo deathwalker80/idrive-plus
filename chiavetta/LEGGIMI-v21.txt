@@ -1,5 +1,15 @@
-NBT Plus - chiavetta v20 (app 3.1 + plugin iDrive v6)
+NBT Plus - chiavetta v21 (app 3.8 + plugin iDrive v7)
 =====================================================
+COSA CAMBIA RISPETTO ALLA v20
+ - Il plugin Meteo legge anche i dati dell'auto (chilometri, carburante, consumo medio, temperature esterna e
+   interna, porte, portellone, cofano, finestrini e tetto) e li manda all'app sul Wi-Fi dell'auto: l'app ne fa
+   il riquadro "In viaggio" e lo stato dell'auto nel riquadro del parcheggio. Sola lettura, come NbtAad legge la
+   marcia; niente AAIdrive e nessun collegamento Bluetooth in piu'.
+ - Serve l'app NBT Plus 3.8 (le versioni precedenti non ricevono i dati: il plugin se ne accorge e smette di mandarli).
+ - Spegnere solo i dati dell'auto (il meteo resta):  echo 1 > /opt/aa/auto.disable  (+ riavvio)
+ - Dopo il primo viaggio:  grep auto: /dev/shmem/Meteo.log  mostra i primi valori ricevuti dall'auto
+   (o il file Meteo.log sulla chiavetta, se e' inserita): mandameli, servono a confermare porte e portellone.
+
 COSA CAMBIA RISPETTO ALLA v19
  - Il comando di installazione non vuole piu' la marca: e' lo stesso per MINI, BMW e Supra
    (se la scrivi lo stesso, come prima, viene ignorata).
@@ -14,7 +24,7 @@ COSA CAMBIA RISPETTO ALLA v18
  - I plugin sono gli stessi della v18 (v6): cambiano solo le pagine e i testi di attesa.
 
 TELEFONO
- - Installa NBTPlus-3.1-release.apk (sopra la 3.0, se l'avevi) (poi arrivera' anche dal Play Store).
+ - Installa NBTPlus-3.8-release.apk sopra la versione che hai (poi arrivera' anche dal Play Store).
  - DISINSTALLA la vecchia app (MINI Plus, BMW Plus o Supra Plus): NBT Plus e' un'app nuova, non la
    aggiorna, e due app insieme si contenderebbero il collegamento con l'iDrive.
  - Le impostazioni (carburante, citta') vanno rimesse una volta.
@@ -36,4 +46,5 @@ BMW E SUPRA: DA VERIFICARE SULL'AUTO VERA
 TOGLIERE
  - sh /mnt/umass*/10-togli.sh  (+ riavvio)
  - spegnere senza togliere: echo 1 > /opt/aa/ponte.disable  (+ riavvio)
+ - solo i dati dell'auto: echo 1 > /opt/aa/auto.disable  (+ riavvio); per riaccenderli: rm /opt/aa/auto.disable
  Android Auto (NbtAad) non viene mai toccato.

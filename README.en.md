@@ -35,7 +35,7 @@ One app, **NBT Plus**, for all three cars. The brand is recognised from the car'
 - **Traffic** nearby (Autostrade per l'Italia).
 - **Where I parked**: when the phone disconnects from the car's Bluetooth, the position is saved.
 - The app starts by itself with the car's Bluetooth and stops when you get out.
-- **Trip**: while driving and then in the parking box, start place and duration; with [AAIdrive](https://github.com/BimmerGestalt/AAIdrive) installed and connected to the car also distance, fuel used and left, temperatures and openings (doors, windows, roof) read from its data (read only).
+- **Trip**: while driving and then in the parking box, start place, duration, distance, fuel used and left, temperatures and openings (doors, windows, roof). The car data is read by the Meteo plugin inside iDrive (read only) and sent to the app over the car's Wi-Fi: no AAIdrive, no extra Bluetooth link.
 - **My cars**: several cars, each recognised by its Bluetooth name, with its own name in the app (e.g. "Lucy" instead of "MINI12345", display only), fuel and parking spot. They add themselves on first connection, or from the cars paired with the phone.
 
 Data sources are Italian, so the news, fuel and traffic sections are for Italy; the weather works anywhere.
@@ -72,7 +72,7 @@ The APK and the USB-stick zip are in the **Releases**. Install only NBT Plus on 
 old apps (MINI Plus, BMW Plus or Supra Plus) is still there, uninstall it, because two apps at once would
 fight over the link with iDrive.
 
-Step-by-step instructions (Italian) in [`chiavetta/LEGGIMI-v20.txt`](chiavetta/LEGGIMI-v20.txt); in short, on the head unit shell:
+Step-by-step instructions (Italian) in [`chiavetta/LEGGIMI-v21.txt`](chiavetta/LEGGIMI-v21.txt); in short, on the head unit shell:
 ```
 mount -o remount rw /net/hu-omap/fs/sda0
 on -f /net/hu-omap/ /bin/sh

@@ -18,10 +18,14 @@ import java.util.concurrent.Executors
  *   GET /notizia/<i>.png  -> pagina della notizia i (0..7)
  *   GET /mini/<i>.png     -> miniatura 63x54 della notizia i
  *   GET /anteprima/<i>.png -> scheda 640x480 della notizia i (accanto alla lista, quando la riga e' selezionata)
+ *   GET /auto?n=<proprieta'>&v=<JSON> -> un dato dell'auto letto dal plugin Meteo (DatiAuto): risponde "OK"
  * Risponde solo alla testata sul Wi-Fi della macchina (e al telefono stesso): su qualunque altra rete,
  * anche locale (casa, bar, albergo), le connessioni si chiudono subito senza rispondere niente.
  */
 class Server(private val quandoChiede: () -> Unit) {
+
+    /** chiamata a ogni dato dell'auto ricevuto, con tutti gli ultimi valori */
+    @Volatile var datiAuto: (Map<String, String>) -> Unit = {}
 
     @Volatile private var socket: ServerSocket? = null
     private val lavoratori = Executors.newFixedThreadPool(4)
@@ -72,19 +76,20 @@ class Server(private val quandoChiede: () -> Unit) {
                 val parti = riga.split(' ')
                 if (parti.size < 2 || parti[0] != "GET") { rispondi(s.getOutputStream(), 405, "text/plain", "solo GET\n".toByteArray()); return }
                 val percorso = parti[1].substringBefore('?')
+                val query = parti[1].substringAfter('?', "")
                 Stato.ultimaRichiestaAuto = System.currentTimeMillis()
                 Stato.ipAuto = s.inetAddress?.hostAddress ?: ""
                 Stato.richiesteAuto++
                 quandoChiede()
                 val out = s.getOutputStream()
-                instrada(out, percorso)
+                instrada(out, percorso, query)
             } catch (e: Exception) {
                 // connessione chiusa dall'iDrive o tempo scaduto: niente da fare
             }
         }
     }
 
-    private fun instrada(out: OutputStream, percorso: String) {
+    private fun instrada(out: OutputStream, percorso: String, query: String) {
         val pagine = mapOf("/meteo.png" to Stato.meteo, "/carburanti.png" to Stato.carburanti, "/traffico.png" to Stato.traffico)
         val pagina = pagine[percorso]
         when {
@@ -97,6 +102,12 @@ class Server(private val quandoChiede: () -> Unit) {
                 val png = pagina.png
                 if (png == null) rispondi(out, 503, "text/plain", "${pagina.nome} in preparazione\n".toByteArray())
                 else rispondi(out, 200, "image/png", png)
+            }
+            percorso == "/auto" -> {
+                if (DatiAuto.ricevi(query)) {
+                    datiAuto(DatiAuto.grezzi)
+                    rispondi(out, 200, "text/plain", "OK\n".toByteArray())
+                } else rispondi(out, 400, "text/plain", "dato non valido\n".toByteArray())
             }
             percorso.startsWith("/locali/") -> elenco(out, Stato.locali, percorso.removePrefix("/locali"))
             else -> elenco(out, Stato.notizie, percorso)
@@ -162,7 +173,7 @@ class Server(private val quandoChiede: () -> Unit) {
     }
 
     private fun rispondi(out: OutputStream, codice: Int, tipo: String, corpo: ByteArray) {
-        val stato = when (codice) { 200 -> "OK"; 404 -> "Not Found"; 405 -> "Method Not Allowed"; else -> "Service Unavailable" }
+        val stato = when (codice) { 200 -> "OK"; 400 -> "Bad Request"; 404 -> "Not Found"; 405 -> "Method Not Allowed"; else -> "Service Unavailable" }
         val testa = "HTTP/1.0 $codice $stato\r\nContent-Type: $tipo\r\nContent-Length: ${corpo.size}\r\n" +
             "Cache-Control: no-store\r\nConnection: close\r\n\r\n"
         out.write(testa.toByteArray(Charsets.US_ASCII))

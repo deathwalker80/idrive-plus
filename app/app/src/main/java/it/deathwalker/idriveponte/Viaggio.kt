@@ -5,10 +5,11 @@ import org.json.JSONObject
 
 /**
  * Viaggio di ogni auto del parco: comincia quando il telefono si collega al Bluetooth dell'auto (luogo e ora di
- * partenza dal telefono), si aggiorna coi dati di AAIdrive (DatiAuto) e finisce quando il telefono si scollega.
+ * partenza dal telefono), si aggiorna coi dati che il plugin Meteo legge nell'iDrive (DatiAuto) e finisce quando il
+ * telefono si scollega.
  * Km dal contachilometri, carburante consumato dal livello del serbatoio (con i rifornimenti fatti nel frattempo),
  * temperature e aperture all'ultimo valore arrivato: a viaggio finito e' lo stato dell'auto al parcheggio.
- * Senza AAIdrive restano partenza e durata.
+ * Senza i dati dell'iDrive restano partenza e durata.
  */
 object Viaggio {
 
@@ -123,7 +124,7 @@ object Viaggio {
         salva(ctx, d, true)
     }
 
-    /** nuovi valori da AAIdrive per l'auto attuale; forza = scrivi subito (fine del servizio) */
+    /** nuovi valori dall'iDrive per l'auto attuale; forza = scrivi subito (fine del servizio) */
     @Synchronized
     fun aggiorna(ctx: Context, auto: String?, grezzi: Map<String, String>, forza: Boolean = false) {
         val bt = auto?.trim().orEmpty()

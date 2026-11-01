@@ -19,7 +19,7 @@ della zona in cui ti trovi.
 | Città scritte nelle impostazioni | notizie locali e città di riserva per il meteo | il nome viene cercato su open-meteo.com (geocodifica) |
 | Posizione del parcheggio | ritrovare l'auto | resta solo sul telefono |
 | Nome Bluetooth dell'auto | accendere l'app quando sali e riconoscere la marca (MINI, BMW, Supra) | resta solo sul telefono |
-| Dati dell'auto da AAIdrive (solo se installato): chilometri, carburante, consumo medio, temperature, porte, finestrini e tetto | il riquadro del viaggio e lo stato dell'auto al parcheggio | letti sul telefono dall'app AAIdrive, restano solo sul telefono |
+| Dati dell'auto: chilometri, carburante, consumo medio, temperature, porte, finestrini e tetto | il riquadro del viaggio e lo stato dell'auto al parcheggio | li manda il plugin dell'iDrive al telefono sul Wi-Fi dell'auto; restano solo sul telefono |
 
 Notizie (ANSA), traffico (Autostrade per l'Italia) e allerte (Dipartimento della Protezione Civile) vengono
 scaricati senza mandare la posizione: l'app li filtra sul telefono.
@@ -81,7 +81,7 @@ developer. Your location is only used to ask the public services listed below fo
 | Cities typed in the settings | local news and fallback city for the weather | the name is looked up on open-meteo.com (geocoding) |
 | Parking position | finding the car again | stays on the phone |
 | Car's Bluetooth name | starting the app when you get in and recognising the brand (MINI, BMW, Supra) | stays on the phone |
-| Car data from AAIdrive (only if installed): odometer, fuel, average consumption, temperatures, doors, windows and roof | the trip box and the car's state when parked | read on the phone from the AAIdrive app, stays on the phone |
+| Car data: odometer, fuel, average consumption, temperatures, doors, windows and roof | the trip box and the car's state when parked | sent by the iDrive plugin to the phone over the car's Wi-Fi; stays on the phone |
 
 News (ANSA), traffic (Autostrade per l'Italia) and warnings (Italian Civil Protection Department) are
 downloaded without sending your location: the app filters them on the phone.

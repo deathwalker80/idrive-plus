@@ -1,6 +1,7 @@
 // prova sul PC della logica dei plugin (scaricamento, caselle, titoli) con un finto framework bmw
 #include "../ponte_plugin.cpp"
 extern "C" int printf(const char*, ...);
+extern "C" int fflush(void*);
 extern "C" int* __errno_location(void);
 extern "C" int* __get_errno_ptr(void) { return __errno_location(); }
 extern "C" void bsCrea(void* self, const char* s) __asm__("_ZN3bmw11BasicStringIcEC1EPKc");
@@ -17,7 +18,25 @@ void PluginApp::updateModel(u32 id, const Image& im) { u32 n; memcpy(&n, &im, 4)
 bool PluginApp::onInit() { return true; }
 void PluginApp::addHandler(u32 id, const DelegatoAzione& d) { printf("  addHandler(%u, oggetto %lu)\n", id, (unsigned long)d.oggetto); }
 void PluginApp::onFinalize() {}
+#if DATI_AUTO
+// finto CDS: si tengono i delegati per chiamarli come farebbe l'iDrive
+DelegatoCds g_delegati[32]; const char* g_nomiCds[32]; u32 g_nDelegati = 0;
+void PluginApp::cdsAddPropertyChangedEventHandler(BasicString<char>& p, u32, const DelegatoCds& d) {
+    g_nomiCds[g_nDelegati] = p.raw(); g_delegati[g_nDelegati++] = d;
 }
+#endif
+}
+#if DATI_AUTO
+// valore CDS come lo manda l'iDrive: testo JSON in UTF-16
+void cdsDaIdrive(const char* nome, const char* json) {
+    static u16 buf[512]; u32 n = 0;
+    while (json[n] && n < 511) { buf[n] = (unsigned char)json[n]; ++n; }
+    buf[n] = 0;
+    u16* p = buf;
+    for (u32 i = 0; i < bmw::g_nDelegati; ++i)
+        if (!strncmp(bmw::g_nomiCds[i], nome, 64)) bmw::g_delegati[i].funzione(bmw::g_delegati[i].oggetto, *(const bmw::BasicString<u16>*)&p);
+}
+#endif
 int main() {
     static unsigned char mem[0x200];
     g_app = (bmw::PluginApp*)mem;
@@ -42,6 +61,21 @@ int main() {
     rigaScelta((void*)2, *(const bmw::Parcel*)finto);
     printf("== di nuovo la riga 3 (niente)\n");
     rigaScelta((void*)2, *(const bmw::Parcel*)finto);
+#endif
+#if DATI_AUTO
+    printf("== dati dell'auto\n");
+    registraCds();
+    printf("  proprieta' registrate: %u\n", bmw::g_nDelegati);
+    cdsDaIdrive("driving.odometer", "{\"odometer\":12345}");
+    cdsDaIdrive("sensors.fuel", "{\"fuel\":{\"tanklevel\":30,\"range\":420,\"reserve\":0}}");
+    cdsDaIdrive("sensors.doors", "{\"doors\":{\"driverFront\":1,\"passengerFront\":0}}");
+    cdsDaIdrive("driving.odometer", "{\"odometer\":12346}");      // il piu' nuovo sostituisce quello non ancora mandato
+    mandaDatiAuto(t);
+    cdsDaIdrive("sensors.fuel", "{\"fuel\":{\"tanklevel\":30,\"range\":420,\"reserve\":0}}");   // uguale: non si rimanda
+    cdsDaIdrive("controls.sunroof", "{\"sunroof\":{\"status\":0,\"tiltPosition\":3}}");
+    mandaDatiAuto(t);
+    printf("  inviate al telefono:\n"); fflush(0);
+    { void* f = fopen("/tmp/finto_telefono_auto.txt", "r"); char r[600]; while (f && fgets(r, sizeof(r), f)) printf("    %s", r); if (f) fclose(f); }
 #endif
     printf("== secondo giro con lo stesso epoch (non deve scaricare niente)\n");
     aggiornaDati(t, testo(ponte)); svuotaCaselle();
