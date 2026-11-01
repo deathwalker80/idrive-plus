@@ -6,7 +6,6 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.location.Geocoder
 import android.net.Uri
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -50,16 +49,7 @@ object Parcheggio {
         val bt = auto?.trim().orEmpty()
         val l = Posizione.ultima(ctx) ?: return null
         if (System.currentTimeMillis() - l.time > FRESCA_MS) return null       // posizione troppo vecchia: meglio niente
-        val indirizzo = try {
-            @Suppress("DEPRECATION")
-            val a = Geocoder(ctx, Locale.ITALY).getFromLocation(l.latitude, l.longitude, 1)?.firstOrNull()
-            if (a == null) "" else listOfNotNull(
-                listOfNotNull(a.thoroughfare, a.subThoroughfare).joinToString(" ").ifEmpty { null },
-                a.locality
-            ).joinToString(", ")
-        } catch (e: Exception) {
-            ""
-        }
+        val indirizzo = Posizione.indirizzo(ctx, l.latitude, l.longitude)
         migra(ctx)
         val p = Posto(l.latitude, l.longitude, System.currentTimeMillis(), indirizzo, bt, if (l.hasAccuracy()) l.accuracy else 0f)
         prefs(ctx).edit()

@@ -34,6 +34,7 @@ One codebase for all three: only the name, icon, colour and the car's name in th
 - **Traffic** nearby (Autostrade per l'Italia).
 - **Where I parked**: when the phone disconnects from the car's Bluetooth, the position is saved.
 - The app starts by itself with the car's Bluetooth and stops when you get out.
+- **Trip**: while driving and then in the parking box, start place and duration; with [AAIdrive](https://github.com/BimmerGestalt/AAIdrive) installed and connected to the car also distance, fuel used and left, temperatures and openings (doors, windows, roof) read from its data (read only).
 - **My cars**: several cars, each recognised by its Bluetooth name, with its own name in the app (e.g. "Lucy" instead of "MINI12345", display only), fuel and parking spot. They add themselves on first connection, or from the cars paired with the phone.
 
 Data sources are Italian, so the news, fuel and traffic sections are for Italy; the weather works anywhere.

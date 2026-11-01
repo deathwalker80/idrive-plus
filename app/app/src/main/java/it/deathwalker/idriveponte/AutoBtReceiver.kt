@@ -46,6 +46,7 @@ class AutoBtReceiver : BroadcastReceiver() {
 
         when (intent.action) {
             BluetoothDevice.ACTION_ACL_CONNECTED -> {
+                Viaggio.inizia(ctx, nome)
                 try {
                     PonteService.avvia(ctx, "Bluetooth $nome")
                     registra(ctx, "acceso da $nome")
@@ -53,6 +54,15 @@ class AutoBtReceiver : BroadcastReceiver() {
                     // Android puo' negare l'avvio dallo sfondo: si vede nell'app (Batteria senza restrizioni)
                     registra(ctx, "NON acceso da $nome (${e.javaClass.simpleName})")
                 }
+                // luogo di partenza: l'indirizzo richiede un attimo, fuori dal thread principale
+                val attesa = goAsync()
+                Thread {
+                    try {
+                        Posizione.ultima(ctx)?.let { l -> Viaggio.impostaLuogo(ctx, nome, Posizione.indirizzo(ctx, l.latitude, l.longitude)) }
+                    } finally {
+                        attesa.finish()
+                    }
+                }.start()
             }
             BluetoothDevice.ACTION_ACL_DISCONNECTED -> {
                 PonteService.ferma(ctx)
@@ -61,6 +71,7 @@ class AutoBtReceiver : BroadcastReceiver() {
                 Thread {
                     try {
                         val p = Parcheggio.salva(ctx, nome)
+                        Viaggio.chiudi(ctx, nome)
                         registra(ctx, "spento, $nome scollegata" + if (p != null) " - parcheggio salvato" else " - posizione non disponibile")
                     } finally {
                         attesa.finish()

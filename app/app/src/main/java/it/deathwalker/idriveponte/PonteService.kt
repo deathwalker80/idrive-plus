@@ -56,6 +56,7 @@ class PonteService : Service() {
     private var latCarburanti = 0.0
     private var lonCarburanti = 0.0
     private var tipoCarburanti = 0
+    private var lettore: DatiAuto.Lettore? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -71,6 +72,8 @@ class PonteService : Service() {
             attivo = true
             Stato.servizioAttivo = true
             server = Server { synchronized(sveglia) { sveglia.notifyAll() } }.also { it.avvia() }
+            // dati dell'auto da AAIdrive (se c'e'): vanno nel viaggio dell'auto attuale
+            lettore = DatiAuto.Lettore(this) { g -> Viaggio.aggiorna(this, Parco.ultima(this), g) }.also { it.avvia() }
             lavoro = Thread({ ciclo() }, "miniplus-lavoro").apply { isDaemon = true; start() }
         }
         if (intent?.action == AZIONE_AGGIORNA) {
@@ -86,6 +89,9 @@ class PonteService : Service() {
         Stato.avviatoDa = ""
         server?.ferma()
         server = null
+        lettore?.ferma()
+        lettore = null
+        if (DatiAuto.grezzi.isNotEmpty()) Viaggio.aggiorna(this, Parco.ultima(this), DatiAuto.grezzi, forza = true)
         synchronized(sveglia) { sveglia.notifyAll() }
         super.onDestroy()
     }

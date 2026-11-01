@@ -80,6 +80,9 @@ class MainActivity : Activity() {
     private lateinit var schedaParco: View
     private var firmaParcheggi = ""
     private var firmaParco = ""
+    private lateinit var schedaViaggio: View
+    private lateinit var boxViaggio: LinearLayout
+    private var firmaViaggio = ""
 
     // pagine dell'auto
     private class Riquadro(val esito: TextView, val immagine: ImageView, var epoch: Long = -1)
@@ -141,6 +144,12 @@ class MainActivity : Activity() {
             }
             tasto(tasti, "Aggiorna tutto", false) { PonteService.aggiornaOra(this) }
         })
+
+        // ---- viaggio in corso: compare solo mentre sei in auto (dopo resta nel riquadro del parcheggio)
+        schedaViaggio = scheda(R.drawable.ic_auto, "In viaggio") { s ->
+            boxViaggio = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }.also { s.addView(it) }
+        }
+        col.addView(schedaViaggio)
 
         // ---- parcheggio
         col.addView(scheda(R.drawable.ic_parcheggio, "Dove ho parcheggiato") { s ->
@@ -472,6 +481,7 @@ class MainActivity : Activity() {
 
         disegnaParcheggi()
         disegnaParco()
+        disegnaViaggio()
 
         mostra("Meteo", Stato.meteo.esito + (if (Stato.allerta.isNotEmpty()) "\nAllerta: ${Stato.allerta}" else ""), Stato.meteo.epoch, Stato.meteo.png)
         mostra("Notizie", Stato.notizie.esito, Stato.notizie.epoch, Stato.notizie.notizie.firstOrNull()?.pagina)
@@ -526,7 +536,7 @@ class MainActivity : Activity() {
     /** un riquadro per ogni auto parcheggiata; si ridisegna solo quando cambia qualcosa, cosi' non disturba chi tocca */
     private fun disegnaParcheggi() {
         val posti = Parcheggio.tutti(this)
-        val firma = posti.joinToString("|") { "${it.auto}/${it.quando}/${Parco.mostra(this, it.auto)}" }
+        val firma = posti.joinToString("|") { "${it.auto}/${it.quando}/${Parco.mostra(this, it.auto)}/${Viaggio.di(this, it.auto)?.aggiornato}" }
         if (firma == firmaParcheggi && boxParcheggi.childCount > 0) return
         firmaParcheggi = firma
         boxParcheggi.removeAllViews()
@@ -539,6 +549,11 @@ class MainActivity : Activity() {
         posti.forEachIndexed { i, p ->
             if (p.auto.isNotEmpty() || posti.size > 1) titoletto(boxParcheggi, Parco.mostra(this, p.auto).ifEmpty { Marca.AUTO }, i > 0)
             testo(boxParcheggi, Parcheggio.descrizione(p))
+            // il viaggio finito con questo parcheggio: com'era l'auto quando sei sceso
+            Viaggio.di(this, p.auto)?.takeIf { !it.inCorso && kotlin.math.abs(it.arrivo - p.quando) < 10 * 60 * 1000L }?.let { v ->
+                boxParcheggi.addView(View(this), LinearLayout.LayoutParams(MATCH_PARENT, px(6)))
+                righeViaggio(boxParcheggi, v)
+            }
             val tasti = rigaTasti(boxParcheggi)
             tasto(tasti, "Portami ${Marca.alla(p.auto)}", true) { Parcheggio.portami(this, p) }
         }
@@ -569,6 +584,75 @@ class MainActivity : Activity() {
             tasto(tasti, "Modifica", false) { modificaAuto(bt) }
             tasto(tasti, "Togli", false) { togliAuto(bt) }
         }
+    }
+
+    /** il viaggio dell'auto attuale mentre e' in corso; si ridisegna quando arrivano dati nuovi o passa un minuto */
+    private fun disegnaViaggio() {
+        val bt = Parco.ultima(this)
+        val v = Viaggio.di(this, bt)?.takeIf { it.inCorso }
+        schedaViaggio.visibility = if (v != null) View.VISIBLE else View.GONE
+        if (v == null) return
+        val firma = "${v.auto}/${v.partenza}/${v.aggiornato}/${v.luogo}/${System.currentTimeMillis() / 60000}/${Parco.mostra(this, bt)}"
+        if (firma == firmaViaggio && boxViaggio.childCount > 0) return
+        firmaViaggio = firma
+        boxViaggio.removeAllViews()
+        if (Parco.elenco(this).size > 1) titoletto(boxViaggio, Parco.mostra(this, bt), false)
+        righeViaggio(boxViaggio, v)
+    }
+
+    /** le righe del viaggio: partenza, durata e, coi dati di AAIdrive, km, carburante, temperature e aperture */
+    private fun righeViaggio(box: LinearLayout, v: Viaggio.Dati) {
+        val oggi = SimpleDateFormat("ddMMyyyy", Locale.ITALY).format(Date())
+        val giorno = SimpleDateFormat("ddMMyyyy", Locale.ITALY).format(Date(v.partenza))
+        val quando = SimpleDateFormat(if (giorno == oggi) "HH:mm" else "dd/MM 'alle' HH:mm", Locale.ITALY).format(Date(v.partenza))
+        rigaValore(box, "Partenza", (if (v.luogo.isNotEmpty()) "${v.luogo}, " else "") + "alle $quando")
+        val minuti = v.durata() / 60000
+        rigaValore(box, "Durata", if (minuti < 60) "$minuti min" else "${minuti / 60} h ${"%02d".format(minuti % 60)} min")
+        if (v.grezzi.isEmpty()) {
+            piccolo(box, if (DatiAuto.aaidrive(this)) "In attesa dei dati dell'auto da AAIdrive (deve essere collegato all'auto)."
+            else "Km, carburante, temperature e aperture arrivano da AAIdrive: installalo e collegalo all'auto.")
+            return
+        }
+        val ora = v.ora()
+        v.km()?.let { rigaValore(box, "Km percorsi", String.format(Locale.ITALY, if (it < 10) "%.1f km" else "%.0f km", it)) }
+        v.litri()?.let {
+            rigaValore(box, "Carburante consumato", String.format(Locale.ITALY, "%.1f l", it) + if (v.rifornito > 0) " (con rifornimento)" else "")
+        }
+        ora.litri?.let { l ->
+            rigaValore(box, "Nel serbatoio", String.format(Locale.ITALY, "%.0f l", l) +
+                (ora.autonomia?.let { String.format(Locale.ITALY, ", autonomia %.0f km", it) } ?: ""))
+        }
+        ora.consumo?.let { rigaValore(box, "Consumo medio", String.format(Locale.ITALY, "%.1f km/l (computer di bordo)", 100 / it)) }
+        val temperature = listOfNotNull(
+            ora.esterna?.let { String.format(Locale.ITALY, "esterna %.0f °C", it) },
+            ora.interna?.let { String.format(Locale.ITALY, "interna %.0f °C", it) }
+        )
+        if (temperature.isNotEmpty()) rigaValore(box, "Temperature", temperature.joinToString(", "))
+        ora.aperti?.let { a ->
+            if (a.isEmpty()) rigaValore(box, "Aperture", "tutto chiuso")
+            else rigaValore(box, "Aperture", "aperti: " + a.joinToString(", "), evidenzia = true)
+        }
+    }
+
+    /** etichetta a sinistra e valore a destra, come le righe dello stato (senza pallino) */
+    private fun rigaValore(s: ViewGroup, etichetta: String, valore: String, evidenzia: Boolean = false) {
+        val r = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, px(3), 0, px(3))
+        }
+        r.addView(
+            TextView(this).apply { text = etichetta; setTextColor(TENUE); textSize = 14f },
+            LinearLayout.LayoutParams(px(150), WRAP_CONTENT)
+        )
+        r.addView(
+            TextView(this).apply {
+                text = valore; textSize = 14f
+                setTextColor(if (evidenzia) ARANCIO else TESTO)
+                if (evidenzia) typeface = Typeface.DEFAULT_BOLD
+            },
+            LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f)
+        )
+        s.addView(r)
     }
 
     private fun titoletto(s: ViewGroup, t: String, staccato: Boolean) = TextView(this).apply {
