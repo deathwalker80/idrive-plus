@@ -2,7 +2,7 @@
 
 🇬🇧 [English below](#nbt-plus--privacy-policy)
 
-Ultimo aggiornamento: 1 novembre 2026
+Ultimo aggiornamento: 2 novembre 2026
 
 NBT Plus è un'app gratuita e senza pubblicità, sviluppata da DeathWalkeR come progetto personale.
 Porta meteo, notizie, prezzi dei carburanti e traffico nell'iDrive delle auto con testata NBT EVO.
@@ -15,7 +15,7 @@ della zona in cui ti trovi.
 
 | Dato | A cosa serve | Dove va |
 |---|---|---|
-| Posizione del telefono | meteo, allerte, distributori e traffico vicini; "dove ho parcheggiato" | le coordinate vengono mandate a open-meteo.com (meteo) e a MIMIT Osservaprezzi (carburanti) per avere i dati della zona; il nome del comune lo ricava il servizio di geocodifica di Android sul telefono |
+| Posizione del telefono | meteo, allerte, distributori e traffico vicini; "dove ho parcheggiato" | le coordinate vengono mandate a open-meteo.com (meteo; se non risponde, a MET Norway, api.met.no) e a MIMIT Osservaprezzi (carburanti) per avere i dati della zona; il nome del comune lo ricava il servizio di geocodifica di Android sul telefono |
 | Città scritte nelle impostazioni | notizie locali e città di riserva per il meteo | il nome viene cercato su open-meteo.com (geocodifica) |
 | Posizione del parcheggio | ritrovare l'auto | resta solo sul telefono |
 | Nome Bluetooth dell'auto | accendere l'app quando sali e riconoscere la marca (MINI, BMW, Supra) | resta solo sul telefono |
@@ -36,6 +36,7 @@ uscire su internet.
 ## Servizi esterni
 Le richieste ai servizi elencati sopra seguono le loro condizioni:
 [open-meteo.com](https://open-meteo.com/en/terms),
+[MET Norway](https://api.met.no/doc/TermsOfService),
 [MIMIT Osservaprezzi carburanti](https://carburanti.mise.gov.it),
 [ANSA](https://www.ansa.it),
 [Autostrade per l'Italia](https://www.autostrade.it),
@@ -65,7 +66,7 @@ Le modifiche a questa informativa vengono pubblicate in questa pagina con la nuo
 
 # NBT Plus — Privacy policy
 
-Last updated: 1 November 2026
+Last updated: 2 November 2026
 
 NBT Plus is a free, ad-free app developed by DeathWalkeR as a personal project.
 It brings weather, news, fuel prices and traffic into iDrive on cars with the NBT EVO head unit.
@@ -77,7 +78,7 @@ developer. Your location is only used to ask the public services listed below fo
 
 | Data | Used for | Where it goes |
 |---|---|---|
-| Phone location | weather, warnings, nearby fuel stations and traffic; "where I parked" | the coordinates are sent to open-meteo.com (weather) and MIMIT Osservaprezzi (fuel) to get data for the area; the town name comes from Android's geocoding service on the phone |
+| Phone location | weather, warnings, nearby fuel stations and traffic; "where I parked" | the coordinates are sent to open-meteo.com (weather; MET Norway, api.met.no, when it does not answer) and MIMIT Osservaprezzi (fuel) to get data for the area; the town name comes from Android's geocoding service on the phone |
 | Cities typed in the settings | local news and fallback city for the weather | the name is looked up on open-meteo.com (geocoding) |
 | Parking position | finding the car again | stays on the phone |
 | Car's Bluetooth name | starting the app when you get in and recognising the brand (MINI, BMW, Supra) | stays on the phone |
@@ -97,6 +98,7 @@ The pages for iDrive go from the phone to the car over the Android Auto Wi-Fi ne
 ## External services
 Requests to the services listed above are subject to their own terms:
 [open-meteo.com](https://open-meteo.com/en/terms),
+[MET Norway](https://api.met.no/doc/TermsOfService),
 [MIMIT Osservaprezzi carburanti](https://carburanti.mise.gov.it),
 [ANSA](https://www.ansa.it),
 [Autostrade per l'Italia](https://www.autostrade.it),

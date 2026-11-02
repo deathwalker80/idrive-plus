@@ -56,6 +56,7 @@ class PonteService : Service() {
     private var latCarburanti = 0.0
     private var lonCarburanti = 0.0
     private var tipoCarburanti = 0
+    private var meteoComune = ""
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -174,12 +175,16 @@ class PonteService : Service() {
             Stato.meteo.ultimo = 0L                                  // ridisegna il meteo con l'allerta nuova
         }
 
-        sezione("Meteo", Stato.meteo.ultimo, 10 * MIN, tutto) {
+        // meteo: ogni ora, oppure subito quando passi in un altro comune; se open-meteo non risponde (servizio
+        // gratuito con un limite di richieste per indirizzo, condiviso da chi esce sulla stessa rete) c'e' MET Norway
+        val altroComune = meteoComune.isNotEmpty() && qui.nome != meteoComune
+        sezione("Meteo", if (altroComune) 0L else Stato.meteo.ultimo, 60 * MIN, tutto) {
             try {
-                val m = Dati.meteo(this, qui)
+                val m = try { Dati.meteo(this, qui) } catch (e: Exception) { Dati.meteoMet(this, qui) }
                 Stato.meteo.metti(disegno.paginaMeteo(m, allerta))
                 Stato.meteo.ultimo = System.currentTimeMillis()
-                Stato.meteo.esito = "OK alle ${oraAdesso()} - ${m.citta} ${m.temp}° (${Stato.fonteCitta})"
+                meteoComune = qui.nome
+                Stato.meteo.esito = "OK alle ${oraAdesso()} - ${m.citta} ${m.temp}° (${Stato.fonteCitta}, ${m.fonte})"
             } catch (e: Exception) {
                 Stato.meteo.esito = "ERRORE alle ${oraAdesso()}: ${e.message ?: e.javaClass.simpleName}"
                 if (Stato.meteo.png == null) Stato.meteo.metti(disegno.paginaAvviso("Meteo", "Meteo non disponibile in questo momento. Nuovo tentativo tra poco."))

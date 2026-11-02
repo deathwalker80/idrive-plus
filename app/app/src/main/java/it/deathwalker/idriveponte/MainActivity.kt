@@ -261,7 +261,7 @@ class MainActivity : Activity() {
         })
 
         col.addView(TextView(this).apply {
-            text = "${Marca.APP} ${Stato.VERSIONE} · dati: open-meteo.com, ANSA, MIMIT, Autostrade per l'Italia, Protezione Civile"
+            text = "${Marca.APP} ${Stato.VERSIONE} · dati: open-meteo.com, MET Norway, ANSA, MIMIT, Autostrade per l'Italia, Protezione Civile"
             setTextColor(TENUE); textSize = 11f; gravity = Gravity.CENTER
             setPadding(0, px(14), 0, 0)
         })
@@ -593,7 +593,7 @@ class MainActivity : Activity() {
         testo(s, "${Marca.APP} raccoglie i dati sulla posizione del telefono per mostrare nell'iDrive meteo, allerte, " +
             "distributori e traffico della zona in cui ti trovi e per salvare dove hai parcheggiato, " +
             "anche quando l'app è chiusa o non in uso.")
-        piccolo(s, "Le coordinate vanno solo a open-meteo.com e a MIMIT Osservaprezzi per avere i dati della zona; " +
+        piccolo(s, "Le coordinate vanno solo a open-meteo.com (o, se non risponde, a MET Norway) e a MIMIT Osservaprezzi per avere i dati della zona; " +
             "il parcheggio resta sul telefono. Nessun dato va allo sviluppatore. " +
             "Se non consenti, l'app usa la città di riserva e non salva il parcheggio.").setPadding(0, px(10), 0, 0)
         val tasti = rigaTasti(s)
