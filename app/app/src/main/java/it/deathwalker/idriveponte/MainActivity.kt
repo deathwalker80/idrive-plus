@@ -236,7 +236,7 @@ class MainActivity : Activity() {
         })
 
         col.addView(TextView(this).apply {
-            text = "${Marca.APP} ${Stato.VERSIONE} · dati: open-meteo.com, ANSA, MIMIT, Autostrade per l'Italia, Protezione Civile"
+            text = "${Marca.APP} ${Stato.VERSIONE} · dati: open-meteo.com, MET Norway, ANSA, MIMIT, Autostrade per l'Italia, Protezione Civile"
             setTextColor(TENUE); textSize = 11f; gravity = Gravity.CENTER
             setPadding(0, px(14), 0, 0)
         })

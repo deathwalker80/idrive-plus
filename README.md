@@ -28,7 +28,7 @@ Stesso codice per tutte e tre: cambiano solo nome, icona, colore e il nome dell'
 - Telefono Android 8 o successivo.
 
 ## Funzioni
-- **Meteo** (open-meteo.com) con le **allerte della Protezione Civile** per il comune in cui ti trovi.
+- **Meteo** (open-meteo.com; se non risponde, MET Norway) con le **allerte della Protezione Civile** per il comune in cui ti trovi. Si aggiorna ogni ora e subito quando passi in un altro comune.
 - **Notizie** nazionali e **notizie locali** della città scelta (feed RSS ANSA), con miniature.
 - **Carburanti** vicini con prezzi ufficiali MIMIT (Osservaprezzi) e logo del marchio.
 - **Traffico** vicino (Autostrade per l'Italia).
@@ -65,7 +65,7 @@ sh /mnt/umass*/00-installa.sh mini     # oppure bmw, oppure supra
 Per togliere tutto: `sh /mnt/umass*/10-togli.sh`.
 
 ## Fonti dei dati
-open-meteo.com · ANSA (feed RSS) · MIMIT Osservaprezzi carburanti · Autostrade per l'Italia ·
+open-meteo.com · MET Norway (CC BY 4.0) · ANSA (feed RSS) · MIMIT Osservaprezzi carburanti · Autostrade per l'Italia ·
 Dipartimento della Protezione Civile (bollettini di criticità, CC BY-SA 4.0).
 I dati vengono letti dall'app al momento, sul telefono; il repository non li contiene
 (salvo un bollettino di esempio per i test).

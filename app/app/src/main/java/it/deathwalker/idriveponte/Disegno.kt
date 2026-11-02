@@ -104,9 +104,17 @@ class Disegno(private val ctx: Context) {
     }
 
     // ------------------------------------------------------------------------------ meteo ----
+    /** pioggia prevista in millimetri: "0 mm", "0,4 mm", "12 mm" */
+    private fun mm(v: Double): String = when {
+        v < 0.05 -> "0 mm"
+        v < 10 -> String.format(Locale.ITALY, "%.1f mm", v)
+        else -> String.format(Locale.ITALY, "%.0f mm", v)
+    }
+
     fun paginaMeteo(m: Meteo, allerta: Allerta? = null): ByteArray {
         val (b, c) = nuovaTela()
-        intestazione(c, m.citta, "Alba ${m.alba} · Tramonto ${m.tramonto}")
+        // MET Norway (dati CC BY 4.0) va citato: accanto ad alba e tramonto
+        intestazione(c, m.citta, "Alba ${m.alba} · Tramonto ${m.tramonto}" + if (m.fonte != "open-meteo") " · dati ${m.fonte}" else "")
         // allerta della Protezione Civile: pastiglia colorata accanto al nome della citta'
         val avviso = allerta?.testoBreve().orEmpty()
         if (avviso.isNotEmpty()) {
@@ -131,8 +139,9 @@ class Disegno(private val ctx: Context) {
         scrivi(c, "Max ${m.max}° · Min ${m.min}°", 0f, 232f, pennello(18f, false, TENUE))
         val celle = listOf(
             "Percepita" to "${m.percepita}°", "Umidità" to "${m.umidita}%",
-            "Vento" to "${m.vento} km/h ${m.direzione}".trim(), "Raffiche" to "${m.raffiche} km/h",
-            "Pioggia oggi" to "${m.pioggiaOggi}%", "Pressione" to "${m.pressione} hPa"
+            "Vento" to "${m.vento} km/h ${m.direzione}".trim(),
+            if (m.inMillimetri) "Nuvole" to "${m.nuvole}%" else "Raffiche" to "${m.raffiche} km/h",
+            "Pioggia oggi" to (if (m.inMillimetri) mm(m.pioggiaOggiMm) else "${m.pioggiaOggi}%"), "Pressione" to "${m.pressione} hPa"
         )
         val pl = pennello(15f, false, TENUE)
         val pv = pennello(22f, true, BIANCO)
@@ -157,7 +166,7 @@ class Disegno(private val ctx: Context) {
             scrivi(c, "${o.ora}:00", cx, yOre, pOra)
             disegnaIcona(c, Dati.iconaOra(Dati.wmo(o.codice).second, o.giorno), cx - 21f, yOre + 23.5f, 42f)
             scrivi(c, "${o.temp}°", cx, yOre + 72f, pT)
-            scrivi(c, "${o.pioggia}%", cx, yOre + 98f, pP)
+            scrivi(c, if (m.inMillimetri) mm(o.mm) else "${o.pioggia}%", cx, yOre + 98f, pP)
         }
         scrivi(c, "PROSSIMI GIORNI", x0, 74f + 170f, ph2)
         val yG = 74f + 198f
@@ -174,7 +183,7 @@ class Disegno(private val ctx: Context) {
             val xs = cx - larg / 2f
             scrivi(c, sMax, xs, yG + 78f, pMax)
             scrivi(c, sMin, xs + pMax.measureText(sMax), yG + 78f, pMin)
-            scrivi(c, "${g.pioggia}%", cx, yG + 104f, pP)
+            scrivi(c, if (m.inMillimetri) mm(g.mm) else "${g.pioggia}%", cx, yG + 104f, pP)
         }
         return png(b)
     }

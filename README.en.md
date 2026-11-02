@@ -28,7 +28,7 @@ One codebase for all three: only the name, icon, colour and the car's name in th
 - Android 8 or later on the phone.
 
 ## Features
-- **Weather** (open-meteo.com) with the **Italian Civil Protection warnings** for the municipality you are in.
+- **Weather** (open-meteo.com; MET Norway when it does not answer) with the **Italian Civil Protection warnings** for the municipality you are in. Updated every hour and at once when you enter another municipality.
 - **National news** and **local news** for a chosen city (ANSA RSS feeds), with thumbnails.
 - **Fuel stations** nearby with official MIMIT (Osservaprezzi) prices and the brand logo.
 - **Traffic** nearby (Autostrade per l'Italia).
@@ -67,7 +67,7 @@ sh /mnt/umass*/00-installa.sh mini     # or bmw, or supra
 Then restart the head unit (hold the power button for 30 seconds). To remove everything: `sh /mnt/umass*/10-togli.sh`.
 
 ## Data sources
-open-meteo.com · ANSA (RSS feeds) · MIMIT Osservaprezzi carburanti · Autostrade per l'Italia ·
+open-meteo.com · MET Norway (CC BY 4.0) · ANSA (RSS feeds) · MIMIT Osservaprezzi carburanti · Autostrade per l'Italia ·
 Dipartimento della Protezione Civile (criticality bulletins, CC BY-SA 4.0).
 The app reads the data live, on the phone; the repository does not contain it
 (except one sample bulletin for the tests).

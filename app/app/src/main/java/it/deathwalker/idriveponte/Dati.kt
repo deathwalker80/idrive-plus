@@ -17,15 +17,21 @@ import java.util.Locale
 import java.util.TimeZone
 import kotlin.math.roundToInt
 
-class Ora(val ora: String, val codice: Int, val giorno: Boolean, val temp: Int, val pioggia: Int)
-class Giorno(val nome: String, val codice: Int, val max: Int, val min: Int, val pioggia: Int)
+/** pioggia: probabilita' in % (open-meteo); mm: millimetri previsti (MET Norway, che la probabilita' non la da') */
+class Ora(val ora: String, val codice: Int, val giorno: Boolean, val temp: Int, val pioggia: Int, val mm: Double = 0.0)
+class Giorno(val nome: String, val codice: Int, val max: Int, val min: Int, val pioggia: Int, val mm: Double = 0.0)
 
 class Meteo(
     val citta: String,
     val temp: Int, val percepita: Int, val codice: Int, val giorno: Boolean,
     val umidita: Int, val vento: Int, val direzione: String, val raffiche: Int, val pressione: Int,
     val max: String, val min: String, val pioggiaOggi: Int, val alba: String, val tramonto: String,
-    val ore: List<Ora>, val giorni: List<Giorno>
+    val ore: List<Ora>, val giorni: List<Giorno>,
+    val fonte: String = "open-meteo",
+    /** true = pioggia in millimetri e nuvolosita' al posto delle raffiche (MET Norway) */
+    val inMillimetri: Boolean = false,
+    val pioggiaOggiMm: Double = 0.0,
+    val nuvole: Int = 0,
 )
 
 class Notizia(val titolo: String, val ora: String, var testo: String, val link: String, var foto: Bitmap? = null)
@@ -37,6 +43,144 @@ object Dati {
     val ROMA: TimeZone = TimeZone.getTimeZone("Europe/Rome")
     private const val RSS_ANSA = "https://www.ansa.it/sito/notizie/topnews/topnews_rss.xml"
     const val MAX_NOTIZIE = 8
+
+    // ---------------------------------------------------------------- meteo di riserva (MET Norway) ----
+    // Istituto meteorologico norvegese: gratuito, senza chiave, copre l'Italia; chiede un User-Agent che identifichi
+    // l'app e coordinate con al massimo 4 decimali. Dati CC BY 4.0: la pagina lo scrive accanto ad alba e tramonto.
+    fun meteoMet(ctx: Context, citta: Citta): Meteo {
+        val url = String.format(Locale.US, "https://api.met.no/weatherapi/locationforecast/2.0/complete?lat=%.4f&lon=%.4f", citta.lat, citta.lon)
+        val agente = Marca.APP.replace(" ", "") + "/" + Stato.VERSIONE + " github.com/deathwalker80/idrive-plus"
+        val testo = String(Rete.scarica(ctx, url, 15000, agente = agente), Charsets.UTF_8)
+        return meteoMetDaJson(testo, citta.nome, citta.lat, citta.lon)
+    }
+
+    /** simbolo MET Norway ("lightrainshowers_day") -> codice WMO, cosi' testi e icone restano gli stessi */
+    fun codiceMet(simbolo: String?): Int {
+        val s = simbolo?.substringBefore('_') ?: return 3
+        return when {
+            s.contains("thunder") -> 95
+            s == "clearsky" -> 0
+            s == "fair" -> 1
+            s == "partlycloudy" -> 2
+            s == "cloudy" -> 3
+            s == "fog" -> 45
+            s.contains("sleet") -> 77
+            s == "lightsnowshowers" || s == "snowshowers" -> 85
+            s == "heavysnowshowers" -> 86
+            s.contains("snow") -> if (s.startsWith("light")) 71 else if (s.startsWith("heavy")) 75 else 73
+            s == "lightrainshowers" -> 80
+            s == "rainshowers" -> 81
+            s == "heavyrainshowers" -> 82
+            s == "lightrain" -> 61
+            s == "heavyrain" -> 65
+            s.contains("rain") -> 63
+            else -> 3
+        }
+    }
+
+    /** alba e tramonto (ora italiana, minuti dalla mezzanotte) col calcolo NOAA: niente rete */
+    fun sole(lat: Double, lon: Double, giorno: Calendar): Pair<Int, Int> {
+        val n = giorno.get(Calendar.DAY_OF_YEAR)
+        val g = 2 * Math.PI / 365 * (n - 1)
+        val eq = 229.18 * (0.000075 + 0.001868 * Math.cos(g) - 0.032077 * Math.sin(g) - 0.014615 * Math.cos(2 * g) - 0.040849 * Math.sin(2 * g))
+        val dec = 0.006918 - 0.399912 * Math.cos(g) + 0.070257 * Math.sin(g) - 0.006758 * Math.cos(2 * g) +
+            0.000907 * Math.sin(2 * g) - 0.002697 * Math.cos(3 * g) + 0.00148 * Math.sin(3 * g)
+        val fi = Math.toRadians(lat)
+        val x = (Math.cos(Math.toRadians(90.833)) / (Math.cos(fi) * Math.cos(dec)) - Math.tan(fi) * Math.tan(dec)).coerceIn(-1.0, 1.0)
+        val ha = Math.toDegrees(Math.acos(x))
+        val mezzogiorno = giorno.clone() as Calendar
+        mezzogiorno.set(Calendar.HOUR_OF_DAY, 12); mezzogiorno.set(Calendar.MINUTE, 0)
+        val scarto = ROMA.getOffset(mezzogiorno.timeInMillis) / 60000
+        val alba = (720 - 4 * (lon + ha) - eq + scarto).roundToInt()
+        val tramonto = (720 - 4 * (lon - ha) - eq + scarto).roundToInt()
+        return alba to tramonto
+    }
+
+    private fun hhmm(minuti: Int) = String.format(Locale.US, "%02d:%02d", (minuti / 60) % 24, minuti % 60)
+
+    fun meteoMetDaJson(testo: String, nomeCitta: String, lat: Double, lon: Double, adesso: Long = System.currentTimeMillis()): Meteo {
+        val ts = JSONObject(testo).getJSONObject("properties").getJSONArray("timeseries")
+        val fmtIn = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX", Locale.US)
+        class Passo(val t: Long, val o: JSONObject)
+        val passi = (0 until ts.length()).map { ts.getJSONObject(it) }.mapNotNull { o ->
+            try { Passo(fmtIn.parse(o.getString("time"))!!.time, o.getJSONObject("data")) } catch (e: Exception) { null }
+        }.sortedBy { it.t }
+        if (passi.isEmpty()) throw IllegalStateException("MET Norway: nessuna previsione")
+        val ora = 3600_000L
+        fun cal(t: Long) = Calendar.getInstance(ROMA).apply { timeInMillis = t }
+        fun giornata(t: Long) = cal(t).let { it.get(Calendar.YEAR) * 1000 + it.get(Calendar.DAY_OF_YEAR) }
+        fun eGiorno(t: Long): Boolean {
+            val c = cal(t)
+            val (a, tr) = sole(lat, lon, c)
+            val m = c.get(Calendar.HOUR_OF_DAY) * 60 + c.get(Calendar.MINUTE)
+            return m in a until tr
+        }
+        fun istante(p: Passo) = p.o.getJSONObject("instant").getJSONObject("details")
+        fun simbolo(p: Passo, periodo: String) = p.o.optJSONObject(periodo)?.optJSONObject("summary")?.optString("symbol_code")?.takeIf { it.isNotEmpty() }
+        // pioggia di ogni passo: 1 ora dove le previsioni sono orarie, 6 ore piu' avanti
+        fun pioggia(i: Int): Double {
+            val p = passi[i]
+            val passo = if (i + 1 < passi.size) passi[i + 1].t - p.t else ora
+            val periodo = if (passo <= ora && p.o.has("next_1_hours")) "next_1_hours" else "next_6_hours"
+            return p.o.optJSONObject(periodo)?.optJSONObject("details")?.optDouble("precipitation_amount")?.takeIf { !it.isNaN() } ?: 0.0
+        }
+
+        val i0 = passi.indexOfLast { it.t <= adesso }.coerceAtLeast(0)
+        val c = istante(passi[i0])
+        val fmtOra = SimpleDateFormat("HH", Locale.US).apply { timeZone = ROMA }
+        val ore = (i0 until passi.size).take(8).map { i ->
+            val p = passi[i]
+            Ora(fmtOra.format(Date(p.t)), codiceMet(simbolo(p, "next_1_hours") ?: simbolo(p, "next_6_hours")), eGiorno(p.t),
+                istante(p).optDouble("air_temperature").roundToInt(), 0, p.o.optJSONObject("next_1_hours")?.optJSONObject("details")?.optDouble("precipitation_amount")?.takeIf { !it.isNaN() } ?: 0.0)
+        }
+
+        // giornate: massima e minima da tutte le temperature del giorno (anche quelle dei 6 ore), simbolo di mezzogiorno
+        val oggi = giornata(adesso)
+        val perGiorno = LinkedHashMap<Int, MutableList<Int>>()
+        for (i in passi.indices) if (passi[i].t >= passi[i0].t) perGiorno.getOrPut(giornata(passi[i].t)) { ArrayList() }.add(i)
+        fun estremi(indici: List<Int>): Pair<Int, Int> {
+            val valori = ArrayList<Double>()
+            for (i in indici) {
+                istante(passi[i]).optDouble("air_temperature").takeIf { !it.isNaN() }?.let { valori.add(it) }
+                passi[i].o.optJSONObject("next_6_hours")?.optJSONObject("details")?.let { d ->
+                    d.optDouble("air_temperature_max").takeIf { !it.isNaN() }?.let { valori.add(it) }
+                    d.optDouble("air_temperature_min").takeIf { !it.isNaN() }?.let { valori.add(it) }
+                }
+            }
+            return (valori.maxOrNull() ?: 0.0).roundToInt() to (valori.minOrNull() ?: 0.0).roundToInt()
+        }
+        val nomi = arrayOf("Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab")
+        val giorni = perGiorno.filterKeys { it != oggi }.entries.take(5).map { (_, indici) ->
+            val mezzodi = indici.minByOrNull { kotlin.math.abs(cal(passi[it].t).get(Calendar.HOUR_OF_DAY) - 12) }!!
+            val (mx, mn) = estremi(indici)
+            Giorno(nomi[cal(passi[mezzodi].t).get(Calendar.DAY_OF_WEEK) - 1],
+                codiceMet(simbolo(passi[mezzodi], "next_6_hours") ?: simbolo(passi[mezzodi], "next_1_hours")), mx, mn, 0,
+                indici.sumOf { pioggia(it) })
+        }
+        val indiciOggi = perGiorno[oggi].orEmpty()
+        val (maxOggi, minOggi) = estremi(indiciOggi)
+        val (alba, tramonto) = sole(lat, lon, cal(adesso))
+        val vento = c.optDouble("wind_speed")
+        return Meteo(
+            citta = nomeCitta,
+            temp = c.optDouble("air_temperature").roundToInt(),
+            percepita = c.optDouble("apparent_air_temperature").takeIf { !it.isNaN() }?.roundToInt() ?: c.optDouble("air_temperature").roundToInt(),
+            codice = codiceMet(simbolo(passi[i0], "next_1_hours") ?: simbolo(passi[i0], "next_6_hours")),
+            giorno = eGiorno(adesso),
+            umidita = c.optDouble("relative_humidity").roundToInt(),
+            vento = if (vento.isNaN()) 0 else (vento * 3.6).roundToInt(),
+            direzione = direzione(c.optDouble("wind_from_direction")),
+            raffiche = 0,
+            pressione = c.optDouble("air_pressure_at_sea_level").roundToInt(),
+            max = if (indiciOggi.isEmpty()) "--" else maxOggi.toString(),
+            min = if (indiciOggi.isEmpty()) "--" else minOggi.toString(),
+            pioggiaOggi = 0, alba = hhmm(alba), tramonto = hhmm(tramonto),
+            ore = ore, giorni = giorni,
+            fonte = "MET Norway", inMillimetri = true,
+            pioggiaOggiMm = indiciOggi.sumOf { pioggia(it) },
+            nuvole = c.optDouble("cloud_area_fraction").takeIf { !it.isNaN() }?.roundToInt() ?: 0,
+        )
+    }
 
     // ---------------------------------------------------------------- meteo (open-meteo.com) ----
     fun meteo(ctx: Context, citta: Citta): Meteo {

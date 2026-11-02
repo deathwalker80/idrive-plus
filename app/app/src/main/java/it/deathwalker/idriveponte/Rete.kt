@@ -31,7 +31,7 @@ object Rete {
         return ripiego ?: cm.activeNetwork
     }
 
-    fun scarica(ctx: Context, indirizzo: String, timeoutMs: Int = 10000, massimo: Int = 6 * 1024 * 1024): ByteArray {
+    fun scarica(ctx: Context, indirizzo: String, timeoutMs: Int = 10000, massimo: Int = 6 * 1024 * 1024, agente: String = AGENTE): ByteArray {
         val url = URL(indirizzo)
         val rete = reteConInternet(ctx)
         val conn = (rete?.openConnection(url) ?: url.openConnection()) as HttpURLConnection
@@ -39,7 +39,7 @@ object Rete {
             conn.connectTimeout = timeoutMs
             conn.readTimeout = timeoutMs
             conn.instanceFollowRedirects = true
-            conn.setRequestProperty("User-Agent", AGENTE)
+            conn.setRequestProperty("User-Agent", agente)
             conn.setRequestProperty("Accept-Language", "it-IT,it;q=0.9")
             val codice = conn.responseCode
             if (codice !in 200..299) throw IllegalStateException("HTTP $codice da ${url.host}")
