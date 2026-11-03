@@ -39,6 +39,14 @@ One codebase for all three: only the name, icon, colour and the car's name in th
 
 Data sources are Italian, so the news, fuel and traffic sections are for Italy; the weather works anywhere.
 
+## What it looks like
+| In the car (MINI F60, 8.8" screen) | On the phone |
+|---|---|
+| <img src="docs/idrive_mini.gif" width="300" alt="MINI Connected menu with Weather, News, Local news, Fuel and Traffic"> | <img src="docs/app_nbtplus.png" width="300" alt="The app on the phone"> |
+| MINI Connected menu and the five pages. [Video (MP4, 30 s)](docs/idrive_mini.mp4) | NBT Plus (MINI Plus looks the same): car status, parking spot, page previews |
+
+Addresses, town and windscreen are blurred out; news photos are blurred.
+
 ## Layout
 ```
 app/        Android app (Kotlin, no external libraries) - flavors mini / bmw / supra

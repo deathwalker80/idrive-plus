@@ -245,7 +245,9 @@ class MainActivity : Activity() {
             setBackgroundColor(SFONDO)
             isVerticalScrollBarEnabled = false
             overScrollMode = View.OVER_SCROLL_NEVER
-            clipToPadding = false
+            // il contenuto scorre solo nello spazio tra le barre di sistema: sotto la barra di stato (orologio e icone)
+            // e sopra quella di navigazione resta il fondo dell'app, senza scritte che ci passano sotto
+            clipToPadding = true
             addView(col, MATCH_PARENT, WRAP_CONTENT)
         }
         // da Android 15 l'app disegna anche sotto la barra di stato e quella di navigazione:
