@@ -38,6 +38,14 @@ dell'auto (oppure si sceglie nelle impostazioni) e cambia il colore dell'app e i
 - **Viaggio**: mentre guidi e poi nel riquadro del parcheggio, partenza, durata, km percorsi, carburante consumato e nel serbatoio, temperature e aperture (porte, finestrini, tetto). I dati dell'auto li legge il plugin Meteo nell'iDrive (sola lettura) e li manda all'app sul Wi-Fi dell'auto: niente AAIdrive, nessun Bluetooth in più.
 - **Le mie auto**: più auto, ognuna riconosciuta dal suo nome Bluetooth, col suo nome nell'app (es. "Lucy" invece di "MINI12345", solo visivo), il suo carburante e il suo parcheggio. Si aggiungono da sole al primo collegamento, o dalle auto associate al telefono.
 
+## Come si vede
+| In auto (MINI F60, schermo 8,8") | Sul telefono |
+|---|---|
+| <img src="docs/idrive_mini.gif" width="300" alt="Menu MINI Connected con Meteo, Notizie, Notizie locali, Carburanti e Traffico"> | <img src="docs/app_nbtplus.png" width="300" alt="Schermata dell'app sul telefono"> |
+| Menu MINI Connected e le cinque pagine. [Video (MP4, 30 s)](docs/idrive_mini.mp4) | NBT Plus: stato in auto, parcheggio, anteprime delle pagine |
+
+Indirizzi, comune e parabrezza sono oscurati; le foto delle notizie sono sfocate.
+
 ## Struttura
 ```
 app/        app Android (Kotlin, nessuna libreria esterna)
