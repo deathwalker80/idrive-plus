@@ -1,44 +1,43 @@
-MINI Plus / BMW Plus / Supra Plus v20 (app 2.17 + plugin iDrive v8)
-==================================================================
-COSA CAMBIA RISPETTO ALLA v19
+iDrive Plus / NBT Plus - chiavetta v23 (plugin iDrive v8)
+=========================================================
+UNA CHIAVETTA PER TUTTE LE APP
+ - Da questa versione la chiavetta e' una sola per NBT Plus (Play Store) e per MINI Plus, BMW Plus e Supra Plus.
+   I plugin sono gli stessi; cambia solo il nome dell'app scritto nelle pagine "in attesa del telefono",
+   che si sceglie nel comando di installazione (vedi AUTO, punto 3).
+ - Prende il posto della v20 (MINI/BMW/Supra Plus) e della v22 (NBT Plus): i plugin sono identici a quelle,
+   se ne hai installata una non serve rifare niente.
+
+COSA CAMBIA RISPETTO ALLA v19 / v21
  - Nuova voce "Stato auto" nel menu dei servizi online (accanto a Meteo, Notizie, Carburanti...): autonomia,
    litri nel serbatoio, chilometri, consumo medio, il viaggio in corso, temperature esterna e interna, finestrini,
    tetto, portellone e cofano. La pagina la disegna l'app coi dati che legge il plugin Meteo e si aggiorna ogni
    10 secondi. Con /opt/aa/auto.disable la pagina resta "in attesa dei dati dell'auto".
- - Serve l'app 2.16 o successiva (con le versioni precedenti la voce Stato auto resta sulla pagina di attesa).
+ - Serve l'app NBT Plus 3.12 o MINI/BMW/Supra Plus 2.16 o successive (con le precedenti la voce Stato auto
+   resta sulla pagina di attesa).
  - Nell'app: storico dei viaggi, rifornimenti riconosciuti dal serbatoio (con prezzo del distributore MIMIT
    piu' vicino) e avviso sul telefono se scendi con un finestrino, il tetto, il portellone o il cofano aperti.
-
-COSA CAMBIA RISPETTO ALLA v18
- - Il plugin Meteo legge anche i dati dell'auto (chilometri, carburante, consumo medio, temperature esterna e
-   interna, porte, portellone, cofano, finestrini e tetto) e li manda all'app sul Wi-Fi dell'auto: l'app ne fa
-   il riquadro "In viaggio" e lo stato dell'auto nel riquadro del parcheggio. Sola lettura, come NbtAad legge la
-   marcia; niente AAIdrive e nessun collegamento Bluetooth in piu'.
- - Serve l'app 2.12 (le versioni precedenti non ricevono i dati: il plugin se ne accorge e smette di mandarli).
+ - Il plugin Meteo legge i dati dell'auto (chilometri, carburante, consumo medio, temperature esterna e interna,
+   porte, portellone, cofano, finestrini e tetto) e li manda all'app sul Wi-Fi dell'auto. Sola lettura, come
+   NbtAad legge la marcia; niente AAIdrive e nessun collegamento Bluetooth in piu'.
  - Dopo il primo viaggio:  grep auto: /dev/shmem/Meteo.log  mostra i primi valori ricevuti dall'auto
    (o il file Meteo.log sulla chiavetta, se e' inserita): mandameli, servono a confermare porte e portellone.
 
-COSA CAMBIA RISPETTO ALLA v17
- - Tre app dallo stesso codice: MINI Plus (azzurro), BMW Plus (giallo), Supra Plus (rosso).
-   Cambiano nome, icona, colore e il nome dell'auto nei testi ("Portami alla BMW"). Tutto il resto e' identico.
- - Chiavetta unica per le tre auto: nel comando di installazione si scrive la marca.
- - Notizie senza foto: al posto della miniatura vuota c'e' un riquadro scuro con l'ora,
-   cosi' ogni riga della lista ha la sua miniatura.
- - L'app si accende da sola anche col Bluetooth di una Supra ("Supra 12345", "Toyota Supra 12345").
-
-TELEFONO (installane UNA sola, quella della tua auto)
- - MINI:  MINIPlus-2.17-release.apk  (si installa sopra la 2.6 e successive, tiene le impostazioni)
- - BMW:   BMWPlus-2.17-release.apk
- - Supra: SupraPlus-2.17-release.apk
- Due app insieme sullo stesso telefono si contenderebbero il collegamento con l'iDrive.
+TELEFONO (installane UNA sola: due app insieme si contenderebbero il collegamento con l'iDrive)
+ - NBT Plus:   NBTPlus-3.13-release.apk (o dal Play Store), per MINI, BMW e Supra
+ - MINI Plus:  MINIPlus-2.17-release.apk  (si installa sopra la 2.6 e successive, tiene le impostazioni)
+ - BMW Plus:   BMWPlus-2.17-release.apk
+ - Supra Plus: SupraPlus-2.17-release.apk
 
 AUTO
  0. Estrai TUTTO questo zip nella RADICE della chiavetta (sovrascrivi).
  1. PuTTY: host 169.254.199.99  porta 22  utente root
  2.   mount -o remount rw /net/hu-omap/fs/sda0
       on -f /net/hu-omap/ /bin/sh
- 3.   sh /mnt/umass*/00-installa.sh mini
-      (sulla BMW: ... 00-installa.sh bmw   -   sulla Supra: ... 00-installa.sh supra)
+ 3.   secondo l'app che hai sul telefono:
+        NBT Plus:    sh /mnt/umass*/00-installa.sh
+        MINI Plus:   sh /mnt/umass*/00-installa.sh mini
+        BMW Plus:    sh /mnt/umass*/00-installa.sh bmw
+        Supra Plus:  sh /mnt/umass*/00-installa.sh supra
  4. Riavvio: tasto power 30 secondi.
 
 BMW E SUPRA: DA VERIFICARE SULL'AUTO VERA

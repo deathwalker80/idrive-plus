@@ -68,7 +68,7 @@ cd app
 
 ## Installare
 Le APK e lo zip della chiavetta sono nelle **Release**. Istruzioni passo passo in
-[`chiavetta/LEGGIMI-v20.txt`](chiavetta/LEGGIMI-v20.txt); in breve, sulla shell della testata:
+[`chiavetta/LEGGIMI-v23.txt`](chiavetta/LEGGIMI-v23.txt); in breve, sulla shell della testata:
 ```
 mount -o remount rw /net/hu-omap/fs/sda0
 on -f /net/hu-omap/ /bin/sh
