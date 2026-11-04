@@ -200,5 +200,17 @@ class ProvaPagineTest {
         val shotD = android.graphics.Bitmap.createBitmap(v.measuredWidth, v.measuredHeight, android.graphics.Bitmap.Config.ARGB_8888)
         val cd = android.graphics.Canvas(shotD); cd.drawColor(android.graphics.Color.rgb(10, 12, 15)); v.draw(cd)
         File(uscita, "informativa_posizione.png").outputStream().use { shotD.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+
+        // una sezione aperta dalla home (Stato vettura), a tutto schermo
+        dlg.dismiss()
+        att.apriSezione("vettura")
+        val col = ((att.window.decorView.findViewById<android.view.View>(android.R.id.content) as android.view.ViewGroup)
+            .getChildAt(0) as android.widget.ScrollView).getChildAt(0)
+        val ws = android.view.View.MeasureSpec.makeMeasureSpec(1080, android.view.View.MeasureSpec.EXACTLY)
+        val hs = android.view.View.MeasureSpec.makeMeasureSpec(0, android.view.View.MeasureSpec.UNSPECIFIED)
+        col.measure(ws, hs); col.layout(0, 0, col.measuredWidth, col.measuredHeight)
+        val shotV = android.graphics.Bitmap.createBitmap(col.measuredWidth, col.measuredHeight, android.graphics.Bitmap.Config.ARGB_8888)
+        val cvV = android.graphics.Canvas(shotV); cvV.drawColor(android.graphics.Color.rgb(10, 12, 15)); col.draw(cvV)
+        File(uscita, "app_vettura.png").outputStream().use { shotV.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
     }
 }

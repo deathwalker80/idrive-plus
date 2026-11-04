@@ -39,8 +39,9 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * NBT Plus: schermata del telefono. Stato del collegamento con l'iDrive, dove hai parcheggiato,
- * storico dei viaggi e rifornimenti, anteprima di ogni pagina che vede l'auto, impostazioni e permessi.
+ * NBT Plus: schermata del telefono. In alto la foto dell'auto, sotto una griglia di icone; ogni icona apre la sua
+ * schermata: stato del collegamento con l'iDrive, stato vettura, dove hai parcheggiato, storico dei viaggi e
+ * rifornimenti, anteprima di ogni pagina che vede l'auto, impostazioni e permessi.
  * Si aggiorna da sola ogni 1,5 s senza toccare i campi di testo (non interrompe mai la scrittura).
  * Se cambia la marca dell'auto (Bluetooth o impostazioni) si ridisegna coi colori nuovi, ma mai mentre stai scrivendo.
  */
@@ -116,6 +117,32 @@ class MainActivity : Activity() {
     // permessi
     private class Permesso(val tasto: TextView)
     private val permessi = HashMap<String, Permesso>()
+    private var permessiMancanti = 0
+
+    // home a icone: ogni sezione e' una o piu' schede, aperte a tutto schermo toccando la sua icona
+    private class Sezione(
+        val chiave: String,
+        val icona: Int,
+        val titolo: String,
+        val schede: List<View>,
+        val visibile: () -> Boolean = { true },
+        val stato: () -> String
+    )
+    private val sezioni = ArrayList<Sezione>()
+    private class Tessera(val vista: View, val stato: TextView)
+    private val tessere = HashMap<String, Tessera>()
+    private lateinit var scorri: ScrollView
+    private lateinit var home: LinearLayout
+    private lateinit var dettaglio: LinearLayout
+    private lateinit var griglia: LinearLayout
+    private var firmaGriglia = ""
+    private var aperta: Sezione? = null
+    private lateinit var fotoCopertina: ImageView
+    private lateinit var vuotoCopertina: TextView
+    private lateinit var nomeCopertina: TextView
+    private lateinit var statoCopertina: TextView
+    private var firmaCopertina = ""
+    private var indietro: Any? = null          // OnBackInvokedCallback (Android 13+) mentre una sezione e' aperta
 
     private val ripeti = object : Runnable {
         override fun run() {
@@ -142,14 +169,25 @@ class MainActivity : Activity() {
         SU_ACCENTO = Marca.SU_ACCENTO
         riquadri.clear(); chipMarca.clear(); chipRaggio.clear(); permessi.clear()
         firmaParcheggi = ""; firmaParco = ""; firmaViaggio = ""
+        // si riparte dalla home: la sezione aperta (e il suo Indietro) non c'e' piu'
+        if (aperta != null) chiudiSezione()
+        sezioni.clear(); tessere.clear(); firmaGriglia = ""; firmaCopertina = ""; firmaFoto = ""; versionePorte = -1L
+        // home: intestazione, foto dell'auto e griglia di icone; ogni icona apre la sua schermata (dettaglio)
         val col = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(px(16), px(20), px(16), px(28))
         }
-        col.addView(intestazione())
+        home = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        dettaglio = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE }
+        col.addView(home)
+        col.addView(dettaglio)
+        home.addView(intestazione())
+        home.addView(copertina())
+        griglia = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        home.addView(griglia, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { topMargin = px(4) })
 
         // ---- stato del collegamento
-        col.addView(scheda(R.drawable.ic_auto, "In auto") { s ->
+        val schedaInAuto = scheda(R.drawable.ic_auto, "In auto") { s ->
             val (p0, t0) = rigaStato(s, "Auto"); puntoAuto = p0; testoAuto = t0
             // Modifica compare solo quando un'auto si e' collegata almeno una volta: prima non c'e' niente da modificare
             tastoModificaAuto = TextView(this).apply {
@@ -171,16 +209,15 @@ class MainActivity : Activity() {
                 if (Stato.servizioAttivo) PonteService.ferma(this) else PonteService.avvia(this, "a mano")
             }
             tasto(tasti, "Aggiorna tutto", false) { PonteService.aggiornaOra(this) }
-        })
+        }
 
         // ---- viaggio in corso: compare solo mentre sei in auto (dopo resta nel riquadro del parcheggio)
         schedaViaggio = scheda(R.drawable.ic_auto, "In viaggio") { s ->
             boxViaggio = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }.also { s.addView(it) }
         }
-        col.addView(schedaViaggio)
 
         // ---- Stato vettura: la pagina "Porte, finestrini e tetto" che vede l'iDrive, con la foto dell'auto e i suoi punti
-        col.addView(scheda(R.drawable.ic_auto, "Stato vettura", "Porte, finestrini e tetto nell'iDrive") { s ->
+        val schedaVettura = scheda(R.drawable.ic_auto, "Stato vettura", "Porte, finestrini e tetto nell'iDrive") { s ->
             immagineVettura = ImageView(this).apply {
                 adjustViewBounds = true
                 scaleType = ImageView.ScaleType.FIT_CENTER
@@ -197,22 +234,20 @@ class MainActivity : Activity() {
                 Foto.togliAvatar(this, Parco.ultima(this).orEmpty())
                 aggiornaSchermo()
             }
-        })
+        }
 
         // ---- parcheggio
-        col.addView(scheda(R.drawable.ic_parcheggio, "Dove ho parcheggiato") { s ->
+        val schedaParcheggio = scheda(R.drawable.ic_parcheggio, "Dove ho parcheggiato") { s ->
             boxParcheggi = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }.also { s.addView(it) }
-        })
+        }
 
         // ---- storico dei viaggi e rifornimenti: compaiono dal primo viaggio finito e dal primo rifornimento
         schedaStorico = scheda(R.drawable.ic_storico, "Storico viaggi", "Ogni viaggio finito, coi dati dell'iDrive") { s ->
             boxStorico = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }.also { s.addView(it) }
         }
-        col.addView(schedaStorico)
         schedaRifornimenti = scheda(R.drawable.ic_carburante, "Rifornimenti", "Riconosciuti dal livello del serbatoio") { s ->
             boxRifornimenti = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }.also { s.addView(it) }
         }
-        col.addView(schedaRifornimenti)
 
         // ---- parco vetture: compare solo quando il telefono ha visto piu' di un'auto
         schedaParco = scheda(R.drawable.ic_auto, "Le mie auto", "Ognuna col suo nome, carburante e parcheggio") { s ->
@@ -220,7 +255,6 @@ class MainActivity : Activity() {
             val tasti = rigaTasti(s)
             tasto(tasti, "Aggiungi dal Bluetooth", false) { aggiungiDaBluetooth() }
         }
-        col.addView(schedaParco)
 
         // ---- pagine che vede l'iDrive
         val pagine = listOf(
@@ -231,8 +265,9 @@ class MainActivity : Activity() {
             Triple("Traffico", R.drawable.ic_traffico, "Autostrade per l'Italia vicino a te"),
             Triple("Stato vettura · Riepilogo", R.drawable.ic_auto, "Autonomia, km, viaggio e temperature dall'iDrive")
         )
+        val schedePagine = HashMap<String, View>()
         for ((nome, icona, sotto) in pagine) {
-            col.addView(scheda(icona, nome, sotto) { s ->
+            schedePagine[nome] = scheda(icona, nome, sotto) { s ->
                 val esito = piccolo(s, "")
                 val img = ImageView(this).apply {
                     adjustViewBounds = true
@@ -246,12 +281,12 @@ class MainActivity : Activity() {
                 }
                 s.addView(img, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { topMargin = px(10) })
                 riquadri[nome] = Riquadro(esito, img)
-            })
+            }
         }
 
         // ---- impostazioni
         val prefs = getSharedPreferences("ponte", MODE_PRIVATE)
-        col.addView(scheda(R.drawable.ic_impostazioni, "Impostazioni") { s ->
+        val schedaImpostazioni = scheda(R.drawable.ic_impostazioni, "Impostazioni") { s ->
             etichetta(s, "Auto (si riconosce da sola dal Bluetooth)")
             val r0 = rigaChip(s)
             for (tipo in Marca.TUTTE) chipMarca[tipo.codice] = chip(r0, tipo.auto) {
@@ -282,10 +317,10 @@ class MainActivity : Activity() {
             val t2 = rigaTasti(s)
             tasto(t2, "Salva città", false) { salvaCitta(campoRiserva, false) }
             esitoRiserva = piccolo(s, "")
-        })
+        }
 
         // ---- permessi
-        col.addView(scheda(R.drawable.ic_permessi, "Permessi") { s ->
+        val schedaPermessi = scheda(R.drawable.ic_permessi, "Permessi") { s ->
             permesso(s, "bt", "Bluetooth", "per accendersi quando sali in auto") {
                 chiedi(arrayOf(Manifest.permission.BLUETOOTH_CONNECT))
             }
@@ -302,15 +337,40 @@ class MainActivity : Activity() {
                     else chiedi(arrayOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION))
                 }
             }
-        })
+        }
 
-        col.addView(TextView(this).apply {
+        // ---- le icone della home, sempre in quest'ordine; viaggio, storico, rifornimenti e parco compaiono solo quando servono
+        val pag = { n: String -> listOf(schedePagine.getValue(n)) }
+        sezioni += Sezione("auto", R.drawable.ic_auto, "In auto", listOf(schedaInAuto)) {
+            if (Stato.servizioAttivo) "acceso" else "spento"
+        }
+        sezioni += Sezione("viaggio", R.drawable.ic_auto, "In viaggio", listOf(schedaViaggio), { schedaViaggio.visibility != View.GONE }) { "in corso" }
+        sezioni += Sezione("vettura", R.drawable.ic_auto, "Stato vettura", listOf(schedaVettura) + pag("Stato vettura · Riepilogo")) { statoVettura() }
+        sezioni += Sezione("parcheggio", R.drawable.ic_parcheggio, "Parcheggio", listOf(schedaParcheggio)) {
+            Parcheggio.tutti(this).firstOrNull()?.let { SimpleDateFormat("dd/MM HH:mm", Locale.ITALY).format(Date(it.quando)) } ?: "nessuno"
+        }
+        sezioni += Sezione("storico", R.drawable.ic_storico, "Storico viaggi", listOf(schedaStorico), { schedaStorico.visibility != View.GONE }) { "" }
+        sezioni += Sezione("rifornimenti", R.drawable.ic_carburante, "Rifornimenti", listOf(schedaRifornimenti), { schedaRifornimenti.visibility != View.GONE }) { "" }
+        sezioni += Sezione("parco", R.drawable.ic_auto, "Le mie auto", listOf(schedaParco), { schedaParco.visibility != View.GONE }) {
+            "${Parco.elenco(this).size} auto"
+        }
+        sezioni += Sezione("meteo", R.drawable.ic_meteo, "Meteo", pag("Meteo")) { quando(Stato.meteo.esito) }
+        sezioni += Sezione("notizie", R.drawable.ic_notizie, "Notizie", pag("Notizie")) { quando(Stato.notizie.esito) }
+        sezioni += Sezione("locali", R.drawable.ic_locali, "Notizie locali", pag("Notizie locali")) { quando(Stato.locali.esito) }
+        sezioni += Sezione("carburanti", R.drawable.ic_carburante, "Carburanti", pag("Carburanti")) { quando(Stato.carburanti.esito) }
+        sezioni += Sezione("traffico", R.drawable.ic_traffico, "Traffico", pag("Traffico")) { quando(Stato.traffico.esito) }
+        sezioni += Sezione("impostazioni", R.drawable.ic_impostazioni, "Impostazioni", listOf(schedaImpostazioni)) { "" }
+        sezioni += Sezione("permessi", R.drawable.ic_permessi, "Permessi", listOf(schedaPermessi)) {
+            if (permessiMancanti == 0) "tutti concessi" else "$permessiMancanti da concedere"
+        }
+
+        home.addView(TextView(this).apply {
             text = "${Marca.APP} ${Stato.VERSIONE} · dati: open-meteo.com, MET Norway, ANSA, MIMIT, Autostrade per l'Italia, Protezione Civile"
             setTextColor(TENUE); textSize = 11f; gravity = Gravity.CENTER
             setPadding(0, px(14), 0, 0)
         })
 
-        val scorri = ScrollView(this).apply {
+        scorri = ScrollView(this).apply {
             setBackgroundColor(SFONDO)
             isVerticalScrollBarEnabled = false
             overScrollMode = View.OVER_SCROLL_NEVER
@@ -350,7 +410,9 @@ class MainActivity : Activity() {
         val riserva = campoRiserva.text.toString()
         val esLocali = esitoLocali.text
         val esRiserva = esitoRiserva.text
+        val riaperta = aperta?.chiave              // di solito Impostazioni, dove si sceglie la marca
         costruisci()
+        riaperta?.let { apriSezione(it) }
         campoLocali.setText(locali)
         campoRiserva.setText(riserva)
         esitoLocali.text = esLocali
@@ -366,6 +428,183 @@ class MainActivity : Activity() {
     override fun onPause() {
         mano.removeCallbacks(ripeti)
         super.onPause()
+    }
+
+    @Deprecated("Activity semplice, senza AndroidX")
+    override fun onBackPressed() {
+        if (aperta != null) chiudiSezione()
+        else {
+            @Suppress("DEPRECATION")
+            super.onBackPressed()
+        }
+    }
+
+    // ============================================================================ home a icone ====
+    /** foto dell'auto in alto (quella di serie nella MINI Plus, altrimenti la foto scelta), col nome e lo stato */
+    private fun copertina(): View {
+        val c = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(Color.rgb(30, 36, 44), SCHEDA)
+            ).apply { cornerRadius = px(18).toFloat(); setStroke(px(1), BORDO) }
+            setPadding(px(14), px(14), px(14), px(14))
+            isClickable = true
+            setOnClickListener { apriSezione("vettura") }
+        }
+        fotoCopertina = ImageView(this).apply {
+            adjustViewBounds = true
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            visibility = View.GONE
+        }
+        c.addView(fotoCopertina, LinearLayout.LayoutParams(MATCH_PARENT, px(170)))
+        vuotoCopertina = TextView(this).apply {
+            text = "Tocca qui per mettere la foto della tua auto"
+            setTextColor(TENUE); textSize = 14f; gravity = Gravity.CENTER
+            background = tondo(Color.rgb(16, 19, 23), 14, BORDO)
+            visibility = View.GONE
+        }
+        c.addView(vuotoCopertina, LinearLayout.LayoutParams(MATCH_PARENT, px(110)))
+        nomeCopertina = TextView(this).apply {
+            setTextColor(TESTO); textSize = 19f; typeface = Typeface.DEFAULT_BOLD
+            setPadding(px(2), px(10), 0, 0)
+        }
+        c.addView(nomeCopertina)
+        statoCopertina = TextView(this).apply { setTextColor(TENUE); textSize = 13f; setPadding(px(2), px(2), 0, 0) }
+        c.addView(statoCopertina)
+        return c
+    }
+
+    /** icona della griglia: simbolo nel colore della marca, nome e una riga di stato */
+    private fun tessera(z: Sezione): Tessera {
+        val t = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = tondo(SCHEDA, 16, BORDO)
+            setPadding(px(12), px(14), px(10), px(12))
+            isClickable = true
+            setOnClickListener { apriSezione(z.chiave) }
+        }
+        val fondo = FrameLayout(this).apply { background = tondo(Color.rgb(34, 40, 48), 12) }
+        fondo.addView(ImageView(this).apply {
+            setImageResource(z.icona)
+            imageTintList = ColorStateList.valueOf(ACCENTO)
+        }, FrameLayout.LayoutParams(px(24), px(24), Gravity.CENTER))
+        t.addView(fondo, LinearLayout.LayoutParams(px(42), px(42)))
+        t.addView(TextView(this).apply {
+            text = z.titolo; setTextColor(TESTO); textSize = 14f; typeface = Typeface.DEFAULT_BOLD
+            maxLines = 2; setPadding(0, px(10), 0, 0)
+        })
+        val st = TextView(this).apply {
+            setTextColor(TENUE); textSize = 12f; maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        }
+        t.addView(st)
+        return Tessera(t, st)
+    }
+
+    /** la griglia si ricompone solo quando compare o sparisce un'icona (3 per riga, sempre nello stesso ordine) */
+    private fun aggiornaHome() {
+        val visibili = sezioni.filter { it.visibile() }
+        val firma = visibili.joinToString(",") { it.chiave }
+        if (firma != firmaGriglia) {
+            firmaGriglia = firma
+            griglia.removeAllViews()
+            tessere.clear()
+            visibili.chunked(3).forEach { gruppo ->
+                val riga = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+                for (k in 0 until 3) {
+                    val lp = LinearLayout.LayoutParams(0, MATCH_PARENT, 1f).apply { if (k > 0) marginStart = px(10) }
+                    val z = gruppo.getOrNull(k)
+                    if (z == null) { riga.addView(View(this), lp); continue }
+                    val t = tessera(z)
+                    tessere[z.chiave] = t
+                    riga.addView(t.vista, lp)
+                }
+                griglia.addView(riga, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { topMargin = px(10) })
+            }
+        }
+        for (z in visibili) tessere[z.chiave]?.stato?.let { st ->
+            val v = z.stato()
+            if (st.text.toString() != v) st.text = v
+            st.visibility = if (v.isEmpty()) View.INVISIBLE else View.VISIBLE
+        }
+
+        // copertina: la foto si ridisegna solo quando cambia
+        val bt = Parco.ultima(this)
+        val firma2 = "$bt/${Foto.firma(this, bt)}"
+        if (firma2 != firmaCopertina) {
+            firmaCopertina = firma2
+            val foto = Foto.immagine(this, bt)
+            fotoCopertina.setImageBitmap(foto)
+            fotoCopertina.visibility = if (foto != null) View.VISIBLE else View.GONE
+            vuotoCopertina.visibility = if (foto != null) View.GONE else View.VISIBLE
+        }
+        nomeCopertina.text = bt?.let { Parco.mostra(this, it) } ?: Marca.APP
+        val recente = Stato.ultimaRichiestaAuto != 0L && System.currentTimeMillis() - Stato.ultimaRichiestaAuto < 2 * 60 * 1000L
+        statoCopertina.text = listOf(
+            if (Stato.servizioAttivo) "Acceso" else "Spento",
+            if (recente) "iDrive collegato" else if (Stato.servizioAttivo) "in attesa dell'iDrive" else "si accende col Bluetooth",
+            statoVettura()
+        ).filter { it.isNotEmpty() }.joinToString(" · ")
+    }
+
+    /** apre a tutto schermo le schede di una sezione; Indietro (o il gesto) torna alla home */
+    internal fun apriSezione(chiave: String) {
+        val z = sezioni.firstOrNull { it.chiave == chiave } ?: return
+        aperta = z
+        dettaglio.removeAllViews()
+        val su = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, px(2), 0, px(4))
+        }
+        su.addView(TextView(this).apply {
+            text = "‹  Home"; setTextColor(TESTO); textSize = 15f; typeface = Typeface.DEFAULT_BOLD
+            background = tondo(Color.TRANSPARENT, 20, Color.rgb(90, 98, 110))
+            setPadding(px(16), px(9), px(18), px(9))
+            isClickable = true
+            setOnClickListener { chiudiSezione() }
+        })
+        dettaglio.addView(su)
+        for (v in z.schede) {
+            (v.parent as? ViewGroup)?.removeView(v)
+            dettaglio.addView(v)
+        }
+        home.visibility = View.GONE
+        dettaglio.visibility = View.VISIBLE
+        scorri.scrollTo(0, 0)
+        if (Build.VERSION.SDK_INT >= 33 && indietro == null) {
+            val cb = android.window.OnBackInvokedCallback { chiudiSezione() }
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, cb)
+            indietro = cb
+        }
+        aggiornaSchermo()
+    }
+
+    private fun chiudiSezione() {
+        aperta = null
+        dettaglio.removeAllViews()
+        dettaglio.visibility = View.GONE
+        home.visibility = View.VISIBLE
+        scorri.scrollTo(0, 0)
+        if (Build.VERSION.SDK_INT >= 33) {
+            (indietro as? android.window.OnBackInvokedCallback)?.let { onBackInvokedDispatcher.unregisterOnBackInvokedCallback(it) }
+        }
+        indietro = null
+        aggiornaSchermo()
+    }
+
+    /** "tutto chiuso" o "2 aperture" dagli ultimi dati dell'iDrive; vuoto se non ne sono ancora arrivati */
+    private fun statoVettura(): String {
+        if (DatiAuto.grezzi.isEmpty()) return ""
+        val n = DatiAuto.istantanea(DatiAuto.grezzi).aperti?.size ?: return ""
+        return if (n == 0) "tutto chiuso" else if (n == 1) "1 apertura" else "$n aperture"
+    }
+
+    /** "alle 14:30" dall'esito di una pagina ("OK alle 14:30 - ..."), "errore" se l'ultimo giro e' andato male */
+    private fun quando(esito: String): String = when {
+        esito.startsWith("ERRORE") -> "errore"
+        else -> Regex("alle (\\d{1,2}:\\d{2})").find(esito)?.let { "alle " + it.groupValues[1] } ?: ""
     }
 
     // ============================================================================ costruzione ====
@@ -584,11 +823,13 @@ class MainActivity : Activity() {
         mostra("Traffico", Stato.traffico.esito, Stato.traffico.epoch, Stato.traffico.png)
         mostra("Stato vettura · Riepilogo", Stato.auto.esito, Stato.auto.epoch, Stato.auto.png)
 
+        permessiMancanti = 0
         statoPermesso("bt", Build.VERSION.SDK_INT < 31 || ha(Manifest.permission.BLUETOOTH_CONNECT))
         statoPermesso("notifiche", Build.VERSION.SDK_INT < 33 || ha(Manifest.permission.POST_NOTIFICATIONS))
         statoPermesso("batteria", getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(packageName))
         statoPermesso("posizione", ha(Manifest.permission.ACCESS_FINE_LOCATION))
         statoPermesso("sempre", Posizione.permessoSempre(this))
+        aggiornaHome()
     }
 
     private fun mostra(nome: String, esito: String, epoch: Long, png: ByteArray?) {
@@ -606,6 +847,7 @@ class MainActivity : Activity() {
     }
 
     private fun statoPermesso(chiave: String, ok: Boolean) {
+        if (!ok) permessiMancanti++
         val p = permessi[chiave] ?: return
         p.tasto.text = if (ok) "Concesso" else "Consenti"
         p.tasto.setTextColor(if (ok) VERDE else SU_ACCENTO)
