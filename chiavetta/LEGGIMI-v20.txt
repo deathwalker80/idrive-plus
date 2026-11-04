@@ -1,5 +1,14 @@
-MINI Plus / BMW Plus / Supra Plus v19 (app 2.12 + plugin iDrive v7)
+MINI Plus / BMW Plus / Supra Plus v20 (app 2.16 + plugin iDrive v8)
 ==================================================================
+COSA CAMBIA RISPETTO ALLA v19
+ - Nuova voce "Stato auto" nel menu dei servizi online (accanto a Meteo, Notizie, Carburanti...): autonomia,
+   litri nel serbatoio, chilometri, consumo medio, il viaggio in corso, temperature esterna e interna, finestrini,
+   tetto, portellone e cofano. La pagina la disegna l'app coi dati che legge il plugin Meteo e si aggiorna ogni
+   10 secondi. Con /opt/aa/auto.disable la pagina resta "in attesa dei dati dell'auto".
+ - Serve l'app 2.16 (con le versioni precedenti la voce Stato auto resta sulla pagina di attesa).
+ - Nell'app: storico dei viaggi, rifornimenti riconosciuti dal serbatoio (con prezzo del distributore MIMIT
+   piu' vicino) e avviso sul telefono se scendi con un finestrino, il tetto, il portellone o il cofano aperti.
+
 COSA CAMBIA RISPETTO ALLA v18
  - Il plugin Meteo legge anche i dati dell'auto (chilometri, carburante, consumo medio, temperature esterna e
    interna, porte, portellone, cofano, finestrini e tetto) e li manda all'app sul Wi-Fi dell'auto: l'app ne fa
@@ -18,9 +27,9 @@ COSA CAMBIA RISPETTO ALLA v17
  - L'app si accende da sola anche col Bluetooth di una Supra ("Supra 12345", "Toyota Supra 12345").
 
 TELEFONO (installane UNA sola, quella della tua auto)
- - MINI:  MINIPlus-2.12-release.apk  (si installa sopra la 2.6 e successive, tiene le impostazioni)
- - BMW:   BMWPlus-2.12-release.apk
- - Supra: SupraPlus-2.12-release.apk
+ - MINI:  MINIPlus-2.16-release.apk  (si installa sopra la 2.6 e successive, tiene le impostazioni)
+ - BMW:   BMWPlus-2.16-release.apk
+ - Supra: SupraPlus-2.16-release.apk
  Due app insieme sullo stesso telefono si contenderebbero il collegamento con l'iDrive.
 
 AUTO
@@ -39,7 +48,7 @@ BMW E SUPRA: DA VERIFICARE SULL'AUTO VERA
  - Il nome Bluetooth dell'auto: se l'app non si accende da sola, va letto il nome esatto.
 
 TOGLIERE
- - sh /mnt/umass*/10-togli.sh  (+ riavvio)
+ - sh /mnt/umass*/10-togli.sh  (+ riavvio): toglie tutti e sei i plugin, Stato auto compreso
  - spegnere senza togliere: echo 1 > /opt/aa/ponte.disable  (+ riavvio)
  - solo i dati dell'auto: echo 1 > /opt/aa/auto.disable  (+ riavvio); per riaccenderli: rm /opt/aa/auto.disable
  Android Auto (NbtAad) non viene mai toccato.

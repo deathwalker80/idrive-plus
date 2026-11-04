@@ -10,8 +10,8 @@ import java.util.concurrent.Executors
 /**
  * Piccolo server HTTP sul telefono, porta 8765: i plugin dell'iDrive chiedono qui le pagine pronte.
  *   GET /ponte            -> "IDRIVEPONTE <versione> meteo=<epoch> notizie=<epoch> n=<numero> locali=<epoch>
- *                             carburanti=<epoch> traffico=<epoch>"
- *   GET /meteo.png, /carburanti.png, /traffico.png -> pagine 1280x480
+ *                             carburanti=<epoch> traffico=<epoch> auto=<epoch>"
+ *   GET /meteo.png, /carburanti.png, /traffico.png, /auto.png -> pagine 1280x480 (auto = stato dell'auto)
  *   GET /locali/...       -> come le notizie qui sotto, per le notizie locali
  *   GET /notizie.txt      -> riga 1 "NOTIZIE <epoch> <n>", poi un titolo per riga (ISO-8859-1: l'iDrive legge cosi'
  *                            il testo dei plugin; in UTF-8 "Morì" diventava "MorÃ¬")
@@ -84,13 +84,16 @@ class Server(private val quandoChiede: () -> Unit) {
     }
 
     private fun instrada(out: OutputStream, percorso: String, query: String) {
-        val pagine = mapOf("/meteo.png" to Stato.meteo, "/carburanti.png" to Stato.carburanti, "/traffico.png" to Stato.traffico)
+        val pagine = mapOf(
+            "/meteo.png" to Stato.meteo, "/carburanti.png" to Stato.carburanti, "/traffico.png" to Stato.traffico, "/auto.png" to Stato.auto
+        )
         val pagina = pagine[percorso]
         when {
             percorso == "/ponte" -> rispondi(
                 out, 200, "text/plain",
                 ("IDRIVEPONTE ${Stato.VERSIONE} meteo=${Stato.meteo.epoch} notizie=${Stato.notizie.epoch} n=${Stato.notizie.notizie.size} " +
-                    "locali=${Stato.locali.epoch} carburanti=${Stato.carburanti.epoch} traffico=${Stato.traffico.epoch}\n").toByteArray()
+                    "locali=${Stato.locali.epoch} carburanti=${Stato.carburanti.epoch} traffico=${Stato.traffico.epoch} " +
+                    "auto=${Stato.auto.epoch}\n").toByteArray()
             )
             pagina != null -> {
                 val png = pagina.png

@@ -342,6 +342,119 @@ class Disegno(private val ctx: Context) {
         }
     }
 
+    // ------------------------------------------------------------------------------ stato auto ----
+    /** riquadro delle pagine a schede: fondo velato, bordo sottile o colorato (evidenza) */
+    private fun riquadro(c: Canvas, r: RectF, evidenza: Int = 0) {
+        c.drawRoundRect(r, 18f, 18f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = if (evidenza != 0) (evidenza and 0x00FFFFFF) or 0x33000000 else 0x24FFFFFF
+            setShadowLayer(6f, 0f, 2f, 0x40000000)
+        })
+        c.drawRoundRect(RectF(r.left + 1, r.top + 1, r.right - 1, r.bottom - 1), 18f, 18f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE; strokeWidth = if (evidenza != 0) 4f else 1.5f
+            color = if (evidenza != 0) evidenza else 0x40FFFFFF
+        })
+    }
+
+    /** riquadro con etichetta piccola in alto e un valore grande con la sua unita' */
+    private fun riquadroValore(c: Canvas, r: RectF, etichetta: String, valore: String, unita: String) {
+        riquadro(c, r)
+        scrivi(c, etichetta.uppercase(Locale.ITALY), r.left + 22f, r.top + 18f, pennello(17f, true, TENUE))
+        val pv = pennello(58f, true, BIANCO)
+        scrivi(c, valore, r.left + 22f, r.top + 54f, pv, 66f)
+        if (unita.isNotEmpty()) scrivi(c, unita, r.left + 30f + pv.measureText(valore), r.top + 82f, pennello(24f, false, TENUE), 28f)
+    }
+
+    /**
+     * stato dell'auto per l'iDrive: autonomia, serbatoio, chilometri, consumo medio, il viaggio in corso, temperature e
+     * aperture, coi dati che il plugin Meteo legge nell'iDrive. Senza dati, l'avviso di come arrivano.
+     */
+    fun paginaAuto(nome: String, i: DatiAuto.Istantanea?, v: Viaggio.Dati?, rifornimento: Rifornimenti.Voce?, quando: Long): ByteArray {
+        val (b, c) = nuovaTela()
+        val ora = java.text.SimpleDateFormat("HH:mm", Locale.ITALY).apply { timeZone = Dati.ROMA }
+        intestazione(c, nome, if (i != null && quando > 0) "dati dell'iDrive · ${ora.format(java.util.Date(quando))}" else "")
+        if (i == null || listOf(i.km, i.litri, i.autonomia, i.consumo, i.esterna, i.interna).all { it == null } && i.aperti == null) {
+            val l = blocco("In attesa dei dati dell'auto. Li legge il plugin Meteo della chiavetta e li manda al telefono sul Wi-Fi " +
+                "dell'auto, pochi secondi dopo l'accensione dell'iDrive.", pennello(25f, false, TENUE), 1200, 33f, 4)
+            c.save(); c.translate(0f, 78f); l.draw(c); c.restore()
+            return png(b)
+        }
+        val gap = 18f
+        val trattino = "–"
+        // prima fila: quattro numeri grandi
+        val w4 = (TELA_W - 3 * gap) / 4f
+        val y1 = 74f
+        val h1 = 150f
+        val numeri = listOf(
+            Triple("Autonomia", i.autonomia?.let { String.format(Locale.ITALY, "%.0f", it) } ?: trattino, "km"),
+            Triple("Serbatoio", i.litri?.let { String.format(Locale.ITALY, "%.0f", it) } ?: trattino, "litri"),
+            Triple("Chilometri", i.km?.let { String.format(Locale.ITALY, "%,.0f", it) } ?: trattino, "km"),
+            Triple("Consumo medio", i.consumo?.let { String.format(Locale.ITALY, "%.1f", 100 / it) } ?: trattino, "km/l"),
+        )
+        numeri.forEachIndexed { k, (etichetta, valore, unita) ->
+            val x = k * (w4 + gap)
+            riquadroValore(c, RectF(x, y1, x + w4, y1 + h1), etichetta, valore, if (valore == trattino) "" else unita)
+        }
+
+        // seconda fila: viaggio, temperature, aperture
+        val y2 = y1 + h1 + gap
+        val h2 = TELA_H - y2
+        val wV = 500f
+        val wT = 300f
+        val rV = RectF(0f, y2, wV, y2 + h2)
+        val rT = RectF(wV + gap, y2, wV + gap + wT, y2 + h2)
+        val rA = RectF(rT.right + gap, y2, TELA_W, y2 + h2)
+        val pEt = pennello(17f, true, TENUE)
+        val pRiga = pennello(25f, false, BIANCO)
+        val pRigaT = pennello(21f, false, TENUE)
+
+        riquadro(c, rV)
+        scrivi(c, if (v != null && v.inCorso) "QUESTO VIAGGIO" else "ULTIMO VIAGGIO", rV.left + 22f, rV.top + 18f, pEt)
+        if (v != null) {
+            val minuti = v.durata() / 60000
+            val durata = if (minuti < 60) "$minuti min" else "${minuti / 60} h ${"%02d".format(minuti % 60)} min"
+            val km = v.km()?.let { String.format(Locale.ITALY, if (it < 10) "%.1f km" else "%.0f km", it) }
+            scrivi(c, listOfNotNull(km, durata).joinToString(" · "), rV.left + 22f, rV.top + 50f, pennello(30f, true, BIANCO), 36f)
+            v.litri()?.let { l ->
+                scrivi(c, String.format(Locale.ITALY, "%.1f litri consumati", l) + if (v.rifornito > 0) " (con rifornimento)" else "",
+                    rV.left + 22f, rV.top + 94f, pRiga)
+            }
+            val partenza = "partito alle ${ora.format(java.util.Date(v.partenza))}" + if (v.luogo.isNotEmpty()) " da ${v.luogo}" else ""
+            scrivi(c, ellissi(partenza, pRigaT, wV - 44f), rV.left + 22f, rV.top + 128f, pRigaT)
+        } else {
+            scrivi(c, "Nessun viaggio ancora", rV.left + 22f, rV.top + 50f, pRiga)
+        }
+        rifornimento?.let { r ->
+            val giorno = java.text.SimpleDateFormat("dd/MM", Locale.ITALY).apply { timeZone = Dati.ROMA }.format(java.util.Date(r.quando))
+            scrivi(c, ellissi(String.format(Locale.ITALY, "ultimo rifornimento %s · %.0f litri", giorno, r.litri), pRigaT, wV - 44f),
+                rV.left + 22f, rV.top + 160f, pRigaT)
+        }
+
+        riquadro(c, rT)
+        scrivi(c, "TEMPERATURE", rT.left + 22f, rT.top + 18f, pEt)
+        val temp = { t: Double? -> t?.let { String.format(Locale.ITALY, "%.0f °C", it) } ?: trattino }
+        scrivi(c, "Esterna", rT.left + 22f, rT.top + 56f, pRigaT)
+        scrivi(c, temp(i.esterna), rT.right - 22f, rT.top + 50f, pennello(32f, true, BIANCO, Paint.Align.RIGHT), 36f)
+        scrivi(c, "Interna", rT.left + 22f, rT.top + 112f, pRigaT)
+        scrivi(c, temp(i.interna), rT.right - 22f, rT.top + 106f, pennello(32f, true, BIANCO, Paint.Align.RIGHT), 36f)
+
+        val aperti = i.aperti
+        val arancio = 0xFFFFA726.toInt()
+        val verde = 0xFF66BB6A.toInt()
+        riquadro(c, rA, if (aperti == null) 0 else if (aperti.isEmpty()) verde else arancio)
+        scrivi(c, "APERTURE", rA.left + 22f, rA.top + 18f, pEt)
+        when {
+            aperti == null -> scrivi(c, "stato non arrivato", rA.left + 22f, rA.top + 50f, pRigaT)
+            aperti.isEmpty() -> scrivi(c, "Tutto chiuso", rA.left + 22f, rA.top + 50f, pennello(30f, true, BIANCO), 36f)
+            else -> {
+                val righe = if (aperti.size > 4) aperti.take(3) + "e altri ${aperti.size - 3}" else aperti
+                righe.forEachIndexed { k, a ->
+                    scrivi(c, ellissi(a.replaceFirstChar { it.uppercase() }, pRiga, rA.width() - 44f), rA.left + 22f, rA.top + 50f + k * 34f, pRiga)
+                }
+            }
+        }
+        return png(b)
+    }
+
     // ------------------------------------------------------------------------------ traffico ----
     fun paginaTraffico(lista: List<EventoTraffico>, luogo: String, raggio: Int): ByteArray {
         val (b, c) = nuovaTela()

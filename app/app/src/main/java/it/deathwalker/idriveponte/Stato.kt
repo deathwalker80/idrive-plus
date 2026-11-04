@@ -13,7 +13,7 @@ class NotiziaPronta(
     val anteprima: ByteArray
 )
 
-/** una pagina singola per l'iDrive (Meteo, Carburanti, Traffico) */
+/** una pagina singola per l'iDrive (Meteo, Carburanti, Traffico, Stato auto) */
 class Pagina(val nome: String) {
     @Volatile var png: ByteArray? = null
     @Volatile var epoch = 0L                    // secondi; cambia a ogni nuova pagina
@@ -49,6 +49,7 @@ object Stato {
     val meteo = Pagina("Meteo")
     val carburanti = Pagina("Carburanti")
     val traffico = Pagina("Traffico")
+    val auto = Pagina("Stato auto")
     val notizie = Elenco("Notizie")
     val locali = Elenco("Notizie locali")
 

@@ -17,7 +17,8 @@ import android.os.IBinder
  * - quando il telefono e' sul Wi-Fi della macchina (o l'iDrive ha chiesto qualcosa da poco)
  *   scarica i dati con la connessione del telefono e prepara le pagine, ognuna col suo ritmo:
  *   meteo e notizie ogni 10 minuti, traffico ogni 5, carburanti ogni 30 (o subito se ti sposti di 3 km),
- *   notizie locali ogni 15, allerte della Protezione Civile ogni 3 ore.
+ *   notizie locali ogni 15, allerte della Protezione Civile ogni 3 ore; la pagina Stato auto quando arrivano
+ *   dati nuovi dall'iDrive (al massimo ogni 10 secondi).
  * Lo accende il Bluetooth dell'auto (AutoBtReceiver) o il tasto nell'app; si spegne quando l'auto si scollega.
  */
 class PonteService : Service() {
@@ -57,6 +58,9 @@ class PonteService : Service() {
     private var lonCarburanti = 0.0
     private var tipoCarburanti = 0
     private var meteoComune = ""
+    private val completando = HashSet<Long>()
+    private var firmaAuto = ""
+    private var autoDisegnata = 0L
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -74,7 +78,13 @@ class PonteService : Service() {
             // i dati dell'auto arrivano dal plugin Meteo dell'iDrive e vanno nel viaggio dell'auto attuale
             DatiAuto.azzera()
             server = Server { synchronized(sveglia) { sveglia.notifyAll() } }.also {
-                it.datiAuto = { g -> Viaggio.aggiorna(this, Parco.ultima(this), g) }
+                it.datiAuto = { g ->
+                    // un rifornimento appena riconosciuto: dove e a che prezzo (rete, fuori dal thread del server)
+                    Viaggio.aggiorna(this, Parco.ultima(this), g)?.let { r ->
+                        if (r.lat == null && synchronized(completando) { completando.add(r.quando) })
+                            Thread({ Rifornimenti.completa(this, r) }, "rifornimento").start()
+                    }
+                }
                 it.avvia()
             }
             lavoro = Thread({ ciclo() }, "miniplus-lavoro").apply { isDaemon = true; start() }
@@ -144,7 +154,34 @@ class PonteService : Service() {
         corpo()
     }
 
+    /**
+     * pagina "Stato auto" dai dati dell'iDrive: si ridisegna quando arrivano valori nuovi (al massimo ogni 10 secondi)
+     * o quando passa un minuto (durata del viaggio); niente rete
+     */
+    private fun paginaAuto(disegno: Disegno, tutto: Boolean) {
+        val bt = Parco.ultima(this)
+        val adesso = System.currentTimeMillis()
+        val firma = "${DatiAuto.ultimoDato}/${adesso / 60000}/$bt/${Parco.mostra(this, bt)}"
+        if (!tutto && (firma == firmaAuto || adesso - autoDisegnata < 10_000)) return
+        val grezzi = DatiAuto.grezzi
+        val v = Viaggio.di(this, bt)
+        Stato.auto.metti(
+            disegno.paginaAuto(Parco.mostra(this, bt).ifEmpty { Marca.AUTO }, if (grezzi.isEmpty()) null else DatiAuto.istantanea(grezzi),
+                v, Rifornimenti.elenco(this, bt).firstOrNull(), DatiAuto.ultimoDato)
+        )
+        firmaAuto = firma
+        autoDisegnata = adesso
+        Stato.auto.ultimo = adesso
+        Stato.auto.esito = if (grezzi.isEmpty()) "in attesa dei dati dell'auto dal plugin Meteo dell'iDrive"
+        else "OK alle ${oraAdesso()} - ${grezzi.size} valori dall'iDrive"
+    }
+
     private fun aggiorna(disegno: Disegno, tutto: Boolean) {
+        try {
+            paginaAuto(disegno, tutto)
+        } catch (e: Exception) {
+            Stato.auto.esito = "ERRORE alle ${oraAdesso()}: ${e.message ?: e.javaClass.simpleName}"
+        }
         val prefs = getSharedPreferences("ponte", MODE_PRIVATE)
         val salvata = Citta(
             prefs.getString("citta", "La Spezia") ?: "La Spezia",
