@@ -166,11 +166,18 @@ class ProvaPagineTest {
         val radice = att.window.decorView.findViewById<android.view.View>(android.R.id.content)
         val sv = (radice as android.view.ViewGroup).getChildAt(0) as android.widget.ScrollView
         val col = sv.getChildAt(0)
-        val ws = android.view.View.MeasureSpec.makeMeasureSpec(1080, android.view.View.MeasureSpec.EXACTLY)
-        val hs = android.view.View.MeasureSpec.makeMeasureSpec(0, android.view.View.MeasureSpec.UNSPECIFIED)
-        col.measure(ws, hs); col.layout(0, 0, col.measuredWidth, col.measuredHeight)
-        val shot = android.graphics.Bitmap.createBitmap(col.measuredWidth, col.measuredHeight, android.graphics.Bitmap.Config.ARGB_8888)
-        val cv = android.graphics.Canvas(shot); cv.drawColor(android.graphics.Color.rgb(10, 12, 15)); col.draw(cv)
-        File(uscita, "app.png").outputStream().use { shot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+        val scatta = { nome: String ->
+            val ws = android.view.View.MeasureSpec.makeMeasureSpec(1080, android.view.View.MeasureSpec.EXACTLY)
+            val hs = android.view.View.MeasureSpec.makeMeasureSpec(0, android.view.View.MeasureSpec.UNSPECIFIED)
+            col.measure(ws, hs); col.layout(0, 0, col.measuredWidth, col.measuredHeight)
+            val shot = android.graphics.Bitmap.createBitmap(col.measuredWidth, col.measuredHeight, android.graphics.Bitmap.Config.ARGB_8888)
+            val cv = android.graphics.Canvas(shot); cv.drawColor(android.graphics.Color.rgb(10, 12, 15)); col.draw(cv)
+            File(uscita, nome).outputStream().use { shot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+        }
+        scatta("app.png")                  // home: foto dell'auto e griglia di icone
+        att.apriSezione("vettura")
+        scatta("app_vettura.png")            // una sezione aperta
+        att.apriSezione("meteo")
+        scatta("app_meteo.png")
     }
 }
