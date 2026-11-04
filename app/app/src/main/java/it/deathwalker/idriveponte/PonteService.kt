@@ -239,6 +239,8 @@ class PonteService : Service() {
                 Stato.meteo.metti(disegno.paginaMeteo(m, allerta))
                 Stato.meteo.ultimo = System.currentTimeMillis()
                 meteoComune = qui.nome
+                val cielo = Dati.wmo(m.codice)
+                Stato.meteoBreve = Stato.MeteoBreve(m.citta, m.temp, cielo.first, Dati.iconaOra(cielo.second, m.giorno))
                 Stato.meteo.esito = "OK alle ${oraAdesso()} - ${m.citta} ${m.temp}° (${Stato.fonteCitta}, ${m.fonte})"
             } catch (e: Exception) {
                 Stato.meteo.esito = "ERRORE alle ${oraAdesso()}: ${e.message ?: e.javaClass.simpleName}"
@@ -257,6 +259,9 @@ class PonteService : Service() {
                 Stato.traffico.metti(disegno.paginaTraffico(lista, qui.nome, raggio))
                 Stato.traffico.ultimo = System.currentTimeMillis()
                 Stato.traffico.esito = "OK alle ${oraAdesso()} - ${lista.size} eventi entro $raggio km"
+                val grave = lista.maxByOrNull { it.gravita }
+                Stato.trafficoBreve = (if (lista.isEmpty()) "Nessun evento" else if (lista.size == 1) "1 evento" else "${lista.size} eventi") to
+                    (grave?.let { listOf(it.strada, it.tipo).filter { t -> t.isNotEmpty() }.joinToString(": ") } ?: "entro $raggio km")
             } catch (e: Exception) {
                 Stato.traffico.esito = "ERRORE alle ${oraAdesso()}: ${e.message ?: e.javaClass.simpleName}"
                 if (Stato.traffico.png == null) Stato.traffico.metti(disegno.paginaAvviso("Traffico", "Traffico non disponibile in questo momento. Nuovo tentativo tra poco."))
@@ -277,6 +282,10 @@ class PonteService : Service() {
                 latCarburanti = qui.lat; lonCarburanti = qui.lon; tipoCarburanti = tipo
                 Stato.carburanti.esito = "OK alle ${oraAdesso()} - $nome, ${lista.size} distributori entro $raggio km" +
                     (lista.firstOrNull()?.let { String.format(java.util.Locale.ITALY, ", il migliore %.3f €", it.prezzo) } ?: "")
+                Stato.carburantiBreve = lista.firstOrNull()?.let { d ->
+                    String.format(java.util.Locale.ITALY, "%s %.3f €", nome, d.prezzo) to
+                        listOf(d.marchio.ifEmpty { d.nome }, String.format(java.util.Locale.ITALY, "%.1f km", d.km)).joinToString(" · ")
+                } ?: ("$nome: nessun prezzo" to "entro $raggio km")
             } catch (e: Exception) {
                 Stato.carburanti.esito = "ERRORE alle ${oraAdesso()}: ${e.message ?: e.javaClass.simpleName}"
                 if (Stato.carburanti.png == null) Stato.carburanti.metti(disegno.paginaAvviso("Carburanti", "Prezzi dei carburanti non disponibili in questo momento. Nuovo tentativo tra poco."))
