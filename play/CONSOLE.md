@@ -26,8 +26,10 @@ Testi pronti da incollare nei moduli della Play Console. I testi della scheda so
 "Condivisi" perché le coordinate vanno a servizi di terzi (open-meteo.com, MET Norway, MIMIT) per avere i dati della zona.
 Nessun altro tipo di dati: niente informazioni personali, foto, file, contatti, identificativi del dispositivo,
 cronologia o statistiche.
-I dati dell'auto che il plugin dell'iDrive manda all'app (km, carburante, temperature, aperture) restano sul
-telefono e non escono mai dal dispositivo: per Google Play non sono "raccolti" e non vanno dichiarati.
+I dati dell'auto che il plugin dell'iDrive manda all'app (km, carburante, temperature, aperture), lo storico dei
+viaggi e i rifornimenti restano sul telefono e non escono mai dal dispositivo: per Google Play non sono "raccolti" e
+non vanno dichiarati. Al rifornimento la posizione va a MIMIT per riconoscere il distributore: e' la stessa
+posizione gia' dichiarata sopra (condivisa con MIMIT per i carburanti).
 
 ## Autorizzazioni: posizione in background
 **Funzionalità che la usa:** Dove ho parcheggiato; meteo, carburanti e traffico della zona mentre si guida.

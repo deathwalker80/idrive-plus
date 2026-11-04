@@ -25,6 +25,7 @@ object Viaggio {
         val partenza: Long,
         var luogo: String,
         var arrivo: Long,                     // 0 = in corso
+        var luogoArrivo: String,              // indirizzo del parcheggio alla fine del viaggio
         var kmPartenza: Double?,
         var litriPartenza: Double?,
         var litriPrima: Double?,              // ultima lettura del serbatoio, per accorgersi dei rifornimenti
@@ -51,7 +52,7 @@ object Viaggio {
         fun durata(adesso: Long = System.currentTimeMillis()): Long = (if (inCorso) adesso else arrivo) - partenza
 
         fun json(): String = JSONObject().apply {
-            put("auto", auto); put("partenza", partenza); put("luogo", luogo); put("arrivo", arrivo)
+            put("auto", auto); put("partenza", partenza); put("luogo", luogo); put("arrivo", arrivo); put("luogoArrivo", luogoArrivo)
             kmPartenza?.let { put("kmPartenza", it) }
             litriPartenza?.let { put("litriPartenza", it) }
             litriPrima?.let { put("litriPrima", it) }
@@ -65,7 +66,7 @@ object Viaggio {
                 val o = JSONObject(testo)
                 val g = o.optJSONObject("grezzi")
                 Dati(
-                    o.getString("auto"), o.getLong("partenza"), o.optString("luogo"), o.optLong("arrivo"),
+                    o.getString("auto"), o.getLong("partenza"), o.optString("luogo"), o.optLong("arrivo"), o.optString("luogoArrivo"),
                     o.optDouble("kmPartenza").takeIf { !it.isNaN() }, o.optDouble("litriPartenza").takeIf { !it.isNaN() },
                     o.optDouble("litriPrima").takeIf { !it.isNaN() }, o.optDouble("rifornito", 0.0),
                     g?.keys()?.asSequence()?.associateWith { g.optString(it) } ?: emptyMap(),
@@ -108,11 +109,13 @@ object Viaggio {
         val adesso = System.currentTimeMillis()
         val d = di(ctx, bt)
         if (d != null && (d.inCorso || adesso - d.arrivo < RIPRESA_MS)) {
+            if (!d.inCorso) Storico.togli(ctx, bt, d.partenza)          // riprende: torna in corso, esce dallo storico
             d.arrivo = 0L
+            d.luogoArrivo = ""
             salva(ctx, d, true)
             return
         }
-        salva(ctx, Dati(bt, adesso, "", 0L, null, null, null, 0.0, emptyMap(), adesso), true)
+        salva(ctx, Dati(bt, adesso, "", 0L, "", null, null, null, 0.0, emptyMap(), adesso), true)
     }
 
     /** luogo di partenza, appena il telefono trova l'indirizzo (solo se il viaggio non ne ha gia' uno) */
@@ -124,15 +127,18 @@ object Viaggio {
         salva(ctx, d, true)
     }
 
-    /** nuovi valori dall'iDrive per l'auto attuale; forza = scrivi subito (fine del servizio) */
+    /**
+     * nuovi valori dall'iDrive per l'auto attuale; forza = scrivi subito (fine del servizio).
+     * Ritorna il rifornimento appena riconosciuto dal livello del serbatoio (Rifornimenti), se c'e'.
+     */
     @Synchronized
-    fun aggiorna(ctx: Context, auto: String?, grezzi: Map<String, String>, forza: Boolean = false) {
+    fun aggiorna(ctx: Context, auto: String?, grezzi: Map<String, String>, forza: Boolean = false): Rifornimenti.Voce? {
         val bt = auto?.trim().orEmpty()
         val adesso = System.currentTimeMillis()
         var d = di(ctx, bt)
         if (d == null || (!d.inCorso && adesso - d.arrivo > CODA_MS)) {
             // dati senza un viaggio aperto (servizio acceso a mano): il viaggio parte adesso, senza luogo
-            d = Dati(bt, adesso, "", 0L, null, null, null, 0.0, emptyMap(), adesso)
+            d = Dati(bt, adesso, "", 0L, "", null, null, null, 0.0, emptyMap(), adesso)
         }
         val ist = DatiAuto.istantanea(grezzi)
         if (d.kmPartenza == null) d.kmPartenza = ist.km
@@ -144,16 +150,29 @@ object Viaggio {
         }
         d.grezzi = grezzi
         d.aggiornato = adesso
-        salva(ctx, d, forza)
+        val chiuso = !d.inCorso
+        // a viaggio appena chiuso (valori arrivati subito dopo lo scollegamento) si scrive subito: storico e avviso aperture
+        salva(ctx, d, forza || chiuso)
+        if (chiuso) {
+            Storico.registra(ctx, d)
+            Aperture.controlla(ctx, d)
+        }
+        return Rifornimenti.livello(ctx, bt, ist.litri, ist.km)
     }
 
-    /** il telefono si e' scollegato: il viaggio finisce, i valori restano come stato dell'auto al parcheggio */
+    /**
+     * il telefono si e' scollegato: il viaggio finisce, i valori restano come stato dell'auto al parcheggio,
+     * il riassunto va nello storico e, se e' rimasto aperto qualcosa, arriva l'avviso. arrivo = indirizzo del parcheggio
+     */
     @Synchronized
-    fun chiudi(ctx: Context, auto: String?) {
+    fun chiudi(ctx: Context, auto: String?, arrivo: String = "") {
         val d = di(ctx, auto) ?: return
         if (!d.inCorso) return
         d.arrivo = System.currentTimeMillis()
+        d.luogoArrivo = arrivo
         salva(ctx, d, true)
+        Storico.registra(ctx, d)
+        Aperture.controlla(ctx, d)
     }
 
     @Synchronized

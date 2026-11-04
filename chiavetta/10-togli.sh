@@ -7,7 +7,7 @@
 P=/opt/hmi/ID5/data/ro/Plugins
 OFF=/opt/aa/plugins_off
 mkdir -p "$OFF"
-for N in Meteo Notizie Locali Carburanti Traffico; do
+for N in Meteo Notizie Locali Carburanti Traffico Auto; do
   if [ -d "$P/$N" ]; then
     DEST="$OFF/$N"; if [ -e "$DEST" ]; then DEST="$OFF/${N}_$$"; fi
     if mv "$P/$N" "$DEST"; then echo "OK: $N tolto (spostato in $DEST)"; else echo "ATTENZIONE: non riesco a spostare $N - li spengo con /opt/aa/ponte.disable"; echo 1 > /opt/aa/ponte.disable; fi

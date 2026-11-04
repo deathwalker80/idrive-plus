@@ -1,6 +1,6 @@
 #!/bin/sh
-# NBT Plus - chiavetta v21 - plugin iDrive v7: Meteo (con allerte e dati dell'auto per l'app), Notizie,
-# Notizie locali, Carburanti, Traffico. Aggiornati dall'app del telefono. Android Auto (NbtAad) non viene toccato.
+# NBT Plus - chiavetta v22 - plugin iDrive v8: Meteo (con allerte e dati dell'auto per l'app), Notizie,
+# Notizie locali, Carburanti, Traffico, Stato auto. Aggiornati dall'app del telefono. Android Auto (NbtAad) non viene toccato.
 # La chiavetta e il comando sono gli stessi per MINI, BMW e Supra: la marca la riconosce l'app.
 # Le librerie in uso dall'HMI non si possono sovrascrivere: si rinominano (.vecchia_*) e si copia la nuova.
 # Da lanciare DENTRO la shell di omap (dopo mount + on -f). Invocazione:
@@ -15,12 +15,12 @@ echo "Chiavetta: /mnt/$U"
 P=/opt/hmi/ID5/data/ro/Plugins
 if [ ! -d "$P/NbtAad" ]; then echo "ERRORE: $P/NbtAad non c'e' - sei sulla shell di omap?"; exit 1; fi
 
-for N in Meteo Notizie Locali Carburanti Traffico; do
+for N in Meteo Notizie Locali Carburanti Traffico Auto; do
   if [ ! -f "/mnt/$U/$N/lib$N.so" ]; then echo "ERRORE: /mnt/$U/$N/lib$N.so non c'e' - hai estratto lo zip nella radice?"; exit 1; fi
   if [ ! -f "/mnt/$U/$N/attesa.png" ]; then echo "ERRORE: /mnt/$U/$N/attesa.png non c'e'"; exit 1; fi
 done
 
-for N in Meteo Notizie Locali Carburanti Traffico; do
+for N in Meteo Notizie Locali Carburanti Traffico Auto; do
   mkdir -p "$P/$N"
   rm -f "$P/$N"/lib$N.so.vecchia_* 2>/dev/null
   if [ -f "$P/$N/lib$N.so" ]; then
@@ -37,5 +37,5 @@ echo "===== PLUGIN ATTIVI ====="
 ls "$P"
 echo ""
 echo "########## FATTO - ORA RIAVVIA: tasto power premuto 30 secondi ##########"
-echo "Resoconto: cat /dev/shmem/Meteo.log /dev/shmem/Notizie.log /dev/shmem/Locali.log /dev/shmem/Carburanti.log /dev/shmem/Traffico.log"
+echo "Resoconto: cat /dev/shmem/Meteo.log /dev/shmem/Notizie.log /dev/shmem/Locali.log /dev/shmem/Carburanti.log /dev/shmem/Traffico.log /dev/shmem/Auto.log"
 echo "Dati dell'auto: grep auto: /dev/shmem/Meteo.log"

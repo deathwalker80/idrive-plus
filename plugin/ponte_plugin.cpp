@@ -1,9 +1,12 @@
-// NBT Plus per iDrive - v6 - plugin compilati (clang) per NBT EVO ID6
+// NBT Plus per iDrive - v8 - plugin compilati (clang) per NBT EVO ID6
 // (MINI F5x/F60, BMW con NBT EVO, Toyota GR Supra J29).
 // v6: il testo "in attesa" della lista si legge da attesa.txt nella cartella del plugin (copiato dalla chiavetta),
 //     cosi' le stesse librerie valgono per tutte e tre le auto.
-// Lo stesso sorgente produce cinque plugin:
-//   pagina singola : -DPLUGIN_METEO (libMeteo.so), -DPLUGIN_CARBURANTI (libCarburanti.so), -DPLUGIN_TRAFFICO (libTraffico.so)
+// v8: sesto plugin, Stato auto (libAuto.so): la pagina con autonomia, km, viaggio, temperature e aperture che l'app
+//     disegna coi dati letti dal plugin Meteo; si aggiorna ogni 10 secondi invece che ogni 30.
+// Lo stesso sorgente produce sei plugin:
+//   pagina singola : -DPLUGIN_METEO (libMeteo.so), -DPLUGIN_CARBURANTI (libCarburanti.so), -DPLUGIN_TRAFFICO (libTraffico.so),
+//                    -DPLUGIN_AUTO (libAuto.so)
 //   elenco notizie : -DPLUGIN_NOTIZIE (libNotizie.so), -DPLUGIN_LOCALI (libLocali.so, percorsi /locali/...)
 //
 // Cosa fanno: trovano il telefono sul Wi-Fi della macchina (tabella ARP, altrimenti scansione 172.16.224.x),
@@ -16,6 +19,7 @@
 //              resta nel codice dietro SCHEDA_LATERALE 0)
 //             GET /anteprima/<i>.png             -> scheda accanto alla lista (raImageModel 71), cambiata
 //                                                   quando una riga viene selezionata (selectAction -> raAction 20..27)
+//   Auto    : GET /auto.png                      -> raImageModel 12 (stato dell'auto, v8)
 //   Meteo   : anche i dati dell'auto (v7): chilometri, carburante, consumo, temperature, porte, finestrini e tetto
 //             letti dal CDS dell'iDrive (lo stesso meccanismo di NBT-AAD per driving.gear) e mandati al telefono
 //             con GET /auto?n=<proprieta'>&v=<valore JSON>: l'app ne fa il viaggio e lo stato al parcheggio.
@@ -52,6 +56,12 @@
 #define NOME_PLUGIN "Traffico"
 #define PAGINA_PNG "/traffico.png"
 #define CHIAVE_EPOCH "traffico="
+#elif defined(PLUGIN_AUTO)
+#define PLUGIN_PAGINA 1
+#define NOME_PLUGIN "Auto"
+#define PAGINA_PNG "/auto.png"
+#define CHIAVE_EPOCH "auto="
+#define GIRO_SECONDI 10
 #elif defined(PLUGIN_NOTIZIE)
 #define PLUGIN_ELENCO 1
 #define NOME_PLUGIN "Notizie"
@@ -63,9 +73,12 @@
 #define PREFISSO "/locali"
 #define CHIAVE_EPOCH "locali="
 #else
-#error "compilare con -DPLUGIN_METEO / _CARBURANTI / _TRAFFICO (pagina singola) oppure -DPLUGIN_NOTIZIE / _LOCALI (elenco)"
+#error "compilare con -DPLUGIN_METEO / _CARBURANTI / _TRAFFICO / _AUTO (pagina singola) oppure -DPLUGIN_NOTIZIE / _LOCALI (elenco)"
 #endif
-#define VERSIONE_PLUGIN "v7"
+#ifndef GIRO_SECONDI
+#define GIRO_SECONDI 30                    // attesa fra un controllo del telefono e il successivo
+#endif
+#define VERSIONE_PLUGIN "v8"
 
 typedef unsigned int  u32;
 typedef unsigned short u16;
@@ -811,7 +824,7 @@ void* threadRete(void*) {
         errori = 0;
         bool ok = aggiornaDati(g_telefono, testo(ponte));
         free(ponte);
-        attendi(ok ? 30 : 10, g_telefono);
+        attendi(ok ? GIRO_SECONDI : 10, g_telefono);
     }
     return 0;
 }

@@ -1,6 +1,6 @@
 #!/bin/sh
-# Compila i cinque plugin iDrive (ARM, QNX) in plugin/out/: libMeteo.so, libNotizie.so, libLocali.so,
-# libCarburanti.so, libTraffico.so. Serve clang/lld 18 (pacchetti clang e lld su Ubuntu 24.04).
+# Compila i sei plugin iDrive (ARM, QNX) in plugin/out/: libMeteo.so, libNotizie.so, libLocali.so,
+# libCarburanti.so, libTraffico.so, libAuto.so. Serve clang/lld 18 (pacchetti clang e lld su Ubuntu 24.04).
 #
 # Le due librerie dell'HMI, libAppFramework.A.so e libCoreFramework.A.so, NON sono nel repository
 # (sono della testata, non si possono ridistribuire): copiale dalla TUA head unit in plugin/link/
@@ -18,7 +18,7 @@ ARM="--target=armv7a-unknown-linux-gnueabi -mfloat-abi=soft -marm -O2 -fPIC -ffr
 for n in c socket; do
   clang $ARM -nostdlib -shared -fuse-ld=lld -Wl,-soname,lib$n.so.3 -o out/lib$n.so.3 $L/lib${n}_stub.c
 done
-for P in METEO:Meteo CARBURANTI:Carburanti TRAFFICO:Traffico NOTIZIE:Notizie LOCALI:Locali; do
+for P in METEO:Meteo CARBURANTI:Carburanti TRAFFICO:Traffico AUTO:Auto NOTIZIE:Notizie LOCALI:Locali; do
   D=${P%%:*}; N=${P##*:}
   clang $ARM -fno-exceptions -fno-rtti -fno-threadsafe-statics -fno-stack-protector -fvisibility=hidden \
     -DPLUGIN_$D -c ponte_plugin.cpp -o out/$N.o

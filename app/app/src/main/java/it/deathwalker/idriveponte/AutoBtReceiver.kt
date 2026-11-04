@@ -61,6 +61,7 @@ class AutoBtReceiver : BroadcastReceiver() {
             BluetoothDevice.ACTION_ACL_CONNECTED -> {
                 if (tipo !== Marca.attuale) Marca.imposta(ctx, tipo)
                 Viaggio.inizia(ctx, nome)
+                Aperture.togli(ctx, nome)                // sei di nuovo in auto: l'avviso di prima non serve piu'
                 try {
                     PonteService.avvia(ctx, "Bluetooth $nome")
                     registra(ctx, "acceso da $nome")
@@ -85,7 +86,7 @@ class AutoBtReceiver : BroadcastReceiver() {
                 Thread {
                     try {
                         val p = Parcheggio.salva(ctx, nome)
-                        Viaggio.chiudi(ctx, nome)
+                        Viaggio.chiudi(ctx, nome, p?.indirizzo.orEmpty())
                         registra(ctx, "spento, $nome scollegata" + if (p != null) " - parcheggio salvato" else " - posizione non disponibile")
                     } finally {
                         attesa.finish()

@@ -62,7 +62,7 @@ class ProvaPagineTest {
             NotiziaPronta(n.titolo, n.ora, p, mi, an)
         }
         val attesa = "In attesa del telefono: serve l'app ${Marca.APP} e Android Auto wireless collegato. La pagina si aggiorna da sola appena il telefono risponde."
-        for ((file, titolo) in listOf("meteo" to "Meteo", "notizie" to "Notizie", "locali" to "Notizie locali", "carburanti" to "Carburanti", "traffico" to "Traffico"))
+        for ((file, titolo) in listOf("meteo" to "Meteo", "notizie" to "Notizie", "locali" to "Notizie locali", "carburanti" to "Carburanti", "traffico" to "Traffico", "auto" to "Stato auto"))
             File(uscita, "attesa_$file.png").writeBytes(d.paginaAvviso(titolo, attesa))
         File(uscita, "avviso.png").writeBytes(d.paginaAvviso("Meteo", "Meteo non disponibile in questo momento. Nuovo tentativo tra poco."))
 
@@ -90,6 +90,25 @@ class ProvaPagineTest {
         )
         File(uscita, "traffico.png").writeBytes(d.paginaTraffico(tr, "La Spezia", 100))
         File(uscita, "traffico_vuoto.png").writeBytes(d.paginaTraffico(emptyList(), "La Spezia", 100))
+        // stato dell'auto: viaggio in corso con un finestrino aperto, poi tutto chiuso, poi senza dati
+        val grezzi = mapOf(
+            "driving.odometer" to """{"odometer":48213}""",
+            "sensors.fuel" to """{"fuel":{"tanklevel":31,"range":437,"reserve":0}}""",
+            "driving.averageConsumption" to """{"averageConsumption":{"averageConsumption1":6.4,"unit":1}}""",
+            "sensors.temperatureExterior" to """{"temperatureExterior":14.5}""",
+            "sensors.temperatureInterior" to """{"temperatureInterior":21}""",
+            "sensors.doors" to """{"doors":{"driverFront":0,"passengerFront":0,"driverRear":0,"passengerRear":0}}""",
+            "controls.windowDriverFront" to """{"windowDriverFront":{"status":1,"position":12,"tiltPosition":0}}""",
+            "controls.sunroof" to """{"sunroof":{"status":0,"position":0,"tiltPosition":3}}""",
+        )
+        val adesso = System.currentTimeMillis()
+        val viaggio = Viaggio.Dati("${Marca.AUTO}28359", adesso - 38 * 60000L, "Via Roma 1, La Spezia", 0L, "", 48195.6, 32.3, 31.0, 0.0, grezzi, adesso)
+        val rif = Rifornimenti.Voce("${Marca.AUTO}28359", adesso - 3 * 86400000L, 34.0, 41.0, 47900.0, null, null, "", "", null, false)
+        File(uscita, "auto.png").writeBytes(d.paginaAuto("La mia ${Marca.AUTO}", DatiAuto.istantanea(grezzi), viaggio, rif, adesso))
+        val chiusa = grezzi + ("controls.windowDriverFront" to """{"windowDriverFront":{"status":0,"position":0,"tiltPosition":0}}""") +
+            ("controls.sunroof" to """{"sunroof":{"status":0,"position":0,"tiltPosition":0}}""")
+        File(uscita, "auto_chiusa.png").writeBytes(d.paginaAuto("La mia ${Marca.AUTO}", DatiAuto.istantanea(chiusa), null, null, adesso))
+        File(uscita, "auto_vuoto.png").writeBytes(d.paginaAuto("${Marca.AUTO}28359", null, null, null, 0L))
         Stato.meteo.png = meteo; Stato.meteo.epoch = 111; Stato.notizie.notizie = pronte; Stato.notizie.epoch = 222
         val srv = Server {}
         srv.avvia()
@@ -117,6 +136,18 @@ class ProvaPagineTest {
         Stato.notizie.esito = "OK alle 14:30 - 8 notizie, 1 con foto"
         Stato.servizioAttivo = true; Stato.avviatoDa = "Bluetooth ${Marca.AUTO} 28359"; Stato.wifiAuto = "172.16.224.104"
         Stato.ultimaRichiestaAuto = System.currentTimeMillis(); Stato.richiesteAuto = 42
+        // storico e rifornimenti di prova per la schermata (auto dei test di pagina, non quella di ViaggioTest)
+        val bt = "MINI70001"
+        Parco.ricorda(ctx, bt)
+        val g = mapOf("driving.odometer" to """{"odometer":48213}""", "sensors.fuel" to """{"fuel":{"tanklevel":31,"range":437}}""")
+        for (k in 0 until 3) {
+            val p = adesso - (k + 1) * 86400000L
+            Storico.registra(ctx, Viaggio.Dati(bt, p, "Via Roma 1, La Spezia", p + 27 * 60000L, "Via Aurelia 5, Sarzana",
+                48195.6 - k * 40, 32.3 + k * 3, 31.0, 0.0, g, p))
+        }
+        Rifornimenti.livello(ctx, bt, 9.0, 47900.0, adesso - 5 * 86400000L)
+        Rifornimenti.livello(ctx, bt, 43.0, 47900.0, adesso - 5 * 86400000L + 60000L)
+
         // una schermata per ogni marca e una senza marca (app appena installata)
         for (tipo in Marca.TUTTE + Marca.NESSUNA) {
             Marca.imposta(ctx, tipo)

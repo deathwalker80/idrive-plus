@@ -33,9 +33,13 @@ dell'auto (oppure si sceglie nelle impostazioni) e cambia il colore dell'app e i
 - **Notizie** nazionali e **notizie locali** della città scelta (feed RSS ANSA), con miniature.
 - **Carburanti** vicini con prezzi ufficiali MIMIT (Osservaprezzi) e logo del marchio.
 - **Traffico** vicino (Autostrade per l'Italia).
+- **Stato auto** nell'iDrive: autonomia, litri nel serbatoio, chilometri, consumo medio, il viaggio in corso, temperature e aperture (finestrini, tetto, portellone, cofano), aggiornato ogni 10 secondi.
 - **Dove ho parcheggiato**: quando il telefono si scollega dal Bluetooth dell'auto salva la posizione.
 - L'app si accende da sola col Bluetooth dell'auto e si spegne quando scendi.
 - **Viaggio**: mentre guidi e poi nel riquadro del parcheggio, partenza, durata, km percorsi, carburante consumato e nel serbatoio, temperature e aperture (porte, finestrini, tetto). I dati dell'auto li legge il plugin Meteo nell'iDrive (sola lettura) e li manda all'app sul Wi-Fi dell'auto: niente AAIdrive, nessun Bluetooth in più.
+- **Storico viaggi**: ogni viaggio finito con partenza e arrivo, durata, km, carburante consumato e km/l; il riassunto del mese.
+- **Rifornimenti**: riconosciuti da soli quando sale il livello del serbatoio, con litri, posizione e, se eri a un distributore dell'elenco MIMIT, marchio, prezzo e spesa stimata.
+- **Avviso aperture**: se scendi con un finestrino, il tetto, il portellone o il cofano aperti arriva una notifica sul telefono.
 - **Le mie auto**: più auto, ognuna riconosciuta dal suo nome Bluetooth, col suo nome nell'app (es. "Lucy" invece di "MINI12345", solo visivo), il suo carburante e il suo parcheggio. Si aggiungono da sole al primo collegamento, o dalle auto associate al telefono.
 
 ## Come si vede
@@ -49,7 +53,7 @@ Indirizzi, comune e parabrezza sono oscurati; le foto delle notizie sono sfocate
 ## Struttura
 ```
 app/        app Android (Kotlin, nessuna libreria esterna)
-plugin/     sorgente dei cinque plugin iDrive (C++ senza libreria standard, ARM/QNX)
+plugin/     sorgente dei sei plugin iDrive (C++ senza libreria standard, ARM/QNX)
 chiavetta/  script di installazione, descrizioni dei plugin e pagine "in attesa"
 ```
 
@@ -78,7 +82,7 @@ L'APK e lo zip della chiavetta sono nelle **Release**. Sul telefono va installat
 se c'è ancora una delle vecchie app (MINI Plus, BMW Plus o Supra Plus) va disinstallata, perché
 due app insieme si contenderebbero il collegamento con l'iDrive.
 
-Istruzioni passo passo in [`chiavetta/LEGGIMI-v21.txt`](chiavetta/LEGGIMI-v21.txt); in breve, sulla shell della testata:
+Istruzioni passo passo in [`chiavetta/LEGGIMI-v22.txt`](chiavetta/LEGGIMI-v22.txt); in breve, sulla shell della testata:
 ```
 mount -o remount rw /net/hu-omap/fs/sda0
 on -f /net/hu-omap/ /bin/sh

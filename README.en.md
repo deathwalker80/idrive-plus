@@ -33,9 +33,13 @@ One app, **NBT Plus**, for all three cars. The brand is recognised from the car'
 - **National news** and **local news** for a chosen city (ANSA RSS feeds), with thumbnails.
 - **Fuel stations** nearby with official MIMIT (Osservaprezzi) prices and the brand logo.
 - **Traffic** nearby (Autostrade per l'Italia).
+- **Car status** in iDrive: range, litres in the tank, odometer, average consumption, the current trip, temperatures and openings (windows, roof, tailgate, bonnet), updated every 10 seconds.
 - **Where I parked**: when the phone disconnects from the car's Bluetooth, the position is saved.
 - The app starts by itself with the car's Bluetooth and stops when you get out.
 - **Trip**: while driving and then in the parking box, start place, duration, distance, fuel used and left, temperatures and openings (doors, windows, roof). The car data is read by the Meteo plugin inside iDrive (read only) and sent to the app over the car's Wi-Fi: no AAIdrive, no extra Bluetooth link.
+- **Trip history**: every finished trip with start and end place, duration, distance, fuel used and km/l; the monthly summary.
+- **Refuels**: detected on their own when the tank level goes up, with litres, place and, if you were at a station in the MIMIT list, brand, price and estimated cost.
+- **Openings alert**: if you get out with a window, the roof, the tailgate or the bonnet open, the phone shows a notification.
 - **My cars**: several cars, each recognised by its Bluetooth name, with its own name in the app (e.g. "Lucy" instead of "MINI12345", display only), fuel and parking spot. They add themselves on first connection, or from the cars paired with the phone.
 
 Data sources are Italian, so the news, fuel and traffic sections are for Italy; the weather works anywhere.
@@ -51,7 +55,7 @@ Addresses, town and windscreen are blurred out; news photos are blurred.
 ## Layout
 ```
 app/        Android app (Kotlin, no external libraries)
-plugin/     source of the five iDrive plugins (C++ without the standard library, ARM/QNX)
+plugin/     source of the six iDrive plugins (C++ without the standard library, ARM/QNX)
 chiavetta/  USB-stick install scripts, plugin descriptions and "waiting" pages
 ```
 
@@ -80,7 +84,7 @@ The APK and the USB-stick zip are in the **Releases**. Install only NBT Plus on 
 old apps (MINI Plus, BMW Plus or Supra Plus) is still there, uninstall it, because two apps at once would
 fight over the link with iDrive.
 
-Step-by-step instructions (Italian) in [`chiavetta/LEGGIMI-v21.txt`](chiavetta/LEGGIMI-v21.txt); in short, on the head unit shell:
+Step-by-step instructions (Italian) in [`chiavetta/LEGGIMI-v22.txt`](chiavetta/LEGGIMI-v22.txt); in short, on the head unit shell:
 ```
 mount -o remount rw /net/hu-omap/fs/sda0
 on -f /net/hu-omap/ /bin/sh

@@ -40,7 +40,7 @@ import java.util.Locale
 
 /**
  * NBT Plus: schermata del telefono. Stato del collegamento con l'iDrive, dove hai parcheggiato,
- * anteprima di ogni pagina che vede l'auto, impostazioni e permessi.
+ * storico dei viaggi e rifornimenti, anteprima di ogni pagina che vede l'auto, impostazioni e permessi.
  * Si aggiorna da sola ogni 1,5 s senza toccare i campi di testo (non interrompe mai la scrittura).
  * Se cambia la marca dell'auto (Bluetooth o impostazioni) si ridisegna coi colori nuovi, ma mai mentre stai scrivendo.
  */
@@ -86,6 +86,14 @@ class MainActivity : Activity() {
     private lateinit var schedaViaggio: View
     private lateinit var boxViaggio: LinearLayout
     private var firmaViaggio = ""
+    private lateinit var schedaStorico: View
+    private lateinit var boxStorico: LinearLayout
+    private var firmaStorico = ""
+    private var storicoTutto = false
+    private lateinit var schedaRifornimenti: View
+    private lateinit var boxRifornimenti: LinearLayout
+    private var firmaRifornimenti = ""
+    private var rifornimentiTutti = false
 
     // pagine dell'auto
     private class Riquadro(val esito: TextView, val immagine: ImageView, var epoch: Long = -1)
@@ -171,6 +179,16 @@ class MainActivity : Activity() {
             boxParcheggi = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }.also { s.addView(it) }
         })
 
+        // ---- storico dei viaggi e rifornimenti: compaiono dal primo viaggio finito e dal primo rifornimento
+        schedaStorico = scheda(R.drawable.ic_storico, "Storico viaggi", "Ogni viaggio finito, coi dati dell'iDrive") { s ->
+            boxStorico = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }.also { s.addView(it) }
+        }
+        col.addView(schedaStorico)
+        schedaRifornimenti = scheda(R.drawable.ic_carburante, "Rifornimenti", "Riconosciuti dal livello del serbatoio") { s ->
+            boxRifornimenti = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }.also { s.addView(it) }
+        }
+        col.addView(schedaRifornimenti)
+
         // ---- parco vetture: compare solo quando il telefono ha visto piu' di un'auto
         schedaParco = scheda(R.drawable.ic_auto, "Le mie auto", "Ognuna col suo nome, carburante e parcheggio") { s ->
             boxParco = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }.also { s.addView(it) }
@@ -185,7 +203,8 @@ class MainActivity : Activity() {
             Triple("Notizie", R.drawable.ic_notizie, "ANSA, le prime 8 notizie con foto"),
             Triple("Notizie locali", R.drawable.ic_locali, "ANSA della regione della città scelta"),
             Triple("Carburanti", R.drawable.ic_carburante, "Prezzi ufficiali MIMIT vicino a te"),
-            Triple("Traffico", R.drawable.ic_traffico, "Autostrade per l'Italia vicino a te")
+            Triple("Traffico", R.drawable.ic_traffico, "Autostrade per l'Italia vicino a te"),
+            Triple("Stato auto", R.drawable.ic_auto, "Autonomia, km, viaggio, temperature e aperture dall'iDrive")
         )
         for ((nome, icona, sotto) in pagine) {
             col.addView(scheda(icona, nome, sotto) { s ->
@@ -352,7 +371,7 @@ class MainActivity : Activity() {
             text = Marca.APP; setTextColor(TESTO); textSize = 26f; typeface = Typeface.DEFAULT_BOLD
         })
         testi.addView(TextView(this).apply {
-            text = "Meteo, notizie, carburanti e traffico nell'iDrive · v${Stato.VERSIONE}"
+            text = "Meteo, notizie, carburanti, traffico e stato auto nell'iDrive · v${Stato.VERSIONE}"
             setTextColor(TENUE); textSize = 13f
         })
         riga.addView(testi, LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f))
@@ -529,12 +548,15 @@ class MainActivity : Activity() {
         disegnaParcheggi()
         disegnaParco()
         disegnaViaggio()
+        disegnaStorico()
+        disegnaRifornimenti()
 
         mostra("Meteo", Stato.meteo.esito + (if (Stato.allerta.isNotEmpty()) "\nAllerta: ${Stato.allerta}" else ""), Stato.meteo.epoch, Stato.meteo.png)
         mostra("Notizie", Stato.notizie.esito, Stato.notizie.epoch, Stato.notizie.notizie.firstOrNull()?.pagina)
         mostra("Notizie locali", Stato.locali.esito, Stato.locali.epoch, Stato.locali.notizie.firstOrNull()?.pagina)
         mostra("Carburanti", Stato.carburanti.esito, Stato.carburanti.epoch, Stato.carburanti.png)
         mostra("Traffico", Stato.traffico.esito, Stato.traffico.epoch, Stato.traffico.png)
+        mostra("Stato auto", Stato.auto.esito, Stato.auto.epoch, Stato.auto.png)
 
         statoPermesso("bt", Build.VERSION.SDK_INT < 31 || ha(Manifest.permission.BLUETOOTH_CONNECT))
         statoPermesso("notifiche", Build.VERSION.SDK_INT < 33 || ha(Manifest.permission.POST_NOTIFICATIONS))
@@ -683,6 +705,142 @@ class MainActivity : Activity() {
         righeViaggio(boxViaggio, v)
     }
 
+    private fun durata(ms: Long): String {
+        val minuti = ms / 60000
+        return if (minuti < 60) "$minuti min" else "${minuti / 60} h ${"%02d".format(minuti % 60)} min"
+    }
+
+    private fun km(v: Double): String = String.format(Locale.ITALY, if (v < 10) "%.1f km" else "%,.0f km", v)
+
+    private fun separatore(s: ViewGroup) {
+        s.addView(View(this).apply { setBackgroundColor(BORDO) }, LinearLayout.LayoutParams(MATCH_PARENT, px(1)).apply {
+            topMargin = px(10); bottomMargin = px(8)
+        })
+    }
+
+    /** una voce di elenco: riga in grassetto, poi le righe di dettaglio (le vuote si saltano) */
+    private fun voce(s: ViewGroup, titolo: String, vararg righe: String) {
+        s.addView(TextView(this).apply { text = titolo; setTextColor(TESTO); textSize = 15f; typeface = Typeface.DEFAULT_BOLD })
+        for (r in righe) if (r.isNotEmpty()) s.addView(TextView(this).apply {
+            text = r; setTextColor(TENUE); textSize = 13f; setPadding(0, px(2), 0, 0)
+        })
+    }
+
+    /** dall'inizio del mese in corso (ms) */
+    private fun inizioMese(): Long = java.util.Calendar.getInstance().apply {
+        set(java.util.Calendar.DAY_OF_MONTH, 1); set(java.util.Calendar.HOUR_OF_DAY, 0)
+        set(java.util.Calendar.MINUTE, 0); set(java.util.Calendar.SECOND, 0); set(java.util.Calendar.MILLISECOND, 0)
+    }.timeInMillis
+
+    /** gli ultimi viaggi finiti (5, o tutti), col riassunto del mese; si ridisegna solo quando cambia qualcosa */
+    private fun disegnaStorico() {
+        val voci = Storico.tutti(this)
+        schedaStorico.visibility = if (voci.isEmpty()) View.GONE else View.VISIBLE
+        val piuAuto = Parco.elenco(this).size > 1
+        val firma = voci.joinToString("|") { "${it.auto}/${it.partenza}/${it.arrivo}/${it.km}/${it.litri}/${it.a}" } +
+            "/$storicoTutto/$piuAuto/" + voci.map { it.auto }.distinct().joinToString(",") { Parco.mostra(this, it) }
+        if (voci.isEmpty() || (firma == firmaStorico && boxStorico.childCount > 0)) return
+        firmaStorico = firma
+        boxStorico.removeAllViews()
+
+        val mese = voci.filter { it.partenza >= inizioMese() }
+        val kmMese = mese.mapNotNull { it.km }
+        val litriMese = mese.mapNotNull { it.litri }
+        rigaValore(boxStorico, "Questo mese", listOfNotNull(
+            if (mese.size == 1) "1 viaggio" else "${mese.size} viaggi",
+            if (kmMese.isNotEmpty()) km(kmMese.sum()) else null,
+            if (litriMese.isNotEmpty()) String.format(Locale.ITALY, "%.1f l", litriMese.sum()) else null
+        ).joinToString(" · "))
+
+        val giorno = SimpleDateFormat("EEE dd/MM", Locale.ITALY)
+        val ora = SimpleDateFormat("HH:mm", Locale.ITALY)
+        val mostrati = if (storicoTutto) voci else voci.take(5)
+        for (v in mostrati) {
+            separatore(boxStorico)
+            val titolo = giorno.format(Date(v.partenza)).replaceFirstChar { it.uppercase() } +
+                " · ${ora.format(Date(v.partenza))} → ${ora.format(Date(v.arrivo))}" +
+                if (piuAuto) " · ${Parco.mostra(this, v.auto).ifEmpty { Marca.AUTO }}" else ""
+            val luoghi = if (v.da.isEmpty() && v.a.isEmpty()) "" else "${v.da.ifEmpty { "?" }} → ${v.a.ifEmpty { "?" }}"
+            val dettagli = listOfNotNull(
+                v.km?.let { km(it) },
+                durata(v.durata),
+                v.litri?.let { String.format(Locale.ITALY, "%.1f l", it) },
+                v.kmLitro()?.let { String.format(Locale.ITALY, "%.1f km/l", it) },
+                if (v.rifornito > 0) "con rifornimento" else null
+            ).joinToString(" · ")
+            voce(boxStorico, titolo, luoghi, dettagli)
+        }
+        val tasti = rigaTasti(boxStorico)
+        tasto(tasti, if (storicoTutto) "Mostra meno" else "Mostra tutti (${voci.size})", false) {
+            storicoTutto = !storicoTutto; aggiornaSchermo()
+        }.apply { if (voci.size <= 5) { isEnabled = false; setTextColor(TENUE) } }
+        tasto(tasti, "Cancella", false) {
+            chiediCancella("Cancellare lo storico?", "Si cancellano tutti i viaggi salvati" + (if (piuAuto) " di tutte le auto" else "") + ".") {
+                (Parco.elenco(this) + "").distinct().forEach { Storico.cancella(this, it) }
+            }
+        }
+    }
+
+    /** gli ultimi rifornimenti (5, o tutti) con prezzo, spesa stimata e km dal precedente */
+    private fun disegnaRifornimenti() {
+        val voci = Rifornimenti.tutti(this)
+        schedaRifornimenti.visibility = if (voci.isEmpty()) View.GONE else View.VISIBLE
+        val piuAuto = Parco.elenco(this).size > 1
+        val firma = voci.joinToString("|") { "${it.auto}/${it.quando}/${it.litri}/${it.luogo}/${it.prezzo}" } +
+            "/$rifornimentiTutti/$piuAuto/" + voci.map { it.auto }.distinct().joinToString(",") { Parco.mostra(this, it) }
+        if (voci.isEmpty() || (firma == firmaRifornimenti && boxRifornimenti.childCount > 0)) return
+        firmaRifornimenti = firma
+        boxRifornimenti.removeAllViews()
+
+        val mese = voci.filter { it.quando >= inizioMese() }
+        val spese = mese.mapNotNull { it.spesa() }
+        rigaValore(boxRifornimenti, "Questo mese", listOfNotNull(
+            if (mese.size == 1) "1 rifornimento" else "${mese.size} rifornimenti",
+            if (mese.isNotEmpty()) String.format(Locale.ITALY, "%.0f l", mese.sumOf { it.litri }) else null,
+            if (spese.isNotEmpty()) String.format(Locale.ITALY, "circa %.0f €", spese.sum()) else null
+        ).joinToString(" · "))
+
+        val quando = SimpleDateFormat("EEE dd/MM 'alle' HH:mm", Locale.ITALY)
+        val mostrati = if (rifornimentiTutti) voci else voci.take(5)
+        for (r in mostrati) {
+            separatore(boxRifornimenti)
+            val titolo = quando.format(Date(r.quando)).replaceFirstChar { it.uppercase() } +
+                String.format(Locale.ITALY, " · %.0f l", r.litri) +
+                if (piuAuto) " · ${Parco.mostra(this, r.auto).ifEmpty { Marca.AUTO }}" else ""
+            val dove = listOf(r.marchio, r.luogo).filter { it.isNotEmpty() }.joinToString(", ")
+                .ifEmpty { if (r.lat == null) "posizione non disponibile" else "" }
+            // km dal rifornimento precedente della stessa auto (contachilometri dell'iDrive)
+            val precedente = voci.filter { it.auto == r.auto && it.quando < r.quando }.maxByOrNull { it.quando }
+            val percorsi = if (r.km != null && precedente?.km != null && r.km > precedente.km) r.km - precedente.km else null
+            val dettagli = listOfNotNull(
+                r.prezzo?.let { String.format(Locale.ITALY, "%.3f €/l", it) + if (r.self) " self" else "" },
+                r.spesa()?.let { String.format(Locale.ITALY, "circa %.0f €", it) },
+                percorsi?.let { km(it) + " dal precedente" },
+                String.format(Locale.ITALY, "%.0f l nel serbatoio dopo", r.livello)
+            ).joinToString(" · ")
+            voce(boxRifornimenti, titolo, dove, dettagli)
+        }
+        piccolo(boxRifornimenti, "Prezzo del distributore più vicino (MIMIT), se il telefono era a meno di 300 m: la spesa è una stima.")
+        val tasti = rigaTasti(boxRifornimenti)
+        tasto(tasti, if (rifornimentiTutti) "Mostra meno" else "Mostra tutti (${voci.size})", false) {
+            rifornimentiTutti = !rifornimentiTutti; aggiornaSchermo()
+        }.apply { if (voci.size <= 5) { isEnabled = false; setTextColor(TENUE) } }
+        tasto(tasti, "Cancella", false) {
+            chiediCancella("Cancellare i rifornimenti?", "Si cancellano tutti i rifornimenti salvati" + (if (piuAuto) " di tutte le auto" else "") + ".") {
+                (Parco.elenco(this) + "").distinct().forEach { Rifornimenti.cancella(this, it) }
+            }
+        }
+    }
+
+    private fun chiediCancella(titolo: String, testo: String, azione: () -> Unit) {
+        val (d, s) = finestra(R.drawable.ic_storico, titolo)
+        testo(s, "$testo Non si possono recuperare.").setPadding(0, px(8), 0, 0)
+        val tasti = rigaTasti(s)
+        tasto(tasti, "Cancella", true) { azione(); d.dismiss(); aggiornaSchermo() }
+        tasto(tasti, "Annulla", false) { d.dismiss() }
+        mostraFinestra(d, s)
+    }
+
     /** le righe del viaggio: partenza, durata e, coi dati dell'auto dall'iDrive, km, carburante, temperature e aperture */
     private fun righeViaggio(box: LinearLayout, v: Viaggio.Dati) {
         val oggi = SimpleDateFormat("ddMMyyyy", Locale.ITALY).format(Date())
@@ -810,7 +968,7 @@ class MainActivity : Activity() {
 
     private fun togliAuto(bt: String) {
         val (d, s) = finestra(R.drawable.ic_auto, "Togliere ${Parco.mostra(this, bt)}?")
-        testo(s, "Si cancellano nome, carburante e parcheggio di questa auto. " +
+        testo(s, "Si cancellano nome, carburante, parcheggio, storico dei viaggi e rifornimenti di questa auto. " +
             "Se il telefono si ricollega al suo Bluetooth ($bt), torna nell'elenco da sola.").setPadding(0, px(8), 0, 0)
         val tasti = rigaTasti(s)
         tasto(tasti, "Togli", true) { Parco.togli(this, bt); d.dismiss(); aggiornaSchermo() }

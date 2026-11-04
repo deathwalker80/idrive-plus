@@ -44,7 +44,7 @@ object Parco {
         e.apply()
     }
 
-    /** toglie un'auto dal parco con nome, carburante e parcheggio; se si ricollega al Bluetooth torna da sola */
+    /** toglie un'auto dal parco con nome, carburante, parcheggio, storico viaggi e rifornimenti; se si ricollega al Bluetooth torna da sola */
     fun togli(ctx: Context, bt: String) {
         val b = bt.trim()
         val note = note(ctx)
@@ -58,6 +58,8 @@ object Parco {
         e.apply()
         Parcheggio.cancella(ctx, b)
         Viaggio.cancella(ctx, b)
+        Storico.cancella(ctx, b)
+        Rifornimenti.cancella(ctx, b)
     }
 
     /** ultima auto vista; per chi aggiorna l'app la si ritrova nel parcheggio o nell'ultimo evento Bluetooth */

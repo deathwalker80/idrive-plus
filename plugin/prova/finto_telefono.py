@@ -17,8 +17,8 @@ class H(http.server.BaseHTTPRequestHandler):
             q = parse_qs(urlparse(p).query)
             with open('/tmp/finto_telefono_auto.txt', 'a') as f: f.write(q['n'][0] + ' = ' + q['v'][0] + '\n')
             return self.manda(200, 'text/plain', b'OK\n')
-        if p == '/ponte': return self.manda(200, 'text/plain', b'IDRIVEPONTE 2.2 meteo=111 notizie=222 n=8 locali=333 carburanti=444 traffico=555\n')
-        if p in ('/meteo.png', '/carburanti.png', '/traffico.png'): return self.manda(200, 'image/png', open(D + p, 'rb').read())
+        if p == '/ponte': return self.manda(200, 'text/plain', b'IDRIVEPONTE 2.16 meteo=111 notizie=222 n=8 locali=333 carburanti=444 traffico=555 auto=666\n')
+        if p in ('/meteo.png', '/carburanti.png', '/traffico.png', '/auto.png'): return self.manda(200, 'image/png', open(D + p, 'rb').read())
         if p.startswith('/locali/'): p = p[7:]
         if p == '/notizie.txt' or self.path == '/locali/notizie.txt': return self.manda(200, 'text/plain; charset=utf-8', ('NOTIZIE 222 8\n' + '\n'.join(TITOLI) + '\n').encode())
         for pre, nome in (('/notizia/', 'notizia'), ('/mini/', 'mini'), ('/anteprima/', 'anteprima')):
