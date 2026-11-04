@@ -3,10 +3,13 @@ package it.deathwalker.idriveponte
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.ImageDecoder
 import android.graphics.Rect
 import android.net.Uri
+import android.os.Build
 import org.json.JSONObject
 import java.io.File
+import java.nio.ByteBuffer
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -93,23 +96,72 @@ object Foto {
         return if (r < 0) Rect(0, 0, w, h) else Rect(l, t, r + 1, giu + 1)
     }
 
-    /** foto scelta dall'utente: si legge, si riduce e si salva come PNG; i punti ripartono da quelli predefiniti */
-    fun impostaAvatar(ctx: Context, bt: String?, uri: Uri): Boolean {
-        val misure = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        ctx.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, misure) } ?: return false
-        if (misure.outWidth <= 0 || misure.outHeight <= 0) return false
-        var campione = 1
-        while (max(misure.outWidth, misure.outHeight) / (campione * 2) >= LATO_MASSIMO) campione *= 2
-        val opz = BitmapFactory.Options().apply { inSampleSize = campione; inPreferredConfig = Bitmap.Config.ARGB_8888 }
-        val letta = ctx.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, opz) } ?: return false
+    /** foto scelta dall'utente: si legge, si riduce e si salva come PNG; i punti ripartono da quelli predefiniti.
+     *  Torna null se e' andata bene, altrimenti il motivo (si mostra nell'app). Il file si legge una volta sola
+     *  (alcune app di foto, Google Foto o le gallerie con le foto nel cloud, non lo riaprono una seconda volta) e se
+     *  BitmapFactory non lo capisce (HEIC, AVIF, ...) ci prova ImageDecoder. */
+    fun impostaAvatar(ctx: Context, bt: String?, uri: Uri): String? {
+        val dati = try {
+            ctx.contentResolver.openInputStream(uri)?.use { leggiTutto(it) }
+        } catch (e: Exception) {
+            return "non riesco ad aprirla (${e.javaClass.simpleName})"
+        } ?: return "non riesco ad aprirla"
+        if (dati.isEmpty()) return "il file è vuoto"
+        if (dati.size > MAX_BYTE) return "è troppo grande (più di ${MAX_BYTE / 1_000_000} MB)"
+        val letta = try { decodifica(dati) } catch (e: OutOfMemoryError) { null }
+            ?: return "formato non letto (${ctx.contentResolver.getType(uri) ?: "sconosciuto"})"
         val s = min(1f, LATO_MASSIMO.toFloat() / max(letta.width, letta.height))
         val b = if (s < 1f) Bitmap.createScaledBitmap(letta, (letta.width * s).roundToInt(), (letta.height * s).roundToInt(), true) else letta
-        val f = file(ctx, bt.orEmpty())
-        f.parentFile?.mkdirs()
-        f.outputStream().use { b.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        try {
+            val f = file(ctx, bt.orEmpty())
+            f.parentFile?.mkdirs()
+            f.outputStream().use { b.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        } catch (e: Exception) {
+            return "non riesco a salvarla (${e.javaClass.simpleName})"
+        }
         prefs(ctx).edit().remove(kPunti(bt.orEmpty())).apply()
         synchronized(this) { cacheChiave = "" }
-        return true
+        return null
+    }
+
+    private const val MAX_BYTE = 60_000_000
+
+    private fun leggiTutto(ing: java.io.InputStream): ByteArray {
+        val out = java.io.ByteArrayOutputStream()
+        val buf = ByteArray(64 * 1024)
+        while (true) {
+            val n = ing.read(buf)
+            if (n < 0) break
+            out.write(buf, 0, n)
+            if (out.size() > MAX_BYTE) break
+        }
+        return out.toByteArray()
+    }
+
+    /** BitmapFactory (ridotta gia' in lettura), altrimenti ImageDecoder (Android 9+); null se nessuno la legge */
+    private fun decodifica(dati: ByteArray): Bitmap? {
+        val misure = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(dati, 0, dati.size, misure)
+        if (misure.outWidth > 0 && misure.outHeight > 0) {
+            var campione = 1
+            while (max(misure.outWidth, misure.outHeight) / (campione * 2) >= LATO_MASSIMO) campione *= 2
+            val opz = BitmapFactory.Options().apply { inSampleSize = campione; inPreferredConfig = Bitmap.Config.ARGB_8888 }
+            BitmapFactory.decodeByteArray(dati, 0, dati.size, opz)?.let { return it }
+        }
+        if (Build.VERSION.SDK_INT >= 28) {
+            try {
+                return ImageDecoder.decodeBitmap(ImageDecoder.createSource(ByteBuffer.wrap(dati))) { dec, info, _ ->
+                    dec.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+                    val w = info.size.width
+                    val h = info.size.height
+                    val s = min(1f, LATO_MASSIMO.toFloat() / max(w, h))
+                    if (s < 1f) dec.setTargetSize(max(1, (w * s).roundToInt()), max(1, (h * s).roundToInt()))
+                }
+            } catch (e: Exception) {
+                // nemmeno ImageDecoder la capisce
+            }
+        }
+        return null
     }
 
     /** torna alla foto di serie (o a nessuna foto) */

@@ -139,4 +139,13 @@ class ViaggioTest {
         assertEquals(14.2, i.kmLitro!!, 0.01)
         assertEquals(listOf("porta ant. dx", "finestrino ant. sx"), i.aperti)
     }
+
+    @Test
+    fun titoliAccorciatiPerLaLista() {
+        val corto = "14:19 · Mcc, chiude nove mesi con utile a 67 milioni di euro"
+        assertEquals(corto, Server.accorcia(corto))
+        val lungo = Server.accorcia("14:40 · Francia, attacco ibrido a celle frigorifere con sangue di donatori negli ospedali")
+        assertTrue(lungo.length <= Server.RIGA_MAX)
+        assertEquals("14:40 · Francia, attacco ibrido a celle frigorifere con...", lungo)
+    }
 }
