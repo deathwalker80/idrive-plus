@@ -106,10 +106,11 @@ object Rifornimenti {
         null
     }
 
+    /** si scrive solo se e' cambiato qualcosa: il livello arriva ogni 2 secondi ma cambia di rado */
     private fun salvaSerbatoio(ctx: Context, bt: String, s: Serbatoio) {
         val o = JSONObject().put("livello", s.livello).put("salitaDa", s.salitaDa).put("salitaOra", s.salitaOra)
-            .put("rifornimento", s.rifornimento).put("base", s.base)
-        prefs(ctx).edit().putString(kSerbatoio(bt), o.toString()).apply()
+            .put("rifornimento", s.rifornimento).put("base", s.base).toString()
+        if (o != prefs(ctx).getString(kSerbatoio(bt), null)) prefs(ctx).edit().putString(kSerbatoio(bt), o).apply()
     }
 
     /** i rifornimenti di un'auto, dal piu' recente */
