@@ -1,8 +1,9 @@
 #!/bin/sh
-# iDrive Plus / NBT Plus - chiavetta v23 (unica per tutte le app) - plugin iDrive v8: Meteo (con allerte e dati
-# dell'auto per l'app), Notizie, Notizie locali, Carburanti, Traffico, Stato auto. Aggiornati dall'app del telefono.
+# iDrive Plus / NBT Plus - chiavetta v24 (unica per tutte le app) - plugin iDrive v9: Meteo (con allerte e dati
+# dell'auto per l'app), Notizie, Notizie locali, Carburanti, Traffico, Stato vettura. Aggiornati dall'app del telefono.
 # Android Auto (NbtAad) non viene toccato.
-# Le librerie sono le stesse per tutte le app: cambiano solo le pagine "in attesa del telefono", col nome dell'app.
+# Le librerie sono le stesse per tutte le app: cambiano le pagine "in attesa del telefono", col nome dell'app, e con
+# mini le icone di Stato vettura e Traffico (con le MINI disegnate).
 # Le librerie in uso dall'HMI non si possono sovrascrivere: si rinominano (.vecchia_*) e si copia la nuova.
 # Da lanciare DENTRO la shell di omap (dopo mount + on -f). Invocazione, secondo l'app che hai sul telefono:
 #   sh /mnt/umass*/00-installa.sh            NBT Plus (Play Store), su MINI, BMW o Supra

@@ -8,8 +8,15 @@ import java.net.URLDecoder
  * NBT-AAD legge la marcia) e li manda qui sul Wi-Fi dell'auto, con GET /auto?n=<proprieta'>&v=<valore JSON>.
  * Nessun collegamento Bluetooth in piu' e nessuna app BMW: solo lettura, all'auto non arriva niente.
  *
- * Nomi delle proprieta': IDriveConnectKit (CDSProperty.kt); formati dei valori: AAIdrive (CDSMetrics.kt).
- * I valori arrivano nelle unita' dell'auto: km, litri, gradi C, consumo in l/100 km.
+ * Nomi delle proprieta': IDriveConnectKit (CDSProperty.kt). Formati verificati sulla MINI F60 (Meteo.log, 4/11/2026):
+ *   sensors.doors          {"doors":{"driver":0,"passenger":0,"driverRear":0,"passengerRear":0}}   0 chiusa, 1 aperta
+ *   sensors.trunk / lid    {"trunk":0} / {"lid":0}                                                   0 chiuso, 1 aperto
+ *   controls.window...     {"windowDriverFront":{"position":19,"status":1,"drive":1}}               status 0 chiuso,
+ *                          1 aperto in parte, 2 aperto, 3 non valido (a quadro spento: position 127)
+ *   controls.sunroof       {"sunroof":{"openPosition":0,"tiltPosition":0,"status":0}}             status 3 / 255 = non valido
+ *   driving.averageConsumption {"averageConsumption":{"averageConsumption1":13.8,"averageConsumption2":14.2,"unit":4}}
+ *                          unit 4 = km/l (la MINI mostra 14.2 km/l = averageConsumption2), 1 = l/100 km
+ * I valori arrivano nelle unita' dell'auto: km, litri, gradi C.
  */
 object DatiAuto {
 
@@ -31,6 +38,7 @@ object DatiAuto {
     fun azzera() {
         grezzi = emptyMap()
         ultimoDato = 0L
+        it.deathwalker.idriveponte.Stato.avvio = System.currentTimeMillis() / 1000     // l'oggetto Stato, non DatiAuto.Stato
     }
 
     /** una richiesta /auto del plugin ("n=sensors.fuel&v=%7B...%7D"): true se il valore e' stato preso */
@@ -49,85 +57,120 @@ object DatiAuto {
         return true
     }
 
-    // ---- lettura dei valori ---------------------------------------------------------------------------------------
+    // ---- porte, finestrini, tetto, portellone e cofano ------------------------------------------------------------
 
-    enum class Posto(val breve: String) { ANT_SX("ant. sx"), ANT_DX("ant. dx"), POST_SX("post. sx"), POST_DX("post. dx") }
+    /** le 11 parti della pagina "Porte, finestrini e tetto"; DX = passeggero, SX = guidatore (guida a sinistra) */
+    enum class Parte(val chiave: String, val etichetta: String, val femminile: Boolean) {
+        TETTO("tetto", "Tetto", false),
+        PORTELLONE("portellone", "Portellone", false),
+        FINESTRINO_POST_DX("finestrino_post_dx", "Finestrino post. dx", false),
+        FINESTRINO_ANT_DX("finestrino_ant_dx", "Finestrino ant. dx", false),
+        PORTA_POST_DX("porta_post_dx", "Porta post. dx", true),
+        PORTA_ANT_DX("porta_ant_dx", "Porta ant. dx", true),
+        PORTA_POST_SX("porta_post_sx", "Porta post. sx", true),
+        FINESTRINO_POST_SX("finestrino_post_sx", "Finestrino post. sx", false),
+        FINESTRINO_ANT_SX("finestrino_ant_sx", "Finestrino ant. sx", false),
+        PORTA_ANT_SX("porta_ant_sx", "Porta ant. sx", true),
+        COFANO("cofano", "Cofano", false),
+    }
 
-    class Istantanea(
-        val km: Double?,
-        val litri: Double?,
-        val autonomia: Double?,
-        val consumo: Double?,                 // l/100 km medio dell'auto
-        val esterna: Double?,
-        val interna: Double?,
-        val aperti: List<String>?,            // null = l'auto non ha mandato nessuno stato di porte/finestrini/tetto
+    enum class Stato { CHIUSO, APERTO, SOLLEVATO }
+
+    /** "chiusa", "aperto", "sollevato"... con l'accordo di genere della parte */
+    fun parola(p: Parte, s: Stato): String = when (s) {
+        Stato.CHIUSO -> if (p.femminile) "chiusa" else "chiuso"
+        Stato.APERTO -> if (p.femminile) "aperta" else "aperto"
+        Stato.SOLLEVATO -> "sollevato"
+    }
+
+    private val PORTE = mapOf(
+        "driver" to Parte.PORTA_ANT_SX, "driverFront" to Parte.PORTA_ANT_SX,
+        "passenger" to Parte.PORTA_ANT_DX, "passengerFront" to Parte.PORTA_ANT_DX,
+        "driverRear" to Parte.PORTA_POST_SX, "passengerRear" to Parte.PORTA_POST_DX,
+    )
+    private val FINESTRINI = listOf(
+        "windowDriverFront" to Parte.FINESTRINO_ANT_SX, "windowPassengerFront" to Parte.FINESTRINO_ANT_DX,
+        "windowDriverRear" to Parte.FINESTRINO_POST_SX, "windowPassengerRear" to Parte.FINESTRINO_POST_DX,
     )
 
     private fun json(grezzi: Map<String, String>, nome: String): JSONObject? = grezzi[nome]?.let {
         try { JSONObject(it) } catch (e: Exception) { null }
     }
 
-    /** primo numero trovato in un valore {"chiave":n} o {"chiave":{"x":n,...}}, per gli stati semplici */
-    private fun numero(o: JSONObject?, chiave: String): Double? {
-        if (o == null || !o.has(chiave)) return null
-        val v = o.opt(chiave)
-        return when (v) {
-            is Number -> v.toDouble()
-            is JSONObject -> v.keys().asSequence().mapNotNull { (v.opt(it) as? Number)?.toDouble() }.firstOrNull()
-            else -> null
+    /** 0 chiuso, 1 aperto; altro (valore non valido) = sconosciuto */
+    private fun aperturaSemplice(v: Any?): Stato? = when ((v as? Number)?.toInt()) {
+        0 -> Stato.CHIUSO
+        1 -> Stato.APERTO
+        else -> null
+    }
+
+    /** finestrino o tetto: status 0 chiuso, 1 aperto in parte, 2 aperto, 3 non valido; tilt = tetto sollevato */
+    private fun apertura(o: JSONObject?): Stato? {
+        if (o == null) return null
+        val stato = o.optInt("status", -1)
+        val posizione = if (o.has("position")) o.optInt("position", 0) else o.optInt("openPosition", 0)
+        val sollevato = o.optInt("tiltPosition", 0)
+        if (stato !in 0..2 || posizione >= 127 || sollevato >= 127) return null     // quadro spento, dato non valido
+        return when {
+            stato == 0 && posizione == 0 && sollevato == 0 -> Stato.CHIUSO
+            sollevato > 0 && posizione == 0 -> Stato.SOLLEVATO
+            else -> Stato.APERTO
         }
     }
 
-    /** finestrino o tetto (AAIdrive parseWindowState): status 0 chiuso, 1 aperto in parte, 2 aperto; tilt = sollevato */
-    private fun apertura(o: JSONObject?): String? {
-        if (o == null) return null
-        val stato = o.optInt("status", 0)
-        val sollevato = o.optInt("tiltPosition", 0)
-        val posizione = if (o.has("position")) o.optInt("position", 0) else o.optInt("openPosition", 0)
-        if (posizione >= 150) return null                      // valore non valido
-        return when {
-            stato == 0 && sollevato == 0 -> "chiuso"
-            sollevato > 0 && posizione == 0 -> "sollevato"
-            posizione > 0 || stato > 0 -> "aperto"
-            else -> "chiuso"
+    /** lo stato di ogni parte che l'auto ha mandato (le parti senza dato valido non ci sono) */
+    fun parti(grezzi: Map<String, String>): Map<Parte, Stato> {
+        val m = LinkedHashMap<Parte, Stato>()
+        json(grezzi, "controls.sunroof")?.optJSONObject("sunroof")?.let { o -> apertura(o)?.let { m[Parte.TETTO] = it } }
+        json(grezzi, "sensors.trunk")?.let { o -> aperturaSemplice(o.opt("trunk"))?.let { m[Parte.PORTELLONE] = it } }
+        json(grezzi, "sensors.lid")?.let { o -> aperturaSemplice(o.opt("lid"))?.let { m[Parte.COFANO] = it } }
+        json(grezzi, "sensors.doors")?.optJSONObject("doors")?.let { p ->
+            for (k in p.keys()) { val parte = PORTE[k] ?: continue; aperturaSemplice(p.opt(k))?.let { m[parte] = it } }
         }
+        for ((k, parte) in FINESTRINI) json(grezzi, "controls.$k")?.optJSONObject(k)?.let { o -> apertura(o)?.let { m[parte] = it } }
+        return m
+    }
+
+    // ---- lettura dei valori ---------------------------------------------------------------------------------------
+
+    class Istantanea(
+        val km: Double?,
+        val litri: Double?,
+        val autonomia: Double?,
+        val kmLitro: Double?,                 // consumo medio del computer di bordo, in km/l
+        val esterna: Double?,
+        val interna: Double?,
+        val aperti: List<String>?,            // null = l'auto non ha mandato nessuno stato valido di porte/finestrini/tetto
+    )
+
+    /** consumo medio in km/l, dall'unita' dell'auto (4 km/l, 1 l/100 km, 2 mpg UK, 3 mpg US) */
+    private fun kmLitro(o: JSONObject?): Double? {
+        if (o == null) return null
+        val v = o.optDouble("averageConsumption2").takeIf { !it.isNaN() && it > 0 }
+            ?: o.optDouble("averageConsumption1").takeIf { !it.isNaN() && it > 0 } ?: return null
+        val km = when (o.optInt("unit", 1)) {
+            4 -> v
+            2 -> v * 0.354006
+            3 -> v * 0.425144
+            else -> 100 / v
+        }
+        return km.takeIf { it in 1.0..99.0 }
     }
 
     fun istantanea(grezzi: Map<String, String>): Istantanea {
         val carburante = json(grezzi, "sensors.fuel")?.optJSONObject("fuel")
-        val consumo = json(grezzi, "driving.averageConsumption")?.optJSONObject("averageConsumption")
-        var visti = false
-        val aperti = ArrayList<String>()
-
-        // porte {"doors":{"driverFront":0,...}}: qualunque valore diverso da 0 = aperta
-        json(grezzi, "sensors.doors")?.optJSONObject("doors")?.let { p ->
-            visti = true
-            val nomi = mapOf("driverFront" to Posto.ANT_SX, "passengerFront" to Posto.ANT_DX, "driverRear" to Posto.POST_SX, "passengerRear" to Posto.POST_DX)
-            for (k in p.keys()) if (((p.opt(k) as? Number)?.toInt() ?: 0) != 0) aperti.add("porta " + (nomi[k]?.breve ?: k))
+        val parti = parti(grezzi)
+        val aperti = parti.filterValues { it != Stato.CHIUSO }.map { (p, s) ->
+            p.etichetta.replaceFirstChar { it.lowercase() } + if (s == Stato.SOLLEVATO) " (sollevato)" else ""
         }
-        numero(json(grezzi, "sensors.trunk"), "trunk")?.let { visti = true; if (it != 0.0) aperti.add("portellone") }
-        numero(json(grezzi, "sensors.lid"), "lid")?.let { visti = true; if (it != 0.0) aperti.add("cofano") }
-        val finestrini = listOf(
-            "windowDriverFront" to Posto.ANT_SX, "windowPassengerFront" to Posto.ANT_DX,
-            "windowDriverRear" to Posto.POST_SX, "windowPassengerRear" to Posto.POST_DX,
-        )
-        for ((k, posto) in finestrini) apertura(json(grezzi, "controls.$k")?.optJSONObject(k))?.let { s ->
-            visti = true
-            if (s != "chiuso") aperti.add("finestrino ${posto.breve}" + if (s == "sollevato") " (sollevato)" else "")
-        }
-        apertura(json(grezzi, "controls.sunroof")?.optJSONObject("sunroof"))?.let { s ->
-            visti = true
-            if (s != "chiuso") aperti.add("tetto" + if (s == "sollevato") " (sollevato)" else "")
-        }
-
         return Istantanea(
             km = json(grezzi, "driving.odometer")?.optDouble("odometer")?.takeIf { !it.isNaN() && it > 0 },
             litri = carburante?.optDouble("tanklevel")?.takeIf { !it.isNaN() && it > 0 },
             autonomia = carburante?.optDouble("range")?.takeIf { !it.isNaN() && it > 0 },
-            consumo = consumo?.optDouble("averageConsumption1")?.takeIf { !it.isNaN() && it > 0 && it < 100 },
+            kmLitro = kmLitro(json(grezzi, "driving.averageConsumption")?.optJSONObject("averageConsumption")),
             esterna = json(grezzi, "sensors.temperatureExterior")?.optDouble("temperatureExterior")?.takeIf { !it.isNaN() && it > -60 && it < 90 },
             interna = json(grezzi, "sensors.temperatureInterior")?.optDouble("temperatureInterior")?.takeIf { !it.isNaN() && it > -60 && it < 90 },
-            aperti = if (visti) aperti else null,
+            aperti = if (parti.isEmpty()) null else aperti,
         )
     }
 }

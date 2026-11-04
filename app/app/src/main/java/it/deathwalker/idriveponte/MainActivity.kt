@@ -86,6 +86,11 @@ class MainActivity : Activity() {
     private lateinit var schedaViaggio: View
     private lateinit var boxViaggio: LinearLayout
     private var firmaViaggio = ""
+    private lateinit var immagineVettura: ImageView
+    private lateinit var testoFoto: TextView
+    private lateinit var tastoTogliFoto: TextView
+    private var versionePorte = -1L
+    private var firmaFoto = ""
     private lateinit var schedaStorico: View
     private lateinit var boxStorico: LinearLayout
     private var firmaStorico = ""
@@ -174,6 +179,26 @@ class MainActivity : Activity() {
         }
         col.addView(schedaViaggio)
 
+        // ---- Stato vettura: la pagina "Porte, finestrini e tetto" che vede l'iDrive, con la foto dell'auto e i suoi punti
+        col.addView(scheda(R.drawable.ic_auto, "Stato vettura", "Porte, finestrini e tetto nell'iDrive") { s ->
+            immagineVettura = ImageView(this).apply {
+                adjustViewBounds = true
+                scaleType = ImageView.ScaleType.FIT_CENTER
+                background = tondo(Color.rgb(24, 66, 84), 10)
+                clipToOutline = true
+                visibility = View.GONE
+            }
+            s.addView(immagineVettura, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+            testoFoto = piccolo(s, "")
+            val tasti = rigaTasti(s)
+            tasto(tasti, "Scegli foto", false) { scegliFoto() }
+            tasto(tasti, "Sistema i punti", false) { calibraPunti(Parco.ultima(this).orEmpty()) }
+            tastoTogliFoto = tasto(tasti, "Togli foto", false) {
+                Foto.togliAvatar(this, Parco.ultima(this).orEmpty())
+                aggiornaSchermo()
+            }
+        })
+
         // ---- parcheggio
         col.addView(scheda(R.drawable.ic_parcheggio, "Dove ho parcheggiato") { s ->
             boxParcheggi = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }.also { s.addView(it) }
@@ -204,7 +229,7 @@ class MainActivity : Activity() {
             Triple("Notizie locali", R.drawable.ic_locali, "ANSA della regione della città scelta"),
             Triple("Carburanti", R.drawable.ic_carburante, "Prezzi ufficiali MIMIT vicino a te"),
             Triple("Traffico", R.drawable.ic_traffico, "Autostrade per l'Italia vicino a te"),
-            Triple("Stato auto", R.drawable.ic_auto, "Autonomia, km, viaggio, temperature e aperture dall'iDrive")
+            Triple("Stato vettura · Riepilogo", R.drawable.ic_auto, "Autonomia, km, viaggio e temperature dall'iDrive")
         )
         for ((nome, icona, sotto) in pagine) {
             col.addView(scheda(icona, nome, sotto) { s ->
@@ -371,7 +396,7 @@ class MainActivity : Activity() {
             text = Marca.APP; setTextColor(TESTO); textSize = 26f; typeface = Typeface.DEFAULT_BOLD
         })
         testi.addView(TextView(this).apply {
-            text = "Meteo, notizie, carburanti, traffico e stato auto nell'iDrive · v${Stato.VERSIONE}"
+            text = "Meteo, notizie, carburanti, traffico e stato vettura nell'iDrive · v${Stato.VERSIONE}"
             setTextColor(TENUE); textSize = 13f
         })
         riga.addView(testi, LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f))
@@ -548,6 +573,7 @@ class MainActivity : Activity() {
         disegnaParcheggi()
         disegnaParco()
         disegnaViaggio()
+        disegnaVettura()
         disegnaStorico()
         disegnaRifornimenti()
 
@@ -556,7 +582,7 @@ class MainActivity : Activity() {
         mostra("Notizie locali", Stato.locali.esito, Stato.locali.epoch, Stato.locali.notizie.firstOrNull()?.pagina)
         mostra("Carburanti", Stato.carburanti.esito, Stato.carburanti.epoch, Stato.carburanti.png)
         mostra("Traffico", Stato.traffico.esito, Stato.traffico.epoch, Stato.traffico.png)
-        mostra("Stato auto", Stato.auto.esito, Stato.auto.epoch, Stato.auto.png)
+        mostra("Stato vettura · Riepilogo", Stato.auto.esito, Stato.auto.epoch, Stato.auto.png)
 
         statoPermesso("bt", Build.VERSION.SDK_INT < 31 || ha(Manifest.permission.BLUETOOTH_CONNECT))
         statoPermesso("notifiche", Build.VERSION.SDK_INT < 33 || ha(Manifest.permission.POST_NOTIFICATIONS))
@@ -703,6 +729,96 @@ class MainActivity : Activity() {
         boxViaggio.removeAllViews()
         if (Parco.elenco(this).size > 1) titoletto(boxViaggio, Parco.mostra(this, bt), false)
         righeViaggio(boxViaggio, v)
+    }
+
+    // ============================================================================ stato vettura ====
+    private val SCEGLI_FOTO = 7
+
+    /** anteprima della pagina Porte (quella che vede l'iDrive) e stato della foto dell'auto attuale */
+    private fun disegnaVettura() {
+        val bt = Parco.ultima(this).orEmpty()
+        val porte = Stato.vettura.notizie.getOrNull(1)
+        if (porte != null && porte.versione != versionePorte) {
+            versionePorte = porte.versione
+            immagineVettura.setImageBitmap(BitmapFactory.decodeByteArray(porte.pagina, 0, porte.pagina.size))
+            immagineVettura.visibility = View.VISIBLE
+        }
+        val firma = "$bt/${Foto.firma(this, bt)}/${Stato.servizioAttivo}"
+        if (firma == firmaFoto) return
+        firmaFoto = firma
+        val avatar = Foto.haAvatar(this, bt)
+        testoFoto.text = when {
+            avatar -> "Foto: la tua. Sistema i punti perché ogni pallino cada sulla parte giusta dell'auto."
+            Foto.haFotoDiSerie(this) -> "Foto: quella di serie della ${Marca.AUTO}. Puoi sceglierne una della tua auto."
+            else -> "Nessuna foto: scegline una della tua auto (meglio con lo sfondo trasparente, vista di 3/4 dal lato destro)."
+        } + if (porte == null) "\nL'anteprima compare quando l'app è accesa." else ""
+        tastoTogliFoto.isEnabled = avatar
+        tastoTogliFoto.setTextColor(if (avatar) TESTO else TENUE)
+    }
+
+    private fun scegliFoto() {
+        val i = Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("image/*")
+        try {
+            @Suppress("DEPRECATION")
+            startActivityForResult(i, SCEGLI_FOTO)
+        } catch (e: Exception) {
+            testoFoto.text = "Nessuna app per scegliere le foto su questo telefono."
+        }
+    }
+
+    @Deprecated("Activity semplice, senza AndroidX")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        @Suppress("DEPRECATION")
+        super.onActivityResult(requestCode, resultCode, data)
+        val uri = data?.data
+        if (requestCode != SCEGLI_FOTO || resultCode != RESULT_OK || uri == null) return
+        val bt = Parco.ultima(this).orEmpty()
+        testoFoto.text = "Sto preparando la foto..."
+        Thread({
+            val ok = try { Foto.impostaAvatar(this, bt, uri) } catch (e: Exception) { false }
+            runOnUiThread {
+                firmaFoto = ""
+                aggiornaSchermo()
+                if (ok) calibraPunti(bt) else testoFoto.text = "Non riesco a leggere questa foto: provane un'altra."
+            }
+        }, "foto").start()
+    }
+
+    /** sposta gli 11 punti sulla foto: trascina, tocca per spostare il punto scelto, tieni premuto per "non visibile" */
+    private fun calibraPunti(bt: String) {
+        val foto = Foto.immagine(this, bt)
+        if (foto == null) { scegliFoto(); return }
+        val (d, s) = finestra(R.drawable.ic_auto, "Sistema i punti")
+        piccolo(s, "Scegli una parte qui sotto, poi tocca sulla foto dove si trova (o trascina il suo pallino). " +
+            "Tieni premuto un pallino se quella parte è sul lato che la foto non mostra: diventa un anello vuoto.")
+        val chips = LinkedHashMap<DatiAuto.Parte, TextView>()
+        lateinit var vista: CalibraPunti
+        val segna = { p: DatiAuto.Parte -> chips.forEach { (k, v) -> scegli(v, k == p) } }
+        vista = CalibraPunti(this, foto, Foto.punti(this, bt), ACCENTO) { p -> segna(p) }
+        s.addView(vista, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { topMargin = px(10) })
+        // le 11 parti, tre per riga, nell'ordine della pagina
+        var riga: LinearLayout? = null
+        DatiAuto.Parte.values().forEachIndexed { k, p ->
+            if (k % 3 == 0) riga = rigaChip(s).apply { setPadding(0, px(8), 0, 0) }
+            chips[p] = chip(riga!!, p.etichetta) { vista.scelto = p; segna(p) }.apply { textSize = 12f }
+        }
+        val ultima = riga!!
+        while (ultima.childCount < 3) ultima.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f).apply { marginStart = px(8) })
+        segna(vista.scelto)
+        val tasti = rigaTasti(s)
+        tasto(tasti, "Salva", true) {
+            Foto.salvaPunti(this, bt, vista.punti)
+            d.dismiss()
+            firmaFoto = ""
+            aggiornaSchermo()
+        }
+        tasto(tasti, "Predefiniti", false) {
+            Foto.ripristinaPunti(this, bt)
+            d.dismiss()
+            calibraPunti(bt)
+        }
+        tasto(tasti, "Annulla", false) { d.dismiss() }
+        mostraFinestra(d, s)
     }
 
     private fun durata(ms: Long): String {
@@ -863,7 +979,7 @@ class MainActivity : Activity() {
             rigaValore(box, "Nel serbatoio", String.format(Locale.ITALY, "%.0f l", l) +
                 (ora.autonomia?.let { String.format(Locale.ITALY, ", autonomia %.0f km", it) } ?: ""))
         }
-        ora.consumo?.let { rigaValore(box, "Consumo medio", String.format(Locale.ITALY, "%.1f km/l (computer di bordo)", 100 / it)) }
+        ora.kmLitro?.let { rigaValore(box, "Consumo medio", String.format(Locale.ITALY, "%.1f km/l (computer di bordo)", it)) }
         val temperature = listOfNotNull(
             ora.esterna?.let { String.format(Locale.ITALY, "esterna %.0f °C", it) },
             ora.interna?.let { String.format(Locale.ITALY, "interna %.0f °C", it) }

@@ -37,9 +37,9 @@ class ViaggioTest {
         assertEquals(12345.0, i.km!!, 0.01)
         assertEquals(30.0, i.litri!!, 0.01)
         assertEquals(420.0, i.autonomia!!, 0.01)
-        assertEquals(6.3, i.consumo!!, 0.01)
+        assertEquals(100 / 6.3, i.kmLitro!!, 0.01)
         assertEquals(14.5, i.esterna!!, 0.01)
-        assertEquals(listOf("finestrino ant. sx", "tetto (sollevato)"), i.aperti)
+        assertEquals(listOf("tetto (sollevato)", "finestrino ant. sx"), i.aperti)
         // senza nessuno stato delle aperture: null, non "tutto chiuso"
         assertNull(DatiAuto.istantanea(mapOf("driving.odometer" to """{"odometer":1}""")).aperti)
         assertEquals(emptyList<String>(), DatiAuto.istantanea(mapOf("sensors.doors" to """{"doors":{"driverFront":0}}""")).aperti)
@@ -99,8 +99,44 @@ class ViaggioTest {
             assertTrue(chiedi("/auto?n=vehicle.VIN&v=%7B%7D").startsWith("HTTP/1.0 400"))
             assertTrue(chiedi("/auto?n=sensors.trunk&v=ciao").startsWith("HTTP/1.0 400"))
             assertEquals(1, DatiAuto.grezzi.size)
+            // Stato vettura (plugin Auto v9): due righe, la versione dopo il TAB; /ponte con vettura= e avvio=
+            val png = byteArrayOf(1, 2, 3)
+            Stato.vettura.metti(listOf(
+                NotiziaPronta("Riepilogo", "", png, png, ByteArray(0), 1001L),
+                NotiziaPronta("Porte, finestrini e tetto", "", png, png, ByteArray(0), 1002L),
+            ))
+            val lista = chiedi("/vettura/notizie.txt").substringAfter("\r\n\r\n")
+            assertEquals("NOTIZIE ${Stato.vettura.epoch} 2\nRiepilogo\t1001\nPorte, finestrini e tetto\t1002\n", lista)
+            assertTrue(chiedi("/vettura/notizia/1.png").startsWith("HTTP/1.0 200"))
+            assertTrue(chiedi("/vettura/notizia/2.png").startsWith("HTTP/1.0 404"))
+            val ponte = chiedi("/ponte")
+            assertTrue(ponte, ponte.contains("vettura=${Stato.vettura.epoch} avvio=${Stato.avvio}"))
         } finally {
             server.ferma()
         }
+    }
+
+    /** formati veri della MINI F60 (Meteo.log 4/11): porte driver/passenger, finestrini status 3 = non valido, km/l */
+    @Test
+    fun formatiVeriDellaMini() {
+        val g = mapOf(
+            "sensors.doors" to """{"doors":{"driver":0,"passenger":1,"driverRear":0,"passengerRear":0}}""",
+            "sensors.trunk" to """{"trunk":0}""",
+            "sensors.lid" to """{"lid":0}""",
+            "controls.sunroof" to """{"sunroof":{"openPosition":255,"tiltPosition":255,"status":3}}""",
+            "controls.windowDriverFront" to """{"windowDriverFront":{"position":19,"status":1,"drive":1}}""",
+            "controls.windowPassengerFront" to """{"windowPassengerFront":{"position":127,"status":3,"drive":3}}""",
+            "driving.averageConsumption" to """{"averageConsumption":{"averageConsumption1":13.8,"averageConsumption2":14.2,"unit":4}}""",
+        )
+        val parti = DatiAuto.parti(g)
+        assertEquals(DatiAuto.Stato.APERTO, parti[DatiAuto.Parte.PORTA_ANT_DX])
+        assertEquals(DatiAuto.Stato.CHIUSO, parti[DatiAuto.Parte.PORTA_ANT_SX])
+        assertEquals(DatiAuto.Stato.APERTO, parti[DatiAuto.Parte.FINESTRINO_ANT_SX])
+        assertNull("status 3: non valido", parti[DatiAuto.Parte.FINESTRINO_ANT_DX])
+        assertNull("tetto 255/status 3: non valido", parti[DatiAuto.Parte.TETTO])
+        assertEquals("aperta", DatiAuto.parola(DatiAuto.Parte.PORTA_ANT_DX, DatiAuto.Stato.APERTO))
+        val i = DatiAuto.istantanea(g)
+        assertEquals(14.2, i.kmLitro!!, 0.01)
+        assertEquals(listOf("porta ant. dx", "finestrino ant. sx"), i.aperti)
     }
 }

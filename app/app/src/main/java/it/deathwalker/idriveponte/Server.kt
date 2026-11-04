@@ -10,9 +10,12 @@ import java.util.concurrent.Executors
 /**
  * Piccolo server HTTP sul telefono, porta 8765: i plugin dell'iDrive chiedono qui le pagine pronte.
  *   GET /ponte            -> "IDRIVEPONTE <versione> meteo=<epoch> notizie=<epoch> n=<numero> locali=<epoch>
- *                             carburanti=<epoch> traffico=<epoch> auto=<epoch>"
- *   GET /meteo.png, /carburanti.png, /traffico.png, /auto.png -> pagine 1280x480 (auto = stato dell'auto)
+ *                             carburanti=<epoch> traffico=<epoch> auto=<epoch> vettura=<epoch> avvio=<secondi>"
+ *   GET /meteo.png, /carburanti.png, /traffico.png, /auto.png -> pagine 1280x480 (auto = riepilogo dello stato auto,
+ *                            per il plugin Auto v8)
  *   GET /locali/...       -> come le notizie qui sotto, per le notizie locali
+ *   GET /vettura/...      -> come le notizie, per lo Stato vettura (plugin Auto v9): riga 0 Riepilogo, riga 1 Porte,
+ *                            finestrini e tetto; dopo il titolo un TAB e la versione della riga
  *   GET /notizie.txt      -> riga 1 "NOTIZIE <epoch> <n>", poi un titolo per riga (ISO-8859-1: l'iDrive legge cosi'
  *                            il testo dei plugin; in UTF-8 "Morì" diventava "MorÃ¬")
  *   GET /notizia/<i>.png  -> pagina della notizia i (0..7)
@@ -99,7 +102,7 @@ class Server(private val quandoChiede: () -> Unit) {
                 out, 200, "text/plain",
                 ("IDRIVEPONTE ${Stato.VERSIONE} meteo=${Stato.meteo.epoch} notizie=${Stato.notizie.epoch} n=${Stato.notizie.notizie.size} " +
                     "locali=${Stato.locali.epoch} carburanti=${Stato.carburanti.epoch} traffico=${Stato.traffico.epoch} " +
-                    "auto=${Stato.auto.epoch}\n").toByteArray()
+                    "auto=${Stato.auto.epoch} vettura=${Stato.vettura.epoch} avvio=${Stato.avvio}\n").toByteArray()
             )
             pagina != null -> {
                 val png = pagina.png
@@ -113,6 +116,7 @@ class Server(private val quandoChiede: () -> Unit) {
                 } else rispondi(out, 400, "text/plain", "dato non valido\n".toByteArray())
             }
             percorso.startsWith("/locali/") -> elenco(out, Stato.locali, percorso.removePrefix("/locali"))
+            percorso.startsWith("/vettura/") -> elenco(out, Stato.vettura, percorso.removePrefix("/vettura"))
             else -> elenco(out, Stato.notizie, percorso)
         }
     }
@@ -125,7 +129,9 @@ class Server(private val quandoChiede: () -> Unit) {
                 val sb = StringBuilder("NOTIZIE ${e.epoch} ${notizie.size}\n")
                 for (n in notizie) {
                     val ora = if (n.ora.isNotEmpty()) n.ora + " · " else ""
-                    sb.append(ora).append(n.titolo.replace('\n', ' ').replace('\r', ' ')).append('\n')
+                    sb.append(ora).append(n.titolo.replace('\n', ' ').replace('\r', ' ').replace('\t', ' '))
+                    if (n.versione > 0) sb.append('\t').append(n.versione)       // plugin v9: riscarica solo le righe cambiate
+                    sb.append('\n')
                 }
                 rispondi(out, 200, "text/plain; charset=iso-8859-1", latino1(sb.toString()))
             }

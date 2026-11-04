@@ -355,7 +355,7 @@ class Disegno(private val ctx: Context) {
         val (b, c) = nuovaTela()
         val ora = java.text.SimpleDateFormat("HH:mm", Locale.ITALY).apply { timeZone = Dati.ROMA }
         intestazione(c, nome, if (i != null && quando > 0) "Dati dell'iDrive · ${ora.format(java.util.Date(quando))}" else "")
-        if (i == null || listOf(i.km, i.litri, i.autonomia, i.consumo, i.esterna, i.interna).all { it == null } && i.aperti == null) {
+        if (i == null || listOf(i.km, i.litri, i.autonomia, i.kmLitro, i.esterna, i.interna).all { it == null } && i.aperti == null) {
             val l = blocco("In attesa dei dati dell'auto. Li legge il plugin Meteo della chiavetta e li manda al telefono sul Wi-Fi " +
                 "dell'auto, pochi secondi dopo l'accensione dell'iDrive.", pennello(25f, false, TENUE), 1200, 33f, 4)
             c.save(); c.translate(0f, 78f); l.draw(c); c.restore()
@@ -409,7 +409,7 @@ class Disegno(private val ctx: Context) {
         scrivi(c, "AUTO", x0, 74f, ph)
         val celle = listOf(
             "Chilometri" to (i.km?.let { String.format(Locale.ITALY, "%,.0f km", it) } ?: trattino),
-            "Consumo medio" to (i.consumo?.let { String.format(Locale.ITALY, "%.1f km/l", 100 / it) } ?: trattino),
+            "Consumo medio" to (i.kmLitro?.let { String.format(Locale.ITALY, "%.1f km/l", it) } ?: trattino),
             "Esterna" to (i.esterna?.let { String.format(Locale.ITALY, "%.0f°", it) } ?: trattino),
             "Interna" to (i.interna?.let { String.format(Locale.ITALY, "%.0f°", it) } ?: trattino),
         )
@@ -425,7 +425,12 @@ class Disegno(private val ctx: Context) {
         if (aperti != null) {
             val colore = if (aperti.isEmpty()) verde else arancio
             c.drawCircle(x0 + 9f, yA + 15f, 8f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = colore; setShadowLayer(3f, 0f, 1f, OMBRA) })
-            val testo = if (aperti.isEmpty()) "Porte, finestrini e tetto chiusi" else "Aperti: " + aperti.joinToString(", ")
+            // qui solo il riassunto: cosa e' aperto, una voce per riga, sta nella pagina "Porte, finestrini e tetto"
+            val testo = when (aperti.size) {
+                0 -> "Porte, finestrini e tetto chiusi"
+                1 -> "1 apertura: vedi Porte, finestrini e tetto"
+                else -> "${aperti.size} aperture: vedi Porte, finestrini e tetto"
+            }
             val pa = pennello(22f, aperti.isNotEmpty(), if (aperti.isEmpty()) BIANCO else arancio)
             scrivi(c, ellissi(testo, pa, TELA_W - x0 - 30f), x0 + 28f, yA, pa)
         }
@@ -456,6 +461,155 @@ class Disegno(private val ctx: Context) {
             val giorno = java.text.SimpleDateFormat("dd/MM", Locale.ITALY).apply { timeZone = Dati.ROMA }.format(java.util.Date(rf.quando))
             val pr = pennello(19f, false, TENUE)
             scrivi(c, ellissi(String.format(Locale.ITALY, "Ultimo rifornimento %s · %.0f litri", giorno, rf.litri), pr, TELA_W - x0), x0, 392f, pr)
+        }
+        return png(b)
+    }
+
+    // ------------------------------------------------------------------------------ porte, finestrini e tetto ----
+    private val sinistraPorte = listOf(
+        DatiAuto.Parte.TETTO, DatiAuto.Parte.PORTELLONE, DatiAuto.Parte.FINESTRINO_POST_DX,
+        DatiAuto.Parte.FINESTRINO_ANT_DX, DatiAuto.Parte.PORTA_POST_DX, DatiAuto.Parte.PORTA_ANT_DX,
+    )
+    private val destraPorte = listOf(
+        DatiAuto.Parte.PORTA_POST_SX, DatiAuto.Parte.FINESTRINO_POST_SX, DatiAuto.Parte.FINESTRINO_ANT_SX,
+        DatiAuto.Parte.PORTA_ANT_SX, DatiAuto.Parte.COFANO,
+    )
+
+    /** "Tutto chiuso", "1 apertura", "3 aperture"; "Stato non arrivato" se l'auto non ha mandato niente */
+    fun riassuntoAperture(parti: Map<DatiAuto.Parte, DatiAuto.Stato>): String {
+        val aperte = parti.values.count { it != DatiAuto.Stato.CHIUSO }
+        return when {
+            parti.isEmpty() -> "Stato non arrivato"
+            aperte == 0 -> "Tutto chiuso"
+            aperte == 1 -> "1 apertura"
+            else -> "$aperte aperture"
+        }
+    }
+
+    /**
+     * pagina "Porte, finestrini e tetto": la foto dell'auto al centro con un alone chiaro, 11 richiami su due colonne
+     * (DX passeggero a sinistra, SX guidatore a destra), uno stato per riga. Pallino verde = chiuso, arancio = aperto o
+     * sollevato, anello vuoto = parte sul lato che la foto non mostra, grigio = stato non arrivato.
+     * Senza foto (app senza foto di serie e senza avatar) restano le due colonne coi pallini accanto al testo.
+     */
+    fun paginaPorte(
+        foto: Bitmap?, ritaglio: android.graphics.Rect?, punti: Map<DatiAuto.Parte, Foto.Punto>,
+        parti: Map<DatiAuto.Parte, DatiAuto.Stato>, quando: Long,
+    ): ByteArray {
+        val (b, c) = nuovaTela()
+        val ora = java.text.SimpleDateFormat("HH:mm", Locale.ITALY).apply { timeZone = Dati.ROMA }
+        intestazione(c, "Porte, finestrini e tetto",
+            riassuntoAperture(parti) + if (quando > 0) "  ·  Dati dell'iDrive ${ora.format(java.util.Date(quando))}" else "")
+        val verde = 0xFF66BB6A.toInt()
+        val arancio = 0xFFFFA726.toInt()
+        val grigio = 0x99FFFFFF.toInt()
+
+        // ---- la foto: ritagliata all'auto, alta 345, centrata fra le due colonne
+        val pos = HashMap<DatiAuto.Parte, Pair<Float, Float>>()
+        if (foto != null) {
+            val r = ritaglio ?: android.graphics.Rect(0, 0, foto.width, foto.height)
+            val larghezzaMax = 640f
+            var sc = 345f / r.height()
+            if (r.width() * sc > larghezzaMax) sc = larghezzaMax / r.width()
+            val cw = r.width() * sc
+            val ch = r.height() * sc
+            val cx0 = (TELA_W - cw) / 2f - 8f
+            val cy0 = 78f + (345f - ch) / 2f
+            val dove = RectF(cx0, cy0, cx0 + cw, cy0 + ch)
+            // alone: la sagoma dell'auto sfocata, bianca al 35% (con margine: la sfocatura non si taglia)
+            try {
+                val sfoca = Paint().apply { maskFilter = android.graphics.BlurMaskFilter(18f, android.graphics.BlurMaskFilter.Blur.NORMAL) }
+                val sagoma = Bitmap.createBitmap(foto, r.left, r.top, r.width(), r.height()).extractAlpha(sfoca, IntArray(2))
+                val margine = (sagoma.width - r.width()) / 2f * sc
+                c.drawBitmap(sagoma, null, RectF(dove.left - margine, dove.top - margine, dove.right + margine, dove.bottom + margine),
+                    Paint(Paint.FILTER_BITMAP_FLAG).apply { color = 0x59FFFFFF })
+            } catch (e: Exception) {
+                // senza alone se la sfocatura non e' disponibile
+            }
+            c.drawBitmap(foto, r, dove, Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG))
+            for ((p, q) in punti) {
+                pos[p] = (cx0 + (q.x * foto.width - r.left) * sc) to (cy0 + (q.y * foto.height - r.top) * sc)
+            }
+        } else {
+            val pm = pennello(20f, false, TENUE, Paint.Align.CENTER)
+            scrivi(c, "Scegli una foto della tua auto nell'app:", TELA_W / 2f - 8f, 210f, pm)
+            scrivi(c, "Stato vettura, Foto dell'auto", TELA_W / 2f - 8f, 238f, pm)
+        }
+
+        val linea = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x96FFFFFF.toInt(); strokeWidth = 2f; style = Paint.Style.STROKE }
+        val bordo = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x78000000; strokeWidth = 1f; style = Paint.Style.STROKE }
+        fun pallino(x: Float, y: Float, colore: Int, vuoto: Boolean) {
+            if (vuoto) c.drawCircle(x, y, 6f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = colore; strokeWidth = 2.5f; style = Paint.Style.STROKE })
+            else {
+                c.drawCircle(x, y, 6f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = colore; setShadowLayer(3f, 0f, 1f, OMBRA) })
+                c.drawCircle(x, y, 6f, bordo)
+            }
+        }
+        fun richiamo(p: DatiAuto.Parte, x: Float, top: Float, aSinistra: Boolean) {
+            val s = parti[p]
+            val aperto = s != null && s != DatiAuto.Stato.CHIUSO
+            val colore = when { s == null -> grigio; aperto -> arancio; else -> verde }
+            val allinea = if (aSinistra) Paint.Align.RIGHT else Paint.Align.LEFT
+            scrivi(c, p.etichetta, x, top, pennello(19f, false, TENUE, allinea))
+            scrivi(c, s?.let { DatiAuto.parola(p, it) } ?: "–", x, top + 20f,
+                pennello(21f, aperto, if (aperto) arancio else if (s == null) TENUE else BIANCO, allinea))
+            val q = punti[p]
+            val punto = pos[p]
+            if (punto != null) {
+                val ax = if (aSinistra) x + 6f else x - 14f
+                val gomito = if (aSinistra) ax + 18f else ax - 18f
+                val path = android.graphics.Path().apply { moveTo(ax, top + 16f); lineTo(gomito, top + 16f); lineTo(punto.first, punto.second) }
+                c.drawPath(path, linea)
+                pallino(punto.first, punto.second, colore, q?.nascosto == true)
+            } else {
+                // senza foto: il pallino accanto al nome
+                pallino(if (aSinistra) x + 18f else x - 18f, top + 12f, colore, false)
+            }
+        }
+        scrivi(c, "DX · PASSEGGERO", 244f, 66f, pennello(15f, true, TENUE, Paint.Align.RIGHT).apply { letterSpacing = 0.06f })
+        scrivi(c, "SX · GUIDATORE", 945f, 66f, pennello(15f, true, TENUE).apply { letterSpacing = 0.06f })
+        sinistraPorte.forEachIndexed { k, p -> richiamo(p, 244f, 92f + k * 58f, true) }
+        destraPorte.forEachIndexed { k, p -> richiamo(p, 945f, 96f + k * 68f, false) }
+        return png(b)
+    }
+
+    /** miniatura della riga "Riepilogo" (63x54): anello dell'autonomia col numero dentro */
+    fun miniaturaRiepilogo(i: DatiAuto.Istantanea?): ByteArray {
+        val b = Bitmap.createBitmap(MINI_W, MINI_H, Bitmap.Config.ARGB_8888)
+        val c = Canvas(b)
+        val cx = MINI_W / 2f
+        val cy = MINI_H / 2f + 1f
+        val giro = RectF(cx - 22f, cy - 22f, cx + 22f, cy + 22f)
+        c.drawArc(giro, 135f, 270f, false, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE; strokeWidth = 4f; strokeCap = Paint.Cap.ROUND; color = 0x55FFFFFF
+        })
+        c.drawArc(giro, 135f, 200f, false, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE; strokeWidth = 4f; strokeCap = Paint.Cap.ROUND; color = Marca.ACCENTO
+        })
+        val t = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { typeface = grassetto; textSize = 15f; color = BIANCO; textAlign = Paint.Align.CENTER }
+        val testo = i?.autonomia?.let { String.format(Locale.ITALY, "%.0f", it) } ?: "km"
+        c.drawText(testo, cx, cy - (t.descent() + t.ascent()) / 2f, t)
+        return png(b)
+    }
+
+    /** miniatura della riga "Porte, finestrini e tetto" (63x54): la foto dell'auto col pallino del riassunto */
+    fun miniaturaPorte(foto: Bitmap?, ritaglio: android.graphics.Rect?, parti: Map<DatiAuto.Parte, DatiAuto.Stato>): ByteArray {
+        val b = Bitmap.createBitmap(MINI_W, MINI_H, Bitmap.Config.ARGB_8888)
+        val c = Canvas(b)
+        if (foto != null) {
+            val r = ritaglio ?: android.graphics.Rect(0, 0, foto.width, foto.height)
+            val s = min(MINI_W / r.width().toFloat(), (MINI_H - 6f) / r.height())
+            val w = r.width() * s
+            val h = r.height() * s
+            c.drawBitmap(foto, r, RectF((MINI_W - w) / 2f, (MINI_H - h) / 2f, (MINI_W + w) / 2f, (MINI_H + h) / 2f),
+                Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG))
+        } else {
+            c.drawRoundRect(RectF(0f, 0f, MINI_W.toFloat(), MINI_H.toFloat()), 6f, 6f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(38, 44, 54) })
+        }
+        if (parti.isNotEmpty()) {
+            val aperte = parti.values.any { it != DatiAuto.Stato.CHIUSO }
+            c.drawCircle(MINI_W - 8f, MINI_H - 8f, 6f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = if (aperte) 0xFFFFA726.toInt() else 0xFF66BB6A.toInt() })
+            c.drawCircle(MINI_W - 8f, MINI_H - 8f, 6f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x99000000.toInt(); style = Paint.Style.STROKE; strokeWidth = 1f })
         }
         return png(b)
     }
