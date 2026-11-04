@@ -1,59 +1,59 @@
 {
- "nota": "punti di ancoraggio della foto MINI (foto_auto.png): x,y da 0 a 1 sulla foto intera; nascosto = lato non visibile",
+ "nota": "punti di ancoraggio della foto MINI (foto_auto.png, Countryman nera): x,y da 0 a 1 sulla foto intera; nascosto = lato non visibile",
  "punti": {
   "portellone": {
-   "x": 0.099,
-   "y": 0.2151,
+   "x": 0.0762,
+   "y": 0.2112,
    "nascosto": false
   },
   "finestrino_post_dx": {
-   "x": 0.2021,
-   "y": 0.2172,
+   "x": 0.161,
+   "y": 0.212,
    "nascosto": false
   },
   "porta_post_dx": {
-   "x": 0.187,
-   "y": 0.4793,
+   "x": 0.1047,
+   "y": 0.4825,
    "nascosto": false
   },
   "finestrino_ant_dx": {
-   "x": 0.2964,
-   "y": 0.2129,
+   "x": 0.2657,
+   "y": 0.2193,
    "nascosto": false
   },
   "porta_ant_dx": {
-   "x": 0.3238,
-   "y": 0.5229,
+   "x": 0.2496,
+   "y": 0.4898,
    "nascosto": false
   },
   "tetto": {
-   "x": 0.452,
-   "y": 0.059,
+   "x": 0.4476,
+   "y": 0.0566,
    "nascosto": false
   },
   "finestrino_ant_sx": {
-   "x": 0.6849,
-   "y": 0.2445,
+   "x": 0.6926,
+   "y": 0.2403,
    "nascosto": false
   },
   "porta_ant_sx": {
-   "x": 0.7402,
-   "y": 0.3592,
+   "x": 0.7508,
+   "y": 0.3538,
    "nascosto": false
   },
   "finestrino_post_sx": {
-   "x": 0.4985,
-   "y": 0.1299,
+   "x": 0.4965,
+   "y": 0.1268,
    "nascosto": true
   },
   "porta_post_sx": {
-   "x": 0.5451,
-   "y": 0.1736,
+   "x": 0.5455,
+   "y": 0.1701,
    "nascosto": true
   },
   "cofano": {
-   "x": 0.7024,
-   "y": 0.4738,
+   "x": 0.5797,
+   "y": 0.3655,
    "nascosto": false
   }
  }
