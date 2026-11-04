@@ -26,6 +26,22 @@ import java.util.concurrent.Executors
  */
 class Server(private val quandoChiede: () -> Unit) {
 
+    companion object {
+        /** caratteri che stanno in una riga della lista accanto alla miniatura (ora compresa), misurati in auto */
+        const val RIGA_MAX = 62
+
+        /** riga della lista: l'iDrive non mette i puntini e un titolo lungo esce dallo schermo tondo della MINI (si
+         *  vedeva tagliato a meta' parola sul bordo); oltre RIGA_MAX caratteri si taglia all'ultima parola intera + "..." */
+        internal fun accorcia(s: String): String {
+            val t = s.trim().replace(Regex("\\s+"), " ")
+            if (t.length <= RIGA_MAX) return t
+            val taglio = t.substring(0, RIGA_MAX - 3)
+            val spazio = taglio.lastIndexOf(' ')
+            val base = if (spazio >= RIGA_MAX / 2) taglio.substring(0, spazio) else taglio
+            return base.trimEnd(' ', ',', ';', ':', '.', '-', '·') + "..."
+        }
+    }
+
     /** chiamata a ogni dato dell'auto ricevuto, con tutti gli ultimi valori */
     @Volatile var datiAuto: (Map<String, String>) -> Unit = {}
 
@@ -123,7 +139,7 @@ class Server(private val quandoChiede: () -> Unit) {
                 val sb = StringBuilder("NOTIZIE ${e.epoch} ${notizie.size}\n")
                 for (n in notizie) {
                     val ora = if (n.ora.isNotEmpty()) n.ora + " · " else ""
-                    sb.append(ora).append(n.titolo.replace('\n', ' ').replace('\r', ' ').replace('\t', ' '))
+                    sb.append(accorcia(ora + n.titolo.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')))
                     if (n.versione > 0) sb.append('\t').append(n.versione)       // plugin v9: riscarica solo le righe cambiate
                     sb.append('\n')
                 }

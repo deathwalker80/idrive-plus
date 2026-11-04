@@ -694,11 +694,11 @@ class MainActivity : Activity() {
         val bt = Parco.ultima(this).orEmpty()
         testoFoto.text = "Sto preparando la foto..."
         Thread({
-            val ok = try { Foto.impostaAvatar(this, bt, uri) } catch (e: Exception) { false }
+            val errore = try { Foto.impostaAvatar(this, bt, uri) } catch (e: Throwable) { e.javaClass.simpleName }
             runOnUiThread {
                 firmaFoto = ""
                 aggiornaSchermo()
-                if (ok) calibraPunti(bt) else testoFoto.text = "Non riesco a leggere questa foto: provane un'altra."
+                if (errore == null) calibraPunti(bt) else testoFoto.text = "Non riesco a usare questa foto: $errore. Provane un'altra."
             }
         }, "foto").start()
     }
