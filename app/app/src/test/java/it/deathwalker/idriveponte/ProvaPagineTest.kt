@@ -104,7 +104,7 @@ class ProvaPagineTest {
         val adesso = System.currentTimeMillis()
         val viaggio = Viaggio.Dati("${Marca.AUTO}28359", adesso - 38 * 60000L, "Via Roma 1, La Spezia", 0L, "", 48195.6, 32.3, 31.0, 0.0, grezzi, adesso)
         val rif = Rifornimenti.Voce("${Marca.AUTO}28359", adesso - 3 * 86400000L, 34.0, 41.0, 47900.0, null, null, "", "", null, false)
-        File(uscita, "auto.png").writeBytes(d.paginaAuto("La mia ${Marca.AUTO}", DatiAuto.istantanea(grezzi), viaggio, rif, adesso))
+        File(uscita, "auto.png").writeBytes(d.paginaAuto("La mia ${Marca.AUTO}", DatiAuto.istantanea(grezzi), viaggio, rif, adesso, 44.0))
         val chiusa = grezzi + ("controls.windowDriverFront" to """{"windowDriverFront":{"status":0,"position":0,"tiltPosition":0}}""") +
             ("controls.sunroof" to """{"sunroof":{"status":0,"position":0,"tiltPosition":0}}""")
         File(uscita, "auto_chiusa.png").writeBytes(d.paginaAuto("La mia ${Marca.AUTO}", DatiAuto.istantanea(chiusa), null, null, adesso))

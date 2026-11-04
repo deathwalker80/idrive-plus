@@ -1,11 +1,11 @@
-NBT Plus - chiavetta v22 (app 3.12 + plugin iDrive v8)
+NBT Plus - chiavetta v22 (app 3.13 + plugin iDrive v8)
 ======================================================
 COSA CAMBIA RISPETTO ALLA v21
  - Nuova voce "Stato auto" nel menu dei servizi online (accanto a Meteo, Notizie, Carburanti...): autonomia,
    litri nel serbatoio, chilometri, consumo medio, il viaggio in corso, temperature esterna e interna, finestrini,
    tetto, portellone e cofano. La pagina la disegna l'app coi dati che legge il plugin Meteo e si aggiorna ogni
    10 secondi. Con /opt/aa/auto.disable la pagina resta "in attesa dei dati dell'auto".
- - Serve l'app NBT Plus 3.12 (con le versioni precedenti la voce Stato auto resta sulla pagina di attesa).
+ - Serve l'app NBT Plus 3.12 o successiva (con le versioni precedenti la voce Stato auto resta sulla pagina di attesa).
  - Nell'app: storico dei viaggi, rifornimenti riconosciuti dal serbatoio (con prezzo del distributore MIMIT
    piu' vicino) e avviso sul telefono se scendi con un finestrino, il tetto, il portellone o il cofano aperti.
 
@@ -33,7 +33,7 @@ COSA CAMBIA RISPETTO ALLA v18
  - I plugin sono gli stessi della v18 (v6): cambiano solo le pagine e i testi di attesa.
 
 TELEFONO
- - Installa NBTPlus-3.12-release.apk sopra la versione che hai (poi arrivera' anche dal Play Store).
+ - Installa NBTPlus-3.13-release.apk sopra la versione che hai (poi arrivera' anche dal Play Store).
  - DISINSTALLA la vecchia app (MINI Plus, BMW Plus o Supra Plus): NBT Plus e' un'app nuova, non la
    aggiorna, e due app insieme si contenderebbero il collegamento con l'iDrive.
  - Le impostazioni (carburante, citta') vanno rimesse una volta.

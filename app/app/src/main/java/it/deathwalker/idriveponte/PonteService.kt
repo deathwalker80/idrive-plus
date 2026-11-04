@@ -170,9 +170,11 @@ class PonteService : Service() {
         if (!tutto && (firma == firmaAuto || adesso - autoDisegnata < 10_000)) return
         val grezzi = DatiAuto.grezzi
         val v = Viaggio.di(this, bt)
+        val rifornimenti = Rifornimenti.elenco(this, bt)
+        // capienza del serbatoio: il livello piu' alto visto dopo un rifornimento (per l'arco dell'anello)
         Stato.auto.metti(
             disegno.paginaAuto(Parco.mostra(this, bt).ifEmpty { Marca.AUTO }, if (grezzi.isEmpty()) null else DatiAuto.istantanea(grezzi),
-                v, Rifornimenti.elenco(this, bt).firstOrNull(), DatiAuto.ultimoDato)
+                v, rifornimenti.firstOrNull(), DatiAuto.ultimoDato, rifornimenti.maxOfOrNull { it.livello })
         )
         firmaAuto = firma
         autoDisegnata = adesso
