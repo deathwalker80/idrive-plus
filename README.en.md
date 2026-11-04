@@ -32,7 +32,7 @@ One codebase for all three: only the name, icon, colour and the car's name in th
 - **National news** and **local news** for a chosen city (ANSA RSS feeds), with thumbnails.
 - **Fuel stations** nearby with official MIMIT (Osservaprezzi) prices and the brand logo.
 - **Traffic** nearby (Autostrade per l'Italia).
-- **Car status** in iDrive: range, litres in the tank, odometer, average consumption, the current trip, temperatures and openings (windows, roof, tailgate, bonnet), updated every 10 seconds.
+- **Vehicle status** in iDrive: the summary (range, litres in the tank, odometer, average consumption, the current trip, temperatures) and the **Doors, windows and roof** page with a photo of the car and one state for each door, window, roof, tailgate and bonnet. The photo and its anchor points are set in the app.
 - **Where I parked**: when the phone disconnects from the car's Bluetooth, the position is saved.
 - The app starts by itself with the car's Bluetooth and stops when you get out.
 - **Trip**: while driving and then in the parking box, start place, duration, distance, fuel used and left, temperatures and openings (doors, windows, roof). The car data is read by the Meteo plugin inside iDrive (read only) and sent to the app over the car's Wi-Fi: no AAIdrive, no extra Bluetooth link.
@@ -70,7 +70,7 @@ cd app
 
 ## Installing
 The APKs and the USB-stick zip are in the **Releases**. Step-by-step instructions (Italian) in
-[`chiavetta/LEGGIMI-v23.txt`](chiavetta/LEGGIMI-v23.txt); in short, on the head unit shell:
+[`chiavetta/LEGGIMI-v24.txt`](chiavetta/LEGGIMI-v24.txt); in short, on the head unit shell:
 ```
 mount -o remount rw /net/hu-omap/fs/sda0
 on -f /net/hu-omap/ /bin/sh

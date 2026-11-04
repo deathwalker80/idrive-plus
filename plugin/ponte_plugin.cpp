@@ -1,13 +1,17 @@
-// MINI Plus / BMW Plus / Supra Plus per iDrive - v8 - plugin compilati (clang) per NBT EVO ID6
+// MINI Plus / BMW Plus / Supra Plus per iDrive - v9 - plugin compilati (clang) per NBT EVO ID6
 // (MINI F5x/F60, BMW con NBT EVO, Toyota GR Supra J29).
 // v6: il testo "in attesa" della lista si legge da attesa.txt nella cartella del plugin (scritto dalla chiavetta
 //     secondo la marca scelta), cosi' le stesse librerie valgono per tutte e tre le app.
 // v8: sesto plugin, Stato auto (libAuto.so): la pagina con autonomia, km, viaggio, temperature e aperture che l'app
 //     disegna coi dati letti dal plugin Meteo; si aggiorna ogni 10 secondi invece che ogni 30.
+// v9: Stato vettura: il plugin Auto diventa un elenco di due voci (Riepilogo, Porte finestrini e tetto) dalle
+//     pagine /vettura/...; dopo il titolo di ogni riga un TAB e la versione: pagina e miniatura si riscaricano solo
+//     quando la versione cambia. Meteo: se il telefono riparte da zero (avvio= in /ponte cambia) rimanda tutti gli
+//     ultimi dati dell'auto, anche quelli fermi (porte chiuse, km a motore spento).
 // Lo stesso sorgente produce sei plugin:
-//   pagina singola : -DPLUGIN_METEO (libMeteo.so), -DPLUGIN_CARBURANTI (libCarburanti.so), -DPLUGIN_TRAFFICO (libTraffico.so),
-//                    -DPLUGIN_AUTO (libAuto.so)
-//   elenco notizie : -DPLUGIN_NOTIZIE (libNotizie.so), -DPLUGIN_LOCALI (libLocali.so, percorsi /locali/...)
+//   pagina singola : -DPLUGIN_METEO (libMeteo.so), -DPLUGIN_CARBURANTI (libCarburanti.so), -DPLUGIN_TRAFFICO (libTraffico.so)
+//   elenco         : -DPLUGIN_NOTIZIE (libNotizie.so), -DPLUGIN_LOCALI (libLocali.so, percorsi /locali/...),
+//                    -DPLUGIN_AUTO (libAuto.so, Stato vettura, percorsi /vettura/..., due righe)
 //
 // Cosa fanno: trovano il telefono sul Wi-Fi della macchina (tabella ARP, altrimenti scansione 172.16.224.x),
 // chiedono all'app del telefono (MINI Plus, BMW Plus o Supra Plus, porta 8765) le pagine gia' pronte e aggiornano la schermata da soli:
@@ -19,7 +23,7 @@
 //              resta nel codice dietro SCHEDA_LATERALE 0)
 //             GET /anteprima/<i>.png             -> scheda accanto alla lista (raImageModel 71), cambiata
 //                                                   quando una riga viene selezionata (selectAction -> raAction 20..27)
-//   Auto    : GET /auto.png                      -> raImageModel 12 (stato dell'auto, v8)
+//   Auto    : GET /vettura/notizie.txt, /vettura/mini/<i>.png, /vettura/notizia/<i>.png (v9, come le Notizie, 2 righe)
 //   Meteo   : anche i dati dell'auto (v7): chilometri, carburante, consumo, temperature, porte, finestrini e tetto
 //             letti dal CDS dell'iDrive (lo stesso meccanismo di NBT-AAD per driving.gear) e mandati al telefono
 //             con GET /auto?n=<proprieta'>&v=<valore JSON>: l'app ne fa il viaggio e lo stato al parcheggio.
@@ -57,10 +61,11 @@
 #define PAGINA_PNG "/traffico.png"
 #define CHIAVE_EPOCH "traffico="
 #elif defined(PLUGIN_AUTO)
-#define PLUGIN_PAGINA 1
+#define PLUGIN_ELENCO 1
 #define NOME_PLUGIN "Auto"
-#define PAGINA_PNG "/auto.png"
-#define CHIAVE_EPOCH "auto="
+#define PREFISSO "/vettura"
+#define CHIAVE_EPOCH "vettura="
+#define MAX_RIGHE 2
 #define GIRO_SECONDI 10
 #elif defined(PLUGIN_NOTIZIE)
 #define PLUGIN_ELENCO 1
@@ -73,12 +78,12 @@
 #define PREFISSO "/locali"
 #define CHIAVE_EPOCH "locali="
 #else
-#error "compilare con -DPLUGIN_METEO / _CARBURANTI / _TRAFFICO / _AUTO (pagina singola) oppure -DPLUGIN_NOTIZIE / _LOCALI (elenco)"
+#error "compilare con -DPLUGIN_METEO / _CARBURANTI / _TRAFFICO (pagina singola) oppure -DPLUGIN_NOTIZIE / _LOCALI / _AUTO (elenco)"
 #endif
 #ifndef GIRO_SECONDI
 #define GIRO_SECONDI 30                    // attesa fra un controllo del telefono e il successivo
 #endif
-#define VERSIONE_PLUGIN "v8"
+#define VERSIONE_PLUGIN "v9"
 
 typedef unsigned int  u32;
 typedef unsigned short u16;
@@ -205,7 +210,10 @@ enum { O_RDONLY_Q = 0, F_OK_Q = 0 };
 #if defined(PLUGIN_PAGINA)
 const u32 kModelloMeteo = 12;
 #else
-const u32 kMaxNotizie     = 8;
+#ifndef MAX_RIGHE
+#define MAX_RIGHE 8
+#endif
+const u32 kMaxNotizie     = MAX_RIGHE;   // righe della lista (8 notizie; 2 per lo Stato vettura)
 const u32 kModelloTitolo0 = 41;    // 41..48 raDataModel  (testo dei pulsanti)
 const u32 kModelloPagina0 = 51;    // 51..58 raImageModel (notizia aperta)
 const u32 kModelloMini0   = 61;    // 61..68 raImageModel (miniatura del pulsante)
@@ -692,6 +700,27 @@ void codifica(char* out, u32 cap, const char* in) {
     out[k] = 0;
 }
 
+// sul thread di rete: il telefono e' ripartito da zero (avvio= cambiato): ogni ultimo valore gia' mandato torna in
+// coda, cosi' arrivano anche quelli fermi; un valore piu' nuovo gia' in coda resta quello
+u32 g_avvioTelefono = 0;
+void rimandaDatiAuto(const char* ponte) {
+    u32 avvio = valore(ponte, "avvio=");
+    if (!avvio || avvio == g_avvioTelefono) return;
+    bool prima = g_avvioTelefono != 0;
+    g_avvioTelefono = avvio;
+    g_autoSenzaApp = false;                      // app nuova: si riprova /auto anche dopo un 404
+    u32 rimessi = 0;
+    for (u32 i = 0; i < kNumProprieta; ++i) {
+        if (!g_mandato[i][0]) continue;
+        void* b = nuovoBlocco(g_mandato[i], strlen(g_mandato[i]), true);
+        void* atteso = 0;
+        if (b && !__atomic_compare_exchange_n(&g_valori[i], &atteso, b, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) free(b);
+        g_mandato[i][0] = 0;
+        ++rimessi;
+    }
+    if (prima) scriviLog("auto: il telefono e' ripartito, rimando %u valori", rimessi);
+}
+
 // sul thread di rete: manda al telefono i valori cambiati; se il telefono non risponde il valore resta per il giro dopo
 void mandaDatiAuto(u32 ip) {
     if (g_autoSenzaApp) return;
@@ -760,6 +789,8 @@ bool aggiornaDati(u32 ip, const char* ponte) {
     return true;
 }
 #else
+u32 g_versioneRiga[kMaxNotizie];      // versione di ogni riga gia' portata sulla schermata (0 = nessuna)
+
 bool aggiornaDati(u32 ip, const char* ponte) {
     u32 e = valore(ponte, CHIAVE_EPOCH);
     if (!e || e == g_epochFatto) return true;
@@ -775,23 +806,34 @@ bool aggiornaDati(u32 ip, const char* ponte) {
     if (n > kMaxNotizie) n = kMaxNotizie;
     char* riga = (*a) ? a + 1 : a;
     bool tutto = true;
+    u32 versione[kMaxNotizie];
     for (u32 i = 0; i < kMaxNotizie; ++i) {
         char* fine = riga;
         while (*fine && *fine != '\n') ++fine;
         u32 len = (u32)(fine - riga);
+        // v9: "titolo<TAB>versione": la versione dice se pagina e miniatura sono cambiate (0 = senza, si riscaricano)
+        versione[i] = 0;
+        for (u32 k = 0; k < len; ++k) if (riga[k] == '\t') {
+            for (u32 j = k + 1; j < len && riga[j] >= '0' && riga[j] <= '9'; ++j) versione[i] = versione[i] * 10 + (u32)(riga[j] - '0');
+            len = k;
+            break;
+        }
         if (i < n) deposita(i, nuovoBlocco(riga, len, true));
         else deposita(i, nuovoBlocco("", 0, true));
         riga = (*fine) ? fine + 1 : fine;
     }
     free(lista);
     for (u32 i = 0; i < n && !g_finito; ++i) {
-        char percorso[32];
+        if (versione[i] && versione[i] == g_versioneRiga[i]) continue;      // riga uguale: niente da riscaricare
+        bool rigaOk = true;
+        char percorso[40];
         snprintf(percorso, sizeof(percorso), PREFISSO "/mini/%u.png", i);
         void* mini = scarica(ip, percorso, &codice);
-        if (mini) deposita(kMaxNotizie * 2 + i, mini); else tutto = false;
+        if (mini) deposita(kMaxNotizie * 2 + i, mini); else { tutto = false; rigaOk = false; }
         snprintf(percorso, sizeof(percorso), PREFISSO "/notizia/%u.png", i);
         void* pag = scarica(ip, percorso, &codice);
-        if (pag) deposita(kMaxNotizie + i, pag); else { tutto = false; scriviLog("%s: errore %d", percorso, codice); }
+        if (pag) deposita(kMaxNotizie + i, pag); else { tutto = false; rigaOk = false; scriviLog("%s: errore %d", percorso, codice); }
+        if (rigaOk) g_versioneRiga[i] = versione[i];
 #if SCHEDA_LATERALE
         snprintf(percorso, sizeof(percorso), PREFISSO "/anteprima/%u.png", i);
         void* sch = scarica(ip, percorso, &codice);
@@ -799,7 +841,8 @@ bool aggiornaDati(u32 ip, const char* ponte) {
         else if (codice != 404) { tutto = false; scriviLog("%s: errore %d", percorso, codice); }   // 404: app 1.0, senza schede
 #endif
     }
-    scriviLog("notizie: %u titoli, pagine %s (epoch %u)", n, tutto ? "tutte" : "NON tutte", e);
+    if (kMaxNotizie > 2) scriviLog("notizie: %u titoli, pagine %s (epoch %u)", n, tutto ? "tutte" : "NON tutte", e);
+    else if (!tutto) scriviLog("righe: %u, pagine NON tutte (epoch %u)", n, e);
     if (tutto) g_epochFatto = e;
     return tutto;
 }
@@ -822,6 +865,9 @@ void* threadRete(void*) {
             continue;
         }
         errori = 0;
+#if DATI_AUTO
+        rimandaDatiAuto(testo(ponte));
+#endif
         bool ok = aggiornaDati(g_telefono, testo(ponte));
         free(ponte);
         attendi(ok ? GIRO_SECONDI : 10, g_telefono);

@@ -1,19 +1,26 @@
-iDrive Plus / NBT Plus - chiavetta v23 (plugin iDrive v8)
+iDrive Plus / NBT Plus - chiavetta v24 (plugin iDrive v9)
 =========================================================
+COSA CAMBIA RISPETTO ALLA v23
+ - "Stato auto" diventa "Stato vettura", con due voci: Riepilogo (la pagina di prima) e "Porte, finestrini
+   e tetto": la foto dell'auto con gli 11 richiami, uno stato per riga (pallino verde chiuso, arancio aperto).
+   La foto e i punti si scelgono nell'app (scheda Stato vettura); MINI Plus ha gia' la foto della MINI.
+ - Le pagine si riscaricano solo quando cambiano: la pagina delle porte solo se cambia qualcosa.
+ - Il Meteo rimanda tutti i dati dell'auto quando l'app del telefono riparte (prima restavano vuoti i valori
+   fermi, come porte chiuse e chilometri a motore spento).
+ - Icone nuove per Meteo, Notizie, Notizie locali e Carburanti; con "mini" anche Stato vettura e Traffico
+   con le MINI disegnate (con niente, bmw e supra restano le icone generiche).
+ - Serve l'app NBT Plus 3.14 o MINI/BMW/Supra Plus 2.18 (con le precedenti Stato vettura resta in attesa).
+
 UNA CHIAVETTA PER TUTTE LE APP
  - Da questa versione la chiavetta e' una sola per NBT Plus (Play Store) e per MINI Plus, BMW Plus e Supra Plus.
    I plugin sono gli stessi; cambia solo il nome dell'app scritto nelle pagine "in attesa del telefono",
    che si sceglie nel comando di installazione (vedi AUTO, punto 3).
- - Prende il posto della v20 (MINI/BMW/Supra Plus) e della v22 (NBT Plus): i plugin sono identici a quelle,
-   se ne hai installata una non serve rifare niente.
 
-COSA CAMBIA RISPETTO ALLA v19 / v21
+COSA C'ERA GIA' DALLA v20 / v22
  - Nuova voce "Stato auto" nel menu dei servizi online (accanto a Meteo, Notizie, Carburanti...): autonomia,
    litri nel serbatoio, chilometri, consumo medio, il viaggio in corso, temperature esterna e interna, finestrini,
    tetto, portellone e cofano. La pagina la disegna l'app coi dati che legge il plugin Meteo e si aggiorna ogni
    10 secondi. Con /opt/aa/auto.disable la pagina resta "in attesa dei dati dell'auto".
- - Serve l'app NBT Plus 3.12 o MINI/BMW/Supra Plus 2.16 o successive (con le precedenti la voce Stato auto
-   resta sulla pagina di attesa).
  - Nell'app: storico dei viaggi, rifornimenti riconosciuti dal serbatoio (con prezzo del distributore MIMIT
    piu' vicino) e avviso sul telefono se scendi con un finestrino, il tetto, il portellone o il cofano aperti.
  - Il plugin Meteo legge i dati dell'auto (chilometri, carburante, consumo medio, temperature esterna e interna,
@@ -23,10 +30,10 @@ COSA CAMBIA RISPETTO ALLA v19 / v21
    (o il file Meteo.log sulla chiavetta, se e' inserita): mandameli, servono a confermare porte e portellone.
 
 TELEFONO (installane UNA sola: due app insieme si contenderebbero il collegamento con l'iDrive)
- - NBT Plus:   NBTPlus-3.13-release.apk (o dal Play Store), per MINI, BMW e Supra
- - MINI Plus:  MINIPlus-2.17-release.apk  (si installa sopra la 2.6 e successive, tiene le impostazioni)
- - BMW Plus:   BMWPlus-2.17-release.apk
- - Supra Plus: SupraPlus-2.17-release.apk
+ - NBT Plus:   NBTPlus-3.14-release.apk (o dal Play Store), per MINI, BMW e Supra
+ - MINI Plus:  MINIPlus-2.18-release.apk  (si installa sopra la 2.6 e successive, tiene le impostazioni)
+ - BMW Plus:   BMWPlus-2.18-release.apk
+ - Supra Plus: SupraPlus-2.18-release.apk
 
 AUTO
  0. Estrai TUTTO questo zip nella RADICE della chiavetta (sovrascrivi).
@@ -47,7 +54,7 @@ BMW E SUPRA: DA VERIFICARE SULL'AUTO VERA
  - Il nome Bluetooth dell'auto: se l'app non si accende da sola, va letto il nome esatto.
 
 TOGLIERE
- - sh /mnt/umass*/10-togli.sh  (+ riavvio): toglie tutti e sei i plugin, Stato auto compreso
+ - sh /mnt/umass*/10-togli.sh  (+ riavvio): toglie tutti e sei i plugin, Stato vettura compreso
  - spegnere senza togliere: echo 1 > /opt/aa/ponte.disable  (+ riavvio)
  - solo i dati dell'auto: echo 1 > /opt/aa/auto.disable  (+ riavvio); per riaccenderli: rm /opt/aa/auto.disable
  Android Auto (NbtAad) non viene mai toccato.

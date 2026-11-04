@@ -10,6 +10,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import kotlin.math.max
 
 /**
  * Servizio in primo piano dell'app (MINI Plus, BMW Plus o Supra Plus) (notifica minima, silenziosa).
@@ -61,6 +62,8 @@ class PonteService : Service() {
     private val completando = HashSet<Long>()
     private var firmaAuto = ""
     private var autoDisegnata = 0L
+    private var firmaPorte = ""
+    private var porteDisegnate = 0L
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -161,21 +164,39 @@ class PonteService : Service() {
     private fun paginaAuto(disegno: Disegno, tutto: Boolean) {
         val bt = Parco.ultima(this)
         val adesso = System.currentTimeMillis()
-        val firma = "${DatiAuto.ultimoDato}/${adesso / 60000}/$bt/${Parco.mostra(this, bt)}"
+        val firma = "${DatiAuto.ultimoDato}/${adesso / 60000}/$bt/${Parco.mostra(this, bt)}/${Foto.firma(this, bt)}"
         if (!tutto && (firma == firmaAuto || adesso - autoDisegnata < 10_000)) return
         val grezzi = DatiAuto.grezzi
+        val ist = if (grezzi.isEmpty()) null else DatiAuto.istantanea(grezzi)
         val v = Viaggio.di(this, bt)
         val rifornimenti = Rifornimenti.elenco(this, bt)
         // capienza del serbatoio: il livello piu' alto visto dopo un rifornimento (per l'arco dell'anello)
-        Stato.auto.metti(
-            disegno.paginaAuto(Parco.mostra(this, bt).ifEmpty { Marca.AUTO }, if (grezzi.isEmpty()) null else DatiAuto.istantanea(grezzi),
-                v, rifornimenti.firstOrNull(), DatiAuto.ultimoDato, rifornimenti.maxOfOrNull { it.livello })
-        )
+        val riepilogo = disegno.paginaAuto(Parco.mostra(this, bt).ifEmpty { Marca.AUTO }, ist, v, rifornimenti.firstOrNull(),
+            DatiAuto.ultimoDato, rifornimenti.maxOfOrNull { it.livello })
+        Stato.auto.metti(riepilogo)
+
+        // Stato vettura (plugin Auto v9): Riepilogo + Porte, finestrini e tetto. La pagina delle porte si ridisegna
+        // solo quando cambia qualcosa (stati, foto, punti) o ogni 5 minuti: il plugin la riscarica solo allora.
+        val parti = DatiAuto.parti(grezzi)
+        val firmaP = "$parti/${Foto.firma(this, bt)}/$bt"
+        val vecchie = Stato.vettura.notizie
+        val porte = if (firmaP == firmaPorte && vecchie.size == 2 && adesso - porteDisegnate < 5 * 60_000) vecchie[1] else {
+            val foto = Foto.immagine(this, bt)
+            val ritaglio = Foto.contornoAuto(this, bt)
+            firmaPorte = firmaP
+            porteDisegnate = adesso
+            NotiziaPronta("Porte, finestrini e tetto", "", disegno.paginaPorte(foto, ritaglio, Foto.punti(this, bt), parti, DatiAuto.ultimoDato),
+                disegno.miniaturaPorte(foto, ritaglio, parti), ByteArray(0), max(adesso / 1000, (vecchie.getOrNull(1)?.versione ?: 0) + 1))
+        }
+        val versioneR = max(adesso / 1000, (vecchie.getOrNull(0)?.versione ?: 0) + 1)
+        Stato.vettura.metti(listOf(NotiziaPronta("Riepilogo", "", riepilogo, disegno.miniaturaRiepilogo(ist), ByteArray(0), versioneR), porte))
         firmaAuto = firma
         autoDisegnata = adesso
         Stato.auto.ultimo = adesso
         Stato.auto.esito = if (grezzi.isEmpty()) "in attesa dei dati dell'auto dal plugin Meteo dell'iDrive"
         else "OK alle ${oraAdesso()} - ${grezzi.size} valori dall'iDrive"
+        Stato.vettura.ultimo = adesso
+        Stato.vettura.esito = if (grezzi.isEmpty()) Stato.auto.esito else "OK alle ${oraAdesso()} - ${disegno.riassuntoAperture(parti)}"
     }
 
     private fun aggiorna(disegno: Disegno, tutto: Boolean) {

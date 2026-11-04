@@ -32,7 +32,7 @@ Stesso codice per tutte e tre: cambiano solo nome, icona, colore e il nome dell'
 - **Notizie** nazionali e **notizie locali** della città scelta (feed RSS ANSA), con miniature.
 - **Carburanti** vicini con prezzi ufficiali MIMIT (Osservaprezzi) e logo del marchio.
 - **Traffico** vicino (Autostrade per l'Italia).
-- **Stato auto** nell'iDrive: autonomia, litri nel serbatoio, chilometri, consumo medio, il viaggio in corso, temperature e aperture (finestrini, tetto, portellone, cofano), aggiornato ogni 10 secondi.
+- **Stato vettura** nell'iDrive: il Riepilogo (autonomia, litri nel serbatoio, chilometri, consumo medio, il viaggio in corso, temperature) e la pagina **Porte, finestrini e tetto** con la foto dell'auto e uno stato per ogni porta, finestrino, tetto, portellone e cofano. La foto e i suoi punti si scelgono nell'app.
 - **Dove ho parcheggiato**: quando il telefono si scollega dal Bluetooth dell'auto salva la posizione.
 - L'app si accende da sola col Bluetooth dell'auto e si spegne quando scendi.
 - **Viaggio**: mentre guidi e poi nel riquadro del parcheggio, partenza, durata, km percorsi, carburante consumato e nel serbatoio, temperature e aperture (porte, finestrini, tetto). I dati dell'auto li legge il plugin Meteo nell'iDrive (sola lettura) e li manda all'app sul Wi-Fi dell'auto: niente AAIdrive, nessun Bluetooth in più.
@@ -68,7 +68,7 @@ cd app
 
 ## Installare
 Le APK e lo zip della chiavetta sono nelle **Release**. Istruzioni passo passo in
-[`chiavetta/LEGGIMI-v23.txt`](chiavetta/LEGGIMI-v23.txt); in breve, sulla shell della testata:
+[`chiavetta/LEGGIMI-v24.txt`](chiavetta/LEGGIMI-v24.txt); in breve, sulla shell della testata:
 ```
 mount -o remount rw /net/hu-omap/fs/sda0
 on -f /net/hu-omap/ /bin/sh

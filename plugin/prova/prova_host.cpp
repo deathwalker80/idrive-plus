@@ -76,6 +76,19 @@ int main() {
     mandaDatiAuto(t);
     printf("  inviate al telefono:\n"); fflush(0);
     { void* f = fopen("/tmp/finto_telefono_auto.txt", "r"); char r[600]; while (f && fgets(r, sizeof(r), f)) printf("    %s", r); if (f) fclose(f); }
+    // v9: il telefono riparte (avvio= cambia): gli ultimi valori tornano in coda e si rimandano tutti
+    { void* f = fopen("/tmp/finto_telefono_auto.txt", "w"); if (f) fclose(f); }
+    rimandaDatiAuto("IDRIVEPONTE x avvio=1000");
+    rimandaDatiAuto("IDRIVEPONTE x avvio=2000");
+    mandaDatiAuto(t);
+    printf("  rimandati dopo la ripartenza del telefono:\n"); fflush(0);
+    { void* f = fopen("/tmp/finto_telefono_auto.txt", "r"); char r[600]; while (f && fgets(r, sizeof(r), f)) printf("    %s", r); if (f) fclose(f); }
+#endif
+#if defined(PLUGIN_AUTO)
+    printf("== Stato vettura: epoch nuovo ma righe con la stessa versione (non deve riscaricare le pagine)\n");
+    g_epochFatto = 0;
+    printf("  versioni gia' portate: %u %u\n", g_versioneRiga[0], g_versioneRiga[1]);
+    aggiornaDati(t, "IDRIVEPONTE x vettura=778"); svuotaCaselle();
 #endif
     printf("== secondo giro con lo stesso epoch (non deve scaricare niente)\n");
     aggiornaDati(t, testo(ponte)); svuotaCaselle();

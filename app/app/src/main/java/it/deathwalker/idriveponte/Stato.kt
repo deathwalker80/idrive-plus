@@ -10,7 +10,9 @@ class NotiziaPronta(
     val ora: String,
     val pagina: ByteArray,
     val mini: ByteArray,
-    val anteprima: ByteArray
+    val anteprima: ByteArray,
+    /** versione della riga (Stato vettura): il plugin riscarica pagina e miniatura solo quando cambia; 0 = sempre */
+    val versione: Long = 0L,
 )
 
 /** una pagina singola per l'iDrive (Meteo, Carburanti, Traffico, Stato auto) */
@@ -26,7 +28,7 @@ class Pagina(val nome: String) {
     }
 }
 
-/** un elenco di notizie per l'iDrive (Notizie, Notizie locali) */
+/** un elenco per l'iDrive (Notizie, Notizie locali, Stato vettura) */
 class Elenco(val nome: String) {
     @Volatile var notizie: List<NotiziaPronta> = emptyList()
     @Volatile var epoch = 0L
@@ -52,6 +54,12 @@ object Stato {
     val auto = Pagina("Stato auto")
     val notizie = Elenco("Notizie")
     val locali = Elenco("Notizie locali")
+    /** Stato vettura: riga 0 Riepilogo, riga 1 Porte, finestrini e tetto (plugin Auto v9) */
+    val vettura = Elenco("Stato vettura")
+
+    /** quando l'app ha ripreso a raccogliere i dati dell'auto (secondi, DatiAuto.azzera): se cambia, il plugin
+     *  capisce che il telefono e' ripartito da zero e rimanda tutti gli ultimi valori, anche quelli fermi */
+    @Volatile var avvio = System.currentTimeMillis() / 1000
 
     @Volatile var aggiornamentoInCorso = ""     // cosa si sta scaricando adesso ("" = niente)
     @Volatile var fonteCitta = ""

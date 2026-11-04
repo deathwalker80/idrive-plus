@@ -1,29 +1,60 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <pluginApps>
-  <pluginApp applicationType="Custom" applicationWeight="200" entryButtonFocusID="32762" insertStateID="50" text="Stato auto">
-    <comment>Stato auto v8 compilato - pagina aggiornata da sola dall'app del telefono coi dati dell'iDrive</comment>
-    <entryButton action="5" id="1" model="3" imageModel="4" previewModel="13">
+  <pluginApp applicationType="Custom" applicationWeight="200" entryButtonFocusID="32762" insertStateID="50" text="Stato vettura">
+    <comment>Stato vettura v9 compilato - Riepilogo e Porte, finestrini e tetto, aggiornati dall'app del telefono coi dati dell'iDrive</comment>
+    <entryButton action="5" id="1" model="3" imageModel="4">
       <properties/>
     </entryButton>
     <actions>
-      <hmiAction id="5" target="10"/>
+      <hmiAction id="5" target="100"/>
+      <hmiAction id="6" target="110"/>
+      <hmiAction id="7" target="111"/>
     </actions>
     <models>
       <textIdModel id="3" textId="1">
         <synonyms/>
       </textIdModel>
       <imageIdModel id="4" imageId="63001"/>
-      <raImageModel id="12"/>
-      <raPreviewModel id="13" modelType="StatePreview" previewState="10"/>
+      <raDataModel id="41"/>
+      <raDataModel id="42"/>
+      <raImageModel id="51"/>
+      <raImageModel id="52"/>
+      <raImageModel id="61"/>
+      <raImageModel id="62"/>
     </models>
     <events/>
     <hmiStates>
-      <hmiState id="10" text="Stato auto" textModel="3">
+      <hmiState id="100" text="Stato vettura" textModel="3">
         <properties>
           <property id="24" value="3"/>
         </properties>
         <components>
-          <image id="70" model="12">
+          <button action="6" id="200" model="41" imageModel="61" text="Riepilogo"/>
+          <button action="7" id="201" model="42" imageModel="62" text="Porte, finestrini e tetto"/>
+        </components>
+      </hmiState>
+      <hmiState id="110" parentId="100" text="Stato vettura" textModel="3">
+        <properties>
+          <property id="24" value="3"/>
+        </properties>
+        <components>
+          <image id="210" model="51">
+            <properties>
+              <property id="3" value="true"/>
+              <property id="9" value="1280"/>
+              <property id="10" value="480"/>
+              <property id="20" value="0"/>
+              <property id="21" value="0"/>
+            </properties>
+          </image>
+        </components>
+      </hmiState>
+      <hmiState id="111" parentId="100" text="Stato vettura" textModel="3">
+        <properties>
+          <property id="24" value="3"/>
+        </properties>
+        <components>
+          <image id="211" model="52">
             <properties>
               <property id="3" value="true"/>
               <property id="9" value="1280"/>

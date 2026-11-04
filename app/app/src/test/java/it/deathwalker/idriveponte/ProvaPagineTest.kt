@@ -56,7 +56,7 @@ class ProvaPagineTest {
             NotiziaPronta(n.titolo, n.ora, p, mi, an)
         }
         val attesa = "In attesa del telefono: serve l'app ${Marca.APP} e Android Auto wireless collegato. La pagina si aggiorna da sola appena il telefono risponde."
-        for ((file, titolo) in listOf("meteo" to "Meteo", "notizie" to "Notizie", "locali" to "Notizie locali", "carburanti" to "Carburanti", "traffico" to "Traffico", "auto" to "Stato auto"))
+        for ((file, titolo) in listOf("meteo" to "Meteo", "notizie" to "Notizie", "locali" to "Notizie locali", "carburanti" to "Carburanti", "traffico" to "Traffico", "auto" to "Stato vettura"))
             File(uscita, "attesa_$file.png").writeBytes(d.paginaAvviso(titolo, attesa))
         File(uscita, "avviso.png").writeBytes(d.paginaAvviso("Meteo", "Meteo non disponibile in questo momento. Nuovo tentativo tra poco."))
 
@@ -91,7 +91,12 @@ class ProvaPagineTest {
             "driving.averageConsumption" to """{"averageConsumption":{"averageConsumption1":6.4,"unit":1}}""",
             "sensors.temperatureExterior" to """{"temperatureExterior":14.5}""",
             "sensors.temperatureInterior" to """{"temperatureInterior":21}""",
-            "sensors.doors" to """{"doors":{"driverFront":0,"passengerFront":0,"driverRear":0,"passengerRear":0}}""",
+            "sensors.doors" to """{"doors":{"driver":0,"passenger":0,"driverRear":0,"passengerRear":1}}""",
+            "sensors.trunk" to """{"trunk":1}""",
+            "sensors.lid" to """{"lid":0}""",
+            "controls.windowPassengerFront" to """{"windowPassengerFront":{"position":0,"status":0,"drive":0}}""",
+            "controls.windowDriverRear" to """{"windowDriverRear":{"position":0,"status":0,"drive":0}}""",
+            "controls.windowPassengerRear" to """{"windowPassengerRear":{"position":127,"status":3,"drive":3}}""",
             "controls.windowDriverFront" to """{"windowDriverFront":{"status":1,"position":12,"tiltPosition":0}}""",
             "controls.sunroof" to """{"sunroof":{"status":0,"position":0,"tiltPosition":3}}""",
         )
@@ -103,6 +108,17 @@ class ProvaPagineTest {
             ("controls.sunroof" to """{"sunroof":{"status":0,"position":0,"tiltPosition":0}}""")
         File(uscita, "auto_chiusa.png").writeBytes(d.paginaAuto("La mia ${Marca.AUTO}", DatiAuto.istantanea(chiusa), null, null, adesso))
         File(uscita, "auto_vuoto.png").writeBytes(d.paginaAuto("${Marca.AUTO}28359", null, null, null, 0L))
+        // Stato vettura: porte, finestrini e tetto con la foto di serie (MINI Plus) o senza foto
+        val foto = Foto.immagine(ctx, "")
+        val ritaglio = Foto.contornoAuto(ctx, "")
+        val punti = Foto.punti(ctx, "")
+        val tutteChiuse = chiusa + ("sensors.doors" to """{"doors":{"driver":0,"passenger":0,"driverRear":0,"passengerRear":0}}""") +
+            ("sensors.trunk" to """{"trunk":0}""") + ("controls.windowPassengerRear" to """{"windowPassengerRear":{"position":0,"status":0,"drive":0}}""")
+        File(uscita, "porte.png").writeBytes(d.paginaPorte(foto, ritaglio, punti, DatiAuto.parti(grezzi), adesso))
+        File(uscita, "porte_chiuse.png").writeBytes(d.paginaPorte(foto, ritaglio, punti, DatiAuto.parti(tutteChiuse), adesso))
+        File(uscita, "porte_senza_foto.png").writeBytes(d.paginaPorte(null, null, punti, DatiAuto.parti(grezzi), adesso))
+        File(uscita, "mini_riepilogo.png").writeBytes(d.miniaturaRiepilogo(DatiAuto.istantanea(grezzi)))
+        File(uscita, "mini_porte.png").writeBytes(d.miniaturaPorte(foto, ritaglio, DatiAuto.parti(grezzi)))
         Stato.meteo.png = meteo; Stato.meteo.epoch = 111; Stato.notizie.notizie = pronte; Stato.notizie.epoch = 222
         val srv = Server {}
         srv.avvia()
@@ -141,6 +157,11 @@ class ProvaPagineTest {
         }
         Rifornimenti.livello(ctx, bt, 9.0, 47900.0, adesso - 5 * 86400000L)
         Rifornimenti.livello(ctx, bt, 43.0, 47900.0, adesso - 5 * 86400000L + 60000L)
+        // Stato vettura per la scheda dell'app: le stesse pagine che vede l'iDrive
+        Stato.vettura.metti(listOf(
+            NotiziaPronta("Riepilogo", "", File(uscita, "auto.png").readBytes(), File(uscita, "mini_riepilogo.png").readBytes(), ByteArray(0), 1L),
+            NotiziaPronta("Porte, finestrini e tetto", "", File(uscita, "porte.png").readBytes(), File(uscita, "mini_porte.png").readBytes(), ByteArray(0), 2L),
+        ))
         val att = org.robolectric.Robolectric.buildActivity(MainActivity::class.java).setup().get()
         val radice = att.window.decorView.findViewById<android.view.View>(android.R.id.content)
         val sv = (radice as android.view.ViewGroup).getChildAt(0) as android.widget.ScrollView
