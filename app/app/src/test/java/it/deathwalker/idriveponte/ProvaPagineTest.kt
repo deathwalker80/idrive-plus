@@ -168,6 +168,11 @@ class ProvaPagineTest {
             NotiziaPronta("Riepilogo", "", File(uscita, "auto.png").readBytes(), File(uscita, "mini_riepilogo.png").readBytes(), ByteArray(0), 1L),
             NotiziaPronta("Porte, finestrini e tetto", "", File(uscita, "porte.png").readBytes(), File(uscita, "mini_porte.png").readBytes(), ByteArray(0), 2L),
         ))
+        // riassunti per le icone della home e valori dell'auto per la copertina
+        Stato.meteoBreve = Stato.MeteoBreve("La Spezia", 20, "Poco nuvoloso", "partly")
+        Stato.carburantiBreve = "Benzina 1,975 €" to "Q8 · 1,2 km"
+        Stato.trafficoBreve = "3 eventi" to "A12: Coda"
+        DatiAuto.grezzi = g + ("driving.averageConsumption" to """{"averageConsumption":{"averageConsumption2":14.2,"unit":4}}""")
 
         // una schermata per ogni marca e una senza marca (app appena installata)
         for (tipo in Marca.TUTTE + Marca.NESSUNA) {

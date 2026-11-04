@@ -126,10 +126,12 @@ class MainActivity : Activity() {
         val titolo: String,
         val schede: List<View>,
         val visibile: () -> Boolean = { true },
-        val stato: () -> String
+        val stato: () -> Dettaglio
     )
+    /** cosa mostra l'icona della home: una riga in evidenza, una o due righe sotto, l'icona del meteo se c'e' */
+    private class Dettaglio(val grande: String, val piccolo: String = "", val meteo: String? = null)
     private val sezioni = ArrayList<Sezione>()
-    private class Tessera(val vista: View, val stato: TextView)
+    private class Tessera(val vista: View, val icona: ImageView, val grande: TextView, val piccolo: TextView, var meteo: String? = null)
     private val tessere = HashMap<String, Tessera>()
     private lateinit var scorri: ScrollView
     private lateinit var home: LinearLayout
@@ -141,6 +143,9 @@ class MainActivity : Activity() {
     private lateinit var vuotoCopertina: TextView
     private lateinit var nomeCopertina: TextView
     private lateinit var statoCopertina: TextView
+    private class Cella(val valore: TextView, val etichetta: TextView)
+    private val celleCopertina = ArrayList<Cella>()
+    private lateinit var notaCopertina: TextView
     private var firmaCopertina = ""
     private var indietro: Any? = null          // OnBackInvokedCallback (Android 13+) mentre una sezione e' aperta
 
@@ -341,27 +346,40 @@ class MainActivity : Activity() {
 
         // ---- le icone della home, sempre in quest'ordine; viaggio, storico, rifornimenti e parco compaiono solo quando servono
         val pag = { n: String -> listOf(schedePagine.getValue(n)) }
-        sezioni += Sezione("auto", R.drawable.ic_auto, "In auto", listOf(schedaInAuto)) {
-            if (Stato.servizioAttivo) "acceso" else "spento"
+        sezioni += Sezione("auto", R.drawable.ic_auto, "In auto", listOf(schedaInAuto)) { dettaglioInAuto() }
+        sezioni += Sezione("viaggio", R.drawable.ic_auto, "In viaggio", listOf(schedaViaggio), { schedaViaggio.visibility != View.GONE }) {
+            dettaglioViaggio()
         }
-        sezioni += Sezione("viaggio", R.drawable.ic_auto, "In viaggio", listOf(schedaViaggio), { schedaViaggio.visibility != View.GONE }) { "in corso" }
-        sezioni += Sezione("vettura", R.drawable.ic_auto, "Stato vettura", listOf(schedaVettura) + pag("Stato vettura · Riepilogo")) { statoVettura() }
-        sezioni += Sezione("parcheggio", R.drawable.ic_parcheggio, "Parcheggio", listOf(schedaParcheggio)) {
-            Parcheggio.tutti(this).firstOrNull()?.let { SimpleDateFormat("dd/MM HH:mm", Locale.ITALY).format(Date(it.quando)) } ?: "nessuno"
+        sezioni += Sezione("vettura", R.drawable.ic_auto, "Stato vettura", listOf(schedaVettura) + pag("Stato vettura · Riepilogo")) {
+            dettaglioVettura()
         }
-        sezioni += Sezione("storico", R.drawable.ic_storico, "Storico viaggi", listOf(schedaStorico), { schedaStorico.visibility != View.GONE }) { "" }
-        sezioni += Sezione("rifornimenti", R.drawable.ic_carburante, "Rifornimenti", listOf(schedaRifornimenti), { schedaRifornimenti.visibility != View.GONE }) { "" }
+        sezioni += Sezione("parcheggio", R.drawable.ic_parcheggio, "Parcheggio", listOf(schedaParcheggio)) { dettaglioParcheggio() }
+        sezioni += Sezione("storico", R.drawable.ic_storico, "Viaggi", listOf(schedaStorico)) { dettaglioStorico() }
+        sezioni += Sezione("rifornimenti", R.drawable.ic_carburante, "Rifornimenti", listOf(schedaRifornimenti)) { dettaglioRifornimenti() }
         sezioni += Sezione("parco", R.drawable.ic_auto, "Le mie auto", listOf(schedaParco), { schedaParco.visibility != View.GONE }) {
-            "${Parco.elenco(this).size} auto"
+            Dettaglio("${Parco.elenco(this).size} auto", "in uso: " + Parco.mostra(this, Parco.ultima(this)))
         }
-        sezioni += Sezione("meteo", R.drawable.ic_meteo, "Meteo", pag("Meteo")) { quando(Stato.meteo.esito) }
-        sezioni += Sezione("notizie", R.drawable.ic_notizie, "Notizie", pag("Notizie")) { quando(Stato.notizie.esito) }
-        sezioni += Sezione("locali", R.drawable.ic_locali, "Notizie locali", pag("Notizie locali")) { quando(Stato.locali.esito) }
-        sezioni += Sezione("carburanti", R.drawable.ic_carburante, "Carburanti", pag("Carburanti")) { quando(Stato.carburanti.esito) }
-        sezioni += Sezione("traffico", R.drawable.ic_traffico, "Traffico", pag("Traffico")) { quando(Stato.traffico.esito) }
-        sezioni += Sezione("impostazioni", R.drawable.ic_impostazioni, "Impostazioni", listOf(schedaImpostazioni)) { "" }
+        sezioni += Sezione("meteo", R.drawable.ic_meteo, "Meteo", pag("Meteo")) { dettaglioMeteo() }
+        sezioni += Sezione("notizie", R.drawable.ic_notizie, "Notizie", pag("Notizie")) {
+            dettaglioNotizie(Stato.notizie, "ANSA", "le prime 8 notizie d'Italia")
+        }
+        sezioni += Sezione("locali", R.drawable.ic_locali, "Notizie locali", pag("Notizie locali")) {
+            val p = getSharedPreferences("ponte", MODE_PRIVATE)
+            dettaglioNotizie(Stato.locali, p.getString("locali_citta", "La Spezia") ?: "", "ANSA " + (p.getString("locali_regione", "") ?: ""))
+        }
+        sezioni += Sezione("carburanti", R.drawable.ic_carburante, "Carburanti", pag("Carburanti")) {
+            Stato.carburantiBreve?.let { Dettaglio(it.first, it.second) }
+                ?: Dettaglio(Fonti.CARBURANTI[Parco.carburante(this, Parco.ultima(this))] ?: "Carburanti", "prezzi MIMIT vicino a te")
+        }
+        sezioni += Sezione("traffico", R.drawable.ic_traffico, "Traffico", pag("Traffico")) {
+            Stato.trafficoBreve?.let { Dettaglio(it.first, it.second) } ?: Dettaglio("Traffico", "Autostrade per l'Italia vicino a te")
+        }
+        sezioni += Sezione("impostazioni", R.drawable.ic_impostazioni, "Impostazioni", listOf(schedaImpostazioni)) {
+            val p = getSharedPreferences("ponte", MODE_PRIVATE)
+            Dettaglio("Distributori entro ${p.getInt("raggio_carburanti", 5)} km", "Notizie locali: " + (p.getString("locali_citta", "La Spezia") ?: ""))
+        }
         sezioni += Sezione("permessi", R.drawable.ic_permessi, "Permessi", listOf(schedaPermessi)) {
-            if (permessiMancanti == 0) "tutti concessi" else "$permessiMancanti da concedere"
+            Dettaglio(if (permessiMancanti == 0) "Tutti concessi" else "$permessiMancanti da concedere", "Bluetooth, notifiche, batteria, posizione")
         }
 
         home.addView(TextView(this).apply {
@@ -472,34 +490,73 @@ class MainActivity : Activity() {
         c.addView(nomeCopertina)
         statoCopertina = TextView(this).apply { setTextColor(TENUE); textSize = 13f; setPadding(px(2), px(2), 0, 0) }
         c.addView(statoCopertina)
+        // carburante, autonomia, chilometri e consumo: in diretta dall'iDrive, altrimenti com'era l'auto al parcheggio
+        // due per riga: sul telefono quattro in fila non ci stanno ("48.213 km")
+        var valori = LinearLayout(this)
+        for ((k, nome) in listOf("Carburante", "Autonomia", "Chilometri", "Consumo").withIndex()) {
+            if (k % 2 == 0) {
+                valori = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, px(if (k == 0) 12 else 8), 0, 0) }
+                c.addView(valori)
+            }
+            val cella = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                background = tondo(Color.rgb(16, 19, 23), 12, BORDO)
+                setPadding(px(10), px(8), px(6), px(8))
+            }
+            val v = TextView(this).apply { setTextColor(TESTO); textSize = 16f; typeface = Typeface.DEFAULT_BOLD; maxLines = 1 }
+            val e = TextView(this).apply { text = nome; setTextColor(TENUE); textSize = 11f; maxLines = 1 }
+            cella.addView(v); cella.addView(e)
+            valori.addView(cella, LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f).apply { if (valori.childCount > 0) marginStart = px(8) })
+            celleCopertina += Cella(v, e)
+        }
+        notaCopertina = TextView(this).apply { setTextColor(TENUE); textSize = 11f; setPadding(px(2), px(6), 0, 0) }
+        c.addView(notaCopertina)
         return c
     }
 
-    /** icona della griglia: simbolo nel colore della marca, nome e una riga di stato */
+    /** icona della griglia (due per riga): simbolo nel colore della marca e nome, poi una riga in evidenza e due sotto */
     private fun tessera(z: Sezione): Tessera {
         val t = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = tondo(SCHEDA, 16, BORDO)
-            setPadding(px(12), px(14), px(10), px(12))
+            setPadding(px(12), px(12), px(12), px(14))
             isClickable = true
             setOnClickListener { apriSezione(z.chiave) }
         }
+        val testa = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         val fondo = FrameLayout(this).apply { background = tondo(Color.rgb(34, 40, 48), 12) }
-        fondo.addView(ImageView(this).apply {
+        val ic = ImageView(this).apply {
             setImageResource(z.icona)
             imageTintList = ColorStateList.valueOf(ACCENTO)
-        }, FrameLayout.LayoutParams(px(24), px(24), Gravity.CENTER))
-        t.addView(fondo, LinearLayout.LayoutParams(px(42), px(42)))
-        t.addView(TextView(this).apply {
-            text = z.titolo; setTextColor(TESTO); textSize = 14f; typeface = Typeface.DEFAULT_BOLD
-            maxLines = 2; setPadding(0, px(10), 0, 0)
-        })
-        val st = TextView(this).apply {
-            setTextColor(TENUE); textSize = 12f; maxLines = 1
-            ellipsize = android.text.TextUtils.TruncateAt.END
         }
-        t.addView(st)
-        return Tessera(t, st)
+        fondo.addView(ic, FrameLayout.LayoutParams(px(24), px(24), Gravity.CENTER))
+        testa.addView(fondo, LinearLayout.LayoutParams(px(40), px(40)))
+        testa.addView(TextView(this).apply {
+            text = z.titolo; setTextColor(TENUE); textSize = 13f; typeface = Typeface.DEFAULT_BOLD
+            maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END
+            setPadding(px(10), 0, 0, 0)
+        }, LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f))
+        t.addView(testa)
+        val grande = TextView(this).apply {
+            setTextColor(TESTO); textSize = 17f; typeface = Typeface.DEFAULT_BOLD
+            maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END
+            setPadding(0, px(10), 0, 0)
+        }
+        t.addView(grande)
+        val piccolo = TextView(this).apply {
+            setTextColor(TENUE); textSize = 12.5f; maxLines = 2
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            setPadding(0, px(2), 0, 0)
+        }
+        t.addView(piccolo)
+        return Tessera(t, ic, grande, piccolo)
+    }
+
+    /** icona del meteo (la stessa delle pagine dell'iDrive), dagli assets */
+    private fun iconaMeteo(nome: String): android.graphics.Bitmap? = try {
+        assets.open("icone/$nome.png").use { BitmapFactory.decodeStream(it) }
+    } catch (e: Exception) {
+        null
     }
 
     /** la griglia si ricompone solo quando compare o sparisce un'icona (3 per riga, sempre nello stesso ordine) */
@@ -510,9 +567,9 @@ class MainActivity : Activity() {
             firmaGriglia = firma
             griglia.removeAllViews()
             tessere.clear()
-            visibili.chunked(3).forEach { gruppo ->
+            visibili.chunked(2).forEach { gruppo ->
                 val riga = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-                for (k in 0 until 3) {
+                for (k in 0 until 2) {
                     val lp = LinearLayout.LayoutParams(0, MATCH_PARENT, 1f).apply { if (k > 0) marginStart = px(10) }
                     val z = gruppo.getOrNull(k)
                     if (z == null) { riga.addView(View(this), lp); continue }
@@ -523,10 +580,17 @@ class MainActivity : Activity() {
                 griglia.addView(riga, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { topMargin = px(10) })
             }
         }
-        for (z in visibili) tessere[z.chiave]?.stato?.let { st ->
-            val v = z.stato()
-            if (st.text.toString() != v) st.text = v
-            st.visibility = if (v.isEmpty()) View.INVISIBLE else View.VISIBLE
+        for (z in visibili) {
+            val t = tessere[z.chiave] ?: continue
+            val d = z.stato()
+            if (t.grande.text.toString() != d.grande) t.grande.text = d.grande
+            if (t.piccolo.text.toString() != d.piccolo) t.piccolo.text = d.piccolo
+            if (d.meteo != t.meteo) {
+                t.meteo = d.meteo
+                val b = d.meteo?.let { iconaMeteo(it) }
+                if (b != null) { t.icona.imageTintList = null; t.icona.setImageBitmap(b) }
+                else { t.icona.setImageResource(z.icona); t.icona.imageTintList = ColorStateList.valueOf(ACCENTO) }
+            }
         }
 
         // copertina: la foto si ridisegna solo quando cambia
@@ -546,6 +610,113 @@ class MainActivity : Activity() {
             if (recente) "iDrive collegato" else if (Stato.servizioAttivo) "in attesa dell'iDrive" else "si accende col Bluetooth",
             statoVettura()
         ).filter { it.isNotEmpty() }.joinToString(" · ")
+        val dati = datiAuto(bt)
+        val i = dati?.first
+        val testi = listOf(
+            i?.litri?.let { String.format(Locale.ITALY, "%.0f l", it) },
+            i?.autonomia?.let { String.format(Locale.ITALY, "%.0f km", it) },
+            i?.km?.let { String.format(Locale.ITALY, "%,.0f km", it) },
+            i?.kmLitro?.let { String.format(Locale.ITALY, "%.1f km/l", it) }
+        )
+        celleCopertina.forEachIndexed { k, c -> (testi[k] ?: "–").let { if (c.valore.text.toString() != it) c.valore.text = it } }
+        notaCopertina.text = when {
+            dati == null -> "I dati arrivano dall'iDrive quando sei in auto con l'app accesa."
+            dati.second == 0L -> "Dati dell'iDrive in diretta"
+            else -> "Dati dell'iDrive al parcheggio, ${quandoBreve(dati.second)}"
+        }
+    }
+
+    /** gli ultimi valori dell'auto: in diretta (0) o quelli salvati alla fine dell'ultimo viaggio (con l'ora) */
+    private fun datiAuto(bt: String?): Pair<DatiAuto.Istantanea, Long>? {
+        if (DatiAuto.grezzi.isNotEmpty()) return DatiAuto.istantanea(DatiAuto.grezzi) to 0L
+        val v = Viaggio.di(this, bt) ?: return null
+        if (v.grezzi.isEmpty()) return null
+        return v.ora() to v.aggiornato
+    }
+
+    /** "oggi 17:06", "ieri 17:06", "lun 02/11 17:06" */
+    private fun quandoBreve(ms: Long): String {
+        val oggi = inizioGiorno(System.currentTimeMillis())
+        val ora = SimpleDateFormat("HH:mm", Locale.ITALY).format(Date(ms))
+        return when {
+            ms >= oggi -> "oggi $ora"
+            ms >= oggi - 86400000L -> "ieri $ora"
+            else -> SimpleDateFormat("EEE dd/MM", Locale.ITALY).format(Date(ms)) + " $ora"
+        }
+    }
+
+    private fun inizioGiorno(ms: Long): Long = java.util.Calendar.getInstance().apply {
+        timeInMillis = ms
+        set(java.util.Calendar.HOUR_OF_DAY, 0); set(java.util.Calendar.MINUTE, 0)
+        set(java.util.Calendar.SECOND, 0); set(java.util.Calendar.MILLISECOND, 0)
+    }.timeInMillis
+
+    // ---- cosa mostra ogni icona della home
+    private fun dettaglioInAuto(): Dettaglio {
+        val recente = Stato.ultimaRichiestaAuto != 0L && System.currentTimeMillis() - Stato.ultimaRichiestaAuto < 2 * 60 * 1000L
+        return Dettaglio(
+            if (Stato.servizioAttivo) "Acceso" else "Spento",
+            when {
+                recente -> "iDrive collegato"
+                Stato.servizioAttivo -> "in attesa dell'iDrive"
+                else -> "si accende col Bluetooth della ${Marca.AUTO}"
+            }
+        )
+    }
+
+    private fun dettaglioViaggio(): Dettaglio {
+        val v = Viaggio.di(this, Parco.ultima(this))?.takeIf { it.inCorso } ?: return Dettaglio("In corso")
+        return Dettaglio(
+            listOfNotNull(durata(v.durata()), v.km()?.let { km(it) }).joinToString(" · "),
+            if (v.luogo.isNotEmpty()) "da ${v.luogo}" else "partito alle " + SimpleDateFormat("HH:mm", Locale.ITALY).format(Date(v.partenza))
+        )
+    }
+
+    private fun dettaglioVettura(): Dettaglio {
+        val dati = datiAuto(Parco.ultima(this))
+        val aperti = dati?.first?.aperti ?: return Dettaglio("Porte e finestrini", "lo stato arriva dall'iDrive quando sei in auto")
+        val quando = if (dati.second == 0L) "in diretta" else "al parcheggio, ${quandoBreve(dati.second)}"
+        return if (aperti.isEmpty()) Dettaglio("Tutto chiuso", "Porte, finestrini e tetto · $quando")
+        else Dettaglio(if (aperti.size == 1) "1 apertura" else "${aperti.size} aperture", aperti.joinToString(", ") + " · $quando")
+    }
+
+    private fun dettaglioParcheggio(): Dettaglio {
+        val p = Parcheggio.tutti(this).firstOrNull() ?: return Dettaglio("Nessuno", "si salva da solo quando scendi ${Marca.dalla()}")
+        val dove = p.indirizzo.ifEmpty { String.format(Locale.ITALY, "%.5f, %.5f", p.lat, p.lon) }
+        val via = dove.substringBefore(',').trim()
+        val resto = dove.substringAfter(',', "").trim()
+        return Dettaglio(via, listOf(resto, quandoBreve(p.quando)).filter { it.isNotEmpty() }.joinToString(" · "))
+    }
+
+    private fun dettaglioStorico(): Dettaglio {
+        val voci = Storico.tutti(this)
+        val ultimo = voci.firstOrNull() ?: return Dettaglio("Nessun viaggio", "si registrano da soli quando scendi ${Marca.dalla()}")
+        val mese = voci.filter { it.partenza >= inizioMese() }
+        val kmMese = mese.mapNotNull { it.km }
+        val grande = (if (mese.size == 1) "1 viaggio" else "${mese.size} viaggi") + " questo mese" +
+            if (kmMese.isNotEmpty()) " · " + km(kmMese.sum()) else ""
+        val dove = if (ultimo.a.isNotEmpty()) " → " + ultimo.a.substringBefore(',') else ""
+        return Dettaglio(grande, "Ultimo: ${quandoBreve(ultimo.partenza)}" + (ultimo.km?.let { ", " + km(it) } ?: "") + dove)
+    }
+
+    private fun dettaglioRifornimenti(): Dettaglio {
+        val r = Rifornimenti.tutti(this).firstOrNull() ?: return Dettaglio("Nessuno", "riconosciuti dal livello del serbatoio")
+        return Dettaglio(
+            String.format(Locale.ITALY, "%.0f litri", r.litri),
+            listOf(quandoBreve(r.quando), r.marchio.ifEmpty { r.luogo.substringBefore(',') },
+                r.prezzo?.let { String.format(Locale.ITALY, "%.3f €/l", it) } ?: "").filter { it.isNotEmpty() }.joinToString(" · ")
+        )
+    }
+
+    private fun dettaglioMeteo(): Dettaglio {
+        val m = Stato.meteoBreve ?: return Dettaglio("Meteo", if (Stato.servizioAttivo) "in aggiornamento" else "si aggiorna quando l'app è accesa")
+        val allerta = Stato.allerta.takeIf { it.startsWith("Allerta") }
+        return Dettaglio("${m.temp}° · ${m.cielo}", allerta ?: listOf(m.citta, quando(Stato.meteo.esito)).filter { it.isNotEmpty() }.joinToString(" · "), m.icona)
+    }
+
+    private fun dettaglioNotizie(e: Elenco, titolo: String, vuoto: String): Dettaglio {
+        val n = e.notizie.firstOrNull() ?: return Dettaglio(titolo, vuoto)
+        return Dettaglio(titolo + if (n.ora.isNotEmpty()) " · ${n.ora}" else "", n.titolo)
     }
 
     /** apre a tutto schermo le schede di una sezione; Indietro (o il gesto) torna alla home */
@@ -596,8 +767,7 @@ class MainActivity : Activity() {
 
     /** "tutto chiuso" o "2 aperture" dagli ultimi dati dell'iDrive; vuoto se non ne sono ancora arrivati */
     private fun statoVettura(): String {
-        if (DatiAuto.grezzi.isEmpty()) return ""
-        val n = DatiAuto.istantanea(DatiAuto.grezzi).aperti?.size ?: return ""
+        val n = datiAuto(Parco.ultima(this))?.first?.aperti?.size ?: return ""
         return if (n == 0) "tutto chiuso" else if (n == 1) "1 apertura" else "$n aperture"
     }
 
@@ -1093,7 +1263,15 @@ class MainActivity : Activity() {
     /** gli ultimi viaggi finiti (5, o tutti), col riassunto del mese; si ridisegna solo quando cambia qualcosa */
     private fun disegnaStorico() {
         val voci = Storico.tutti(this)
-        schedaStorico.visibility = if (voci.isEmpty()) View.GONE else View.VISIBLE
+        if (voci.isEmpty()) {
+            if (firmaStorico != "vuoto") {
+                firmaStorico = "vuoto"
+                boxStorico.removeAllViews()
+                testo(boxStorico, "Ancora nessun viaggio: ogni viaggio si registra da solo quando scendi ${Marca.dalla()} " +
+                    "(il telefono si scollega dal Bluetooth), con i km e i litri se l'iDrive li ha mandati.")
+            }
+            return
+        }
         val piuAuto = Parco.elenco(this).size > 1
         val firma = voci.joinToString("|") { "${it.auto}/${it.partenza}/${it.arrivo}/${it.km}/${it.litri}/${it.a}" } +
             "/$storicoTutto/$piuAuto/" + voci.map { it.auto }.distinct().joinToString(",") { Parco.mostra(this, it) }
@@ -1142,7 +1320,15 @@ class MainActivity : Activity() {
     /** gli ultimi rifornimenti (5, o tutti) con prezzo, spesa stimata e km dal precedente */
     private fun disegnaRifornimenti() {
         val voci = Rifornimenti.tutti(this)
-        schedaRifornimenti.visibility = if (voci.isEmpty()) View.GONE else View.VISIBLE
+        if (voci.isEmpty()) {
+            if (firmaRifornimenti != "vuoto") {
+                firmaRifornimenti = "vuoto"
+                boxRifornimenti.removeAllViews()
+                testo(boxRifornimenti, "Ancora nessun rifornimento: si riconoscono da soli quando il livello del serbatoio " +
+                    "che manda l'iDrive sale di qualche litro.")
+            }
+            return
+        }
         val piuAuto = Parco.elenco(this).size > 1
         val firma = voci.joinToString("|") { "${it.auto}/${it.quando}/${it.litri}/${it.luogo}/${it.prezzo}" } +
             "/$rifornimentiTutti/$piuAuto/" + voci.map { it.auto }.distinct().joinToString(",") { Parco.mostra(this, it) }

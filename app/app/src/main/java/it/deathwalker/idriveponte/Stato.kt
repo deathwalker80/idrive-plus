@@ -61,6 +61,12 @@ object Stato {
      *  capisce che il telefono e' ripartito da zero e rimanda tutti gli ultimi valori, anche quelli fermi */
     @Volatile var avvio = System.currentTimeMillis() / 1000
 
+    /** in breve, per le icone della home dell'app: temperatura e cielo, il distributore migliore, il traffico */
+    class MeteoBreve(val citta: String, val temp: Int, val cielo: String, val icona: String)
+    @Volatile var meteoBreve: MeteoBreve? = null
+    @Volatile var carburantiBreve: Pair<String, String>? = null     // "Benzina 1,975 €" to "Q8 · 1,2 km"
+    @Volatile var trafficoBreve: Pair<String, String>? = null       // "3 eventi entro 100 km" to "A12: coda 2 km"
+
     @Volatile var aggiornamentoInCorso = ""     // cosa si sta scaricando adesso ("" = niente)
     @Volatile var fonteCitta = ""
     @Volatile var allerta = ""                  // riassunto dell'ultima allerta letta
