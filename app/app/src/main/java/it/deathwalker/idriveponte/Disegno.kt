@@ -52,7 +52,7 @@ class Disegno(private val ctx: Context) {
     private val icone = HashMap<String, Bitmap>()
 
     private fun icona(nome: String): Bitmap? = icone.getOrPut(nome) {
-        ctx.assets.open("icone/$nome.png").use { BitmapFactory.decodeStream(it) } ?: return null
+        ctx.assets.open("meteo/$nome.png").use { BitmapFactory.decodeStream(it) } ?: return null
     }
 
     private fun nuovaTela(): Pair<Bitmap, Canvas> {
@@ -111,79 +111,68 @@ class Disegno(private val ctx: Context) {
         else -> String.format(Locale.ITALY, "%.0f mm", v)
     }
 
+    /**
+     * pagina Meteo come quella di serie dell'iDrive (Foreca): a sinistra il tempo di adesso con l'icona grande,
+     * a destra una colonna per giorno (oggi evidenziato) con data, giorno, icona, massima e minima
+     */
     fun paginaMeteo(m: Meteo, allerta: Allerta? = null): ByteArray {
         val (b, c) = nuovaTela()
-        // MET Norway (dati CC BY 4.0) va citato: accanto ad alba e tramonto
-        intestazione(c, m.citta, "Alba ${m.alba} · Tramonto ${m.tramonto}" + if (m.fonte != "open-meteo") " · dati ${m.fonte}" else "")
-        // allerta della Protezione Civile: pastiglia colorata accanto al nome della citta'
+
+        // ---- adesso (colonna sinistra, larga 400)
+        scrivi(c, "Meteo attuale:", 0f, 0f, pennello(20f, false, TENUE))
+        val pc = pennello(32f, true, BIANCO)
+        scrivi(c, ellissi(m.citta, pc, 400f), 0f, 24f, pc)
+        // allerta della Protezione Civile: pastiglia colorata sotto il nome della citta'
         val avviso = allerta?.testoBreve().orEmpty()
         if (avviso.isNotEmpty()) {
-            val pc = pennello(30f, true, BIANCO)
-            val x = pc.measureText(m.citta) + 22f
             val colore = when (allerta!!.massima()) { 3 -> 0xFFE53935.toInt(); 2 -> 0xFFFB8C00.toInt(); else -> 0xFFFDD835.toInt() }
             val testo = if (allerta.massima() >= 2) BIANCO else 0xFF1A1A1A.toInt()
             val pa = pennello(17f, true, testo).apply { clearShadowLayer() }
-            val larg = minOf(pa.measureText("⚠ $avviso") + 28f, 700f - x)
+            val larg = minOf(pa.measureText("⚠ $avviso") + 28f, 400f)
             val fondo = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = colore; setShadowLayer(3f, 0f, 1f, OMBRA) }
-            c.drawRoundRect(RectF(x, 9f, x + larg, 45f), 18f, 18f, fondo)
-            c.save(); c.clipRect(x, 9f, x + larg - 12f, 45f)
-            scrivi(c, "⚠ $avviso", x + 14f, 15f, pa)
+            c.drawRoundRect(RectF(0f, 70f, larg, 104f), 17f, 17f, fondo)
+            c.save(); c.clipRect(0f, 70f, larg - 12f, 104f)
+            scrivi(c, "⚠ $avviso", 14f, 75f, pa)
             c.restore()
         }
+        disegnaIcona(c, Dati.iconaMeteo(m.codice, m.giorno, m.raffiche >= 60 || m.vento >= 45), -8f, 110f, 236f)
+        scrivi(c, "${m.temp} °C", 400f, 140f, pennello(64f, true, BIANCO, Paint.Align.RIGHT), 70f)
+        val pd = pennello(22f, false, BIANCO, Paint.Align.RIGHT)
+        scrivi(c, ellissi(Dati.cielo(m.codice), pd, 190f), 400f, 216f, pd)
+        scrivi(c, "Percepita ${m.percepita}°", 400f, 250f, pennello(18f, false, TENUE, Paint.Align.RIGHT))
+        val pl = pennello(18f, false, TENUE)
+        scrivi(c, "Umidità ${m.umidita}% · Vento ${m.vento} km/h ${m.direzione}".trim(), 0f, 356f, pl)
+        scrivi(c, if (m.inMillimetri) "Nuvole ${m.nuvole}% · Pressione ${m.pressione} hPa"
+            else "Raffiche ${m.raffiche} km/h · Pressione ${m.pressione} hPa", 0f, 382f, pl)
+        // MET Norway (dati CC BY 4.0) va citato: accanto ad alba e tramonto
+        scrivi(c, "Alba ${m.alba} · Tramonto ${m.tramonto}" + if (m.fonte != "open-meteo") " · dati ${m.fonte}" else "", 0f, 408f, pl)
 
-        // adesso (colonna sinistra, top 74)
-        val wi = Dati.wmo(m.codice)
-        disegnaIcona(c, Dati.iconaOra(wi.second, m.giorno), 0f, 74f, 108f)
-        scrivi(c, "${m.temp}°", 122f, 70f, pennello(100f, true, BIANCO), 100f)
-        scrivi(c, wi.first, 0f, 196f, pennello(26f, false, BIANCO))
-        scrivi(c, "Max ${m.max}° · Min ${m.min}°", 0f, 232f, pennello(18f, false, TENUE))
-        val celle = listOf(
-            "Percepita" to "${m.percepita}°", "Umidità" to "${m.umidita}%",
-            "Vento" to "${m.vento} km/h ${m.direzione}".trim(),
-            if (m.inMillimetri) "Nuvole" to "${m.nuvole}%" else "Raffiche" to "${m.raffiche} km/h",
-            "Pioggia oggi" to (if (m.inMillimetri) mm(m.pioggiaOggiMm) else "${m.pioggiaOggi}%"), "Pressione" to "${m.pressione} hPa"
+        // ---- giorni (a destra): oggi + i 5 seguenti, una colonna ciascuno
+        val oggi = Giorno(
+            "Oggi", if (m.codiceOggi >= 0) m.codiceOggi else m.codice,
+            m.max.toIntOrNull() ?: m.temp, m.min.toIntOrNull() ?: m.temp, m.pioggiaOggi, m.pioggiaOggiMm,
+            java.text.SimpleDateFormat("dd.MM.", Locale.ITALY).format(java.util.Date())
         )
-        val pl = pennello(15f, false, TENUE)
-        val pv = pennello(22f, true, BIANCO)
-        celle.forEachIndexed { i, (l, v) ->
-            val x = (i % 2) * 190f
-            val y = 276f + (i / 2) * 52f
-            scrivi(c, l, x, y, pl)
-            scrivi(c, v, x, y + 15f * 1.15f + 2f, pv)
-        }
-        linea(c, 398f, 74f, 400f, TELA_H)
-
-        // colonna destra (left 430, top 74)
-        val x0 = 430f
-        val ph2 = pennello(17f, true, BIANCO).apply { letterSpacing = 1f / 17f }
-        scrivi(c, "PROSSIME ORE", x0, 74f, ph2)
-        val yOre = 74f + 28f
-        val pOra = pennello(17f, false, TENUE, Paint.Align.CENTER)
-        val pT = pennello(21f, true, BIANCO, Paint.Align.CENTER)
-        val pP = pennello(15f, false, AZZURRO, Paint.Align.CENTER)
-        m.ore.forEachIndexed { i, o ->
-            val cx = x0 + i * 96f + 48f
-            scrivi(c, "${o.ora}:00", cx, yOre, pOra)
-            disegnaIcona(c, Dati.iconaOra(Dati.wmo(o.codice).second, o.giorno), cx - 21f, yOre + 23.5f, 42f)
-            scrivi(c, "${o.temp}°", cx, yOre + 72f, pT)
-            scrivi(c, if (m.inMillimetri) mm(o.mm) else "${o.pioggia}%", cx, yOre + 98f, pP)
-        }
-        scrivi(c, "PROSSIMI GIORNI", x0, 74f + 170f, ph2)
-        val yG = 74f + 198f
-        val pN = pennello(18f, false, TENUE, Paint.Align.CENTER)
-        val pMax = pennello(21f, true, BIANCO, Paint.Align.LEFT)
-        val pMin = pennello(21f, false, TENUE, Paint.Align.LEFT)
-        m.giorni.forEachIndexed { i, g ->
-            val cx = x0 + i * 154f + 77f
-            scrivi(c, g.nome, cx, yG, pN)
-            disegnaIcona(c, Dati.wmo(g.codice).second, cx - 23f, yG + 24.7f, 46f)
-            val sMax = "${g.max}° "
-            val sMin = "${g.min}°"
-            val larg = pMax.measureText(sMax) + pMin.measureText(sMin)
-            val xs = cx - larg / 2f
-            scrivi(c, sMax, xs, yG + 78f, pMax)
-            scrivi(c, sMin, xs + pMax.measureText(sMax), yG + 78f, pMin)
-            scrivi(c, if (m.inMillimetri) mm(g.mm) else "${g.pioggia}%", cx, yG + 104f, pP)
+        val giorni = listOf(oggi) + m.giorni.take(5)
+        val x0 = 424f
+        val lc = (TELA_W - x0) / 6f
+        // oggi evidenziato come la colonna selezionata della pagina di serie
+        val fondo = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x33FFFFFF; setShadowLayer(6f, 0f, 2f, 0x33000000) }
+        c.drawRoundRect(RectF(x0 + 4f, 0f, x0 + lc - 4f, TELA_H - 8f), 14f, 14f, fondo)
+        val pData = pennello(28f, true, BIANCO, Paint.Align.CENTER)
+        val pNome = pennello(23f, false, TENUE, Paint.Align.CENTER)
+        val pMax = pennello(32f, true, BIANCO, Paint.Align.CENTER)
+        val pMin = pennello(27f, false, TENUE, Paint.Align.CENTER)
+        val pP = pennello(20f, false, AZZURRO, Paint.Align.CENTER)
+        giorni.forEachIndexed { i, g ->
+            val cx = x0 + i * lc + lc / 2f
+            if (i > 0) linea(c, x0 + i * lc - 1f, 16f, x0 + i * lc, TELA_H - 24f)
+            scrivi(c, g.data, cx, 22f, pData)
+            scrivi(c, g.nome, cx, 60f, pNome)
+            disegnaIcona(c, Dati.iconaMeteo(g.codice, true), cx - 62f, 104f, 124f)
+            scrivi(c, "${g.max} °C", cx, 252f, pMax)
+            scrivi(c, "${g.min} °C", cx, 298f, pMin)
+            scrivi(c, if (m.inMillimetri) "☂ " + mm(g.mm) else "☂ ${g.pioggia}%", cx, 358f, pP)
         }
         return png(b)
     }

@@ -554,7 +554,7 @@ class MainActivity : Activity() {
 
     /** icona del meteo (la stessa delle pagine dell'iDrive), dagli assets */
     private fun iconaMeteo(nome: String): android.graphics.Bitmap? = try {
-        assets.open("icone/$nome.png").use { BitmapFactory.decodeStream(it) }
+        assets.open("meteo/$nome.png").use { BitmapFactory.decodeStream(it) }
     } catch (e: Exception) {
         null
     }

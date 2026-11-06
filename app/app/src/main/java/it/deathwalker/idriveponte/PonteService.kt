@@ -244,8 +244,8 @@ class PonteService : Service() {
                 Stato.meteo.metti(disegno.paginaMeteo(m, allerta))
                 Stato.meteo.ultimo = System.currentTimeMillis()
                 meteoComune = qui.nome
-                val cielo = Dati.wmo(m.codice)
-                Stato.meteoBreve = Stato.MeteoBreve(m.citta, m.temp, cielo.first, Dati.iconaOra(cielo.second, m.giorno))
+                Stato.meteoBreve = Stato.MeteoBreve(m.citta, m.temp, Dati.cielo(m.codice),
+                    Dati.iconaMeteo(m.codice, m.giorno, ventoForte(m)))
                 Stato.meteo.esito = "OK alle ${oraAdesso()} - ${m.citta} ${m.temp}° (${Stato.fonteCitta}, ${m.fonte})"
             } catch (e: Exception) {
                 Stato.meteo.esito = "ERRORE alle ${oraAdesso()}: ${e.message ?: e.javaClass.simpleName}"
@@ -327,6 +327,9 @@ class PonteService : Service() {
             e.esito = "ERRORE alle ${oraAdesso()}: ${ex.message ?: ex.javaClass.simpleName}"
         }
     }
+
+    /** vento forte: raffiche da 60 km/h o vento medio da 45 (MET Norway non da' le raffiche) */
+    private fun ventoForte(m: Meteo) = m.raffiche >= 60 || m.vento >= 45
 
     private fun oraAdesso(): String =
         java.text.SimpleDateFormat("HH:mm", java.util.Locale.ITALY).apply { timeZone = Dati.ROMA }.format(java.util.Date())

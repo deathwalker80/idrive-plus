@@ -19,7 +19,7 @@ import kotlin.math.roundToInt
 
 /** pioggia: probabilita' in % (open-meteo); mm: millimetri previsti (MET Norway, che la probabilita' non la da') */
 class Ora(val ora: String, val codice: Int, val giorno: Boolean, val temp: Int, val pioggia: Int, val mm: Double = 0.0)
-class Giorno(val nome: String, val codice: Int, val max: Int, val min: Int, val pioggia: Int, val mm: Double = 0.0)
+class Giorno(val nome: String, val codice: Int, val max: Int, val min: Int, val pioggia: Int, val mm: Double = 0.0, val data: String = "")
 
 class Meteo(
     val citta: String,
@@ -32,6 +32,8 @@ class Meteo(
     val inMillimetri: Boolean = false,
     val pioggiaOggiMm: Double = 0.0,
     val nuvole: Int = 0,
+    /** tempo previsto per oggi (come le colonne dei giorni); -1 = non noto, si usa quello di adesso */
+    val codiceOggi: Int = -1,
 )
 
 class Notizia(val titolo: String, val ora: String, var testo: String, val link: String, var foto: Bitmap? = null)
@@ -64,7 +66,7 @@ object Dati {
             s == "partlycloudy" -> 2
             s == "cloudy" -> 3
             s == "fog" -> 45
-            s.contains("sleet") -> 77
+            s.contains("sleet") -> if (s.startsWith("heavy")) 69 else 68
             s == "lightsnowshowers" || s == "snowshowers" -> 85
             s == "heavysnowshowers" -> 86
             s.contains("snow") -> if (s.startsWith("light")) 71 else if (s.startsWith("heavy")) 75 else 73
@@ -150,15 +152,18 @@ object Dati {
             return (valori.maxOrNull() ?: 0.0).roundToInt() to (valori.minOrNull() ?: 0.0).roundToInt()
         }
         val nomi = arrayOf("Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab")
+        val fmtData = SimpleDateFormat("dd.MM.", Locale.US).apply { timeZone = ROMA }
         val giorni = perGiorno.filterKeys { it != oggi }.entries.take(5).map { (_, indici) ->
             val mezzodi = indici.minByOrNull { kotlin.math.abs(cal(passi[it].t).get(Calendar.HOUR_OF_DAY) - 12) }!!
             val (mx, mn) = estremi(indici)
             Giorno(nomi[cal(passi[mezzodi].t).get(Calendar.DAY_OF_WEEK) - 1],
                 codiceMet(simbolo(passi[mezzodi], "next_6_hours") ?: simbolo(passi[mezzodi], "next_1_hours")), mx, mn, 0,
-                indici.sumOf { pioggia(it) })
+                indici.sumOf { pioggia(it) }, fmtData.format(Date(passi[mezzodi].t)))
         }
         val indiciOggi = perGiorno[oggi].orEmpty()
         val (maxOggi, minOggi) = estremi(indiciOggi)
+        val codiceOggi = indiciOggi.minByOrNull { kotlin.math.abs(cal(passi[it].t).get(Calendar.HOUR_OF_DAY) - 12) }
+            ?.let { i -> simbolo(passi[i], "next_6_hours") ?: simbolo(passi[i], "next_1_hours") }?.let { codiceMet(it) } ?: -1
         val (alba, tramonto) = sole(lat, lon, cal(adesso))
         val vento = c.optDouble("wind_speed")
         return Meteo(
@@ -179,6 +184,7 @@ object Dati {
             fonte = "MET Norway", inMillimetri = true,
             pioggiaOggiMm = indiciOggi.sumOf { pioggia(it) },
             nuvole = c.optDouble("cloud_area_fraction").takeIf { !it.isNaN() }?.roundToInt() ?: 0,
+            codiceOggi = codiceOggi,
         )
     }
 
@@ -236,7 +242,8 @@ object Dati {
                         d.getJSONArray("weather_code").optInt(i),
                         d.getJSONArray("temperature_2m_max").optDouble(i).roundToInt(),
                         d.getJSONArray("temperature_2m_min").optDouble(i).roundToInt(),
-                        d.getJSONArray("precipitation_probability_max").optInt(i)
+                        d.getJSONArray("precipitation_probability_max").optInt(i),
+                        data = String.format(Locale.US, "%02d.%02d.", cal.get(Calendar.DAY_OF_MONTH), cal.get(Calendar.MONTH) + 1)
                     )
                 )
             }
@@ -264,7 +271,8 @@ object Dati {
             alba = orario("sunrise"),
             tramonto = orario("sunset"),
             ore = ore,
-            giorni = giorni
+            giorni = giorni,
+            codiceOggi = d?.optJSONArray("weather_code")?.optInt(0, -1) ?: -1
         )
     }
 
@@ -274,36 +282,56 @@ object Dati {
         return p[(((gradi % 360) / 45).roundToInt()) % 8]
     }
 
-    /** codice meteo WMO -> testo + nome icona */
-    fun wmo(codice: Int): Pair<String, String> = when (codice) {
-        0 -> "Sereno" to "sun"
-        1 -> "Poco nuvoloso" to "partly"
-        2 -> "Parz. nuvoloso" to "partly"
-        3 -> "Nuvoloso" to "cloud"
-        45, 48 -> "Nebbia" to "fog"
-        51, 53, 55 -> "Pioviggine" to "rain"
-        56, 57 -> "Pioviggine gelata" to "rain"
-        61 -> "Pioggia debole" to "rain"
-        63 -> "Pioggia" to "rain"
-        65 -> "Pioggia forte" to "rain"
-        66, 67 -> "Pioggia gelata" to "rain"
-        71 -> "Neve debole" to "snow"
-        73 -> "Neve" to "snow"
-        75 -> "Neve forte" to "snow"
-        77 -> "Nevischio" to "snow"
-        80, 81 -> "Rovesci" to "rain"
-        82 -> "Rovesci forti" to "rain"
-        85, 86 -> "Rovesci di neve" to "snow"
-        95, 96, 99 -> "Temporale" to "storm"
-        else -> "--" to "cloud"
+    /** codice meteo WMO -> com'e' il cielo, in parole */
+    fun cielo(codice: Int): String = when (codice) {
+        0 -> "Sereno"
+        1 -> "Poco nuvoloso"
+        2 -> "Parz. nuvoloso"
+        3 -> "Nuvoloso"
+        45, 48 -> "Nebbia"
+        51, 53, 55 -> "Pioviggine"
+        56, 57 -> "Pioviggine gelata"
+        61 -> "Pioggia debole"
+        63 -> "Pioggia"
+        65 -> "Pioggia forte"
+        66, 67 -> "Pioggia gelata"
+        68, 69 -> "Pioggia e neve"
+        71 -> "Neve debole"
+        73 -> "Neve"
+        75 -> "Neve forte"
+        77 -> "Nevischio"
+        80, 81 -> "Rovesci"
+        82 -> "Rovesci forti"
+        85, 86 -> "Rovesci di neve"
+        95, 96, 99 -> "Temporale"
+        else -> "--"
     }
 
-    /** di notte sereno e poco nuvoloso diventano luna */
-    fun iconaOra(tipo: String, giorno: Boolean): String = when {
-        giorno -> tipo
-        tipo == "sun" -> "moon"
-        tipo == "partly" -> "moonpartly"
-        else -> tipo
+    /**
+     * icona (assets/meteo/<nome>.png) per il codice WMO, di giorno o di notte; con vento forte e cielo
+     * senza pioggia ne' neve, l'icona del vento
+     */
+    fun iconaMeteo(codice: Int, giorno: Boolean, ventoForte: Boolean = false): String {
+        if (ventoForte && codice in 0..3) return "vento"
+        return when (codice) {
+            0 -> if (giorno) "sereno" else "luna"
+            1 -> if (giorno) "poco_nuvoloso" else "luna_poco_nuvoloso"
+            2 -> if (giorno) "nuvoloso_sole" else "luna_nuvoloso"
+            3 -> "coperto"
+            45, 48 -> "nebbia"
+            51, 53, 61, 80 -> if (giorno) "pioggia_debole" else "notte_pioggia"
+            55, 63, 65, 81, 82 -> if (giorno) "pioggia" else "notte_pioggia"
+            56, 57, 66, 67 -> "gelo"
+            68, 69 -> "pioggia_neve"
+            71, 73 -> if (giorno) "neve" else "notte_neve"
+            75, 86 -> if (giorno) "neve_forte" else "notte_neve_forte"
+            77 -> "grandine"
+            85 -> if (giorno) "neve_sole" else "notte_neve"
+            95 -> if (giorno) "temporale" else "notte_temporale"
+            96 -> if (giorno) "temporale_grandine" else "notte_temporale"
+            99 -> if (giorno) "temporale_intenso" else "notte_temporale"
+            else -> "nuvoloso"
+        }
     }
 
     // ---------------------------------------------------------------- citta' (geocoding open-meteo) ----
