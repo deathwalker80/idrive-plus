@@ -246,6 +246,12 @@ class PonteService : Service() {
             try {
                 val m = try { Dati.meteo(this, qui) } catch (e: Exception) { Dati.meteoMet(this, qui) }
                 Stato.meteo.metti(disegno.paginaMeteo(m, allerta))
+                // PROVA (plugin MeteoProva): un giorno per riga, con colonna, pagina del giorno e pagina evidenziata
+                Stato.meteoProva.metti(disegno.giorniMeteo(m).indices.map { i ->
+                    val g = disegno.giorniMeteo(m)[i]
+                    NotiziaPronta("${g.nome} ${g.max}°/${g.min}°", "", disegno.paginaGiornoMeteo(m, i),
+                        disegno.colonnaMeteo(m, i), disegno.paginaMeteo(m, allerta, i))
+                })
                 Stato.meteo.ultimo = System.currentTimeMillis()
                 meteoComune = qui.nome
                 Stato.meteoBreve = Stato.MeteoBreve(m.citta, m.temp, Dati.cielo(m.codice),

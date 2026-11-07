@@ -49,6 +49,19 @@ class ProvaPagineTest {
         val m = Dati.meteoDaJson(File("src/test/resources/dati/meteo.json").readText(), "La Spezia")
         val meteo = d.paginaMeteo(m, Allerta("Bacini Liguri Marittimi di Levante", 1, "temporali", 2, "idrogeologico"))
         File(uscita, "meteo.png").writeBytes(meteo)
+        // PROVA MeteoProva: pagina col giorno 2 evidenziato, colonna del giorno 2, pagina di oggi e di un giorno;
+        // i pulsanti del plugin devono stare esattamente sulle colonne disegnate
+        File(uscita, "meteoprova_sfondo2.png").writeBytes(d.paginaMeteo(m, null, 2))
+        File(uscita, "meteoprova_colonna2.png").writeBytes(d.colonnaMeteo(m, 2))
+        File(uscita, "meteoprova_oggi.png").writeBytes(d.paginaGiornoMeteo(m, 0))
+        File(uscita, "meteoprova_giorno3.png").writeBytes(d.paginaGiornoMeteo(m, 3))
+        val xml = File("../../chiavetta/MeteoProva/MeteoProva.xml").readText()
+        for (i in 0 until 6) {
+            val r = d.rettangoloGiorno(i)
+            val blocco = Regex("id=\"${200 + i}\"[\\s\\S]*?</button>").find(xml)!!.value
+            fun prop(id: Int) = Regex("property id=\"$id\" value=\"(\\d+)\"").find(blocco)!!.groupValues[1].toInt()
+            assertEquals("giorno $i", listOf(r[0], r[1], r[2], r[3]), listOf(prop(20), prop(21), prop(9), prop(10)))
+        }
         val b = BitmapFactory.decodeByteArray(meteo, 0, meteo.size)
         assertEquals(1280, b.width); assertEquals(480, b.height)
 
