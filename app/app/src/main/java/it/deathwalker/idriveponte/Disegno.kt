@@ -484,6 +484,7 @@ class Disegno(private val ctx: Context) {
     fun paginaPorte(
         foto: Bitmap?, ritaglio: android.graphics.Rect?, punti: Map<DatiAuto.Parte, Foto.Punto>,
         parti: Map<DatiAuto.Parte, DatiAuto.Stato>, quando: Long,
+        mostra: Set<DatiAuto.Parte> = DatiAuto.Parte.values().toSet(),
     ): ByteArray {
         val (b, c) = nuovaTela()
         val ora = java.text.SimpleDateFormat("HH:mm", Locale.ITALY).apply { timeZone = Dati.ROMA }
@@ -557,8 +558,9 @@ class Disegno(private val ctx: Context) {
         }
         scrivi(c, "DX · PASSEGGERO", 244f, 66f, pennello(15f, true, TENUE, Paint.Align.RIGHT).apply { letterSpacing = 0.06f })
         scrivi(c, "SX · GUIDATORE", 945f, 66f, pennello(15f, true, TENUE).apply { letterSpacing = 0.06f })
-        sinistraPorte.forEachIndexed { k, p -> richiamo(p, 244f, 92f + k * 58f, true) }
-        destraPorte.forEachIndexed { k, p -> richiamo(p, 945f, 96f + k * 68f, false) }
+        // solo le parti da mostrare, ricompattate dall'alto (il tetto non c'e' su tutte le auto)
+        sinistraPorte.filter { it in mostra }.forEachIndexed { k, p -> richiamo(p, 244f, 92f + k * 58f, true) }
+        destraPorte.filter { it in mostra }.forEachIndexed { k, p -> richiamo(p, 945f, 96f + k * 68f, false) }
         return png(b)
     }
 

@@ -148,4 +148,26 @@ class ViaggioTest {
         assertTrue(lungo.length <= Server.RIGA_MAX)
         assertEquals("14:40 · Francia, attacco ibrido a celle frigorifere con...", lungo)
     }
+
+    @Test
+    fun pioggiaInArrivo() {
+        val asciutto = """{"current":{"weather_code":2,"precipitation":0.0},"hourly":{"time":["2026-11-07T18:00","2026-11-07T19:00",
+            "2026-11-07T20:00","2026-11-07T21:00"],"weather_code":[2,3,3,3],"precipitation_probability":[5,20,40,30],
+            "precipitation":[0,0,0,0]}}"""
+        assertEquals(null, Pioggia.primaPioggia(asciutto))
+        val dopo = asciutto.replace("\"weather_code\":[2,3,3,3]", "\"weather_code\":[2,3,61,63]")
+        assertEquals("20:00", Pioggia.primaPioggia(dopo))
+        val adesso = asciutto.replace("\"precipitation\":0.0}", "\"precipitation\":0.4}")
+        assertEquals("adesso", Pioggia.primaPioggia(adesso))
+    }
+
+    @Test
+    fun tettoChelAutoNonHa() {
+        val g = mapOf(
+            "controls.sunroof" to """{"sunroof":{"status":3,"openPosition":255,"tiltPosition":255}}""",
+            "controls.windowDriverFront" to """{"windowDriverFront":{"status":0,"position":0}}""",
+        )
+        assertEquals(setOf(DatiAuto.Parte.TETTO), DatiAuto.nonValide(g))
+        assertEquals(setOf(DatiAuto.Parte.FINESTRINO_ANT_SX), DatiAuto.parti(g).keys)
+    }
 }

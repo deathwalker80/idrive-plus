@@ -27,11 +27,15 @@ object Aperture {
         if (d == null || d.inCorso) return
         if (System.currentTimeMillis() - d.aggiornato > FRESCO_MS) return
         val aperti = rimasti(d.ora()) ?: return
-        if (aperti.isEmpty()) togli(ctx, d.auto) else avvisa(ctx, d.auto, aperti)
+        if (aperti.isEmpty()) togli(ctx, d.auto) else {
+            avvisa(ctx, d.auto, aperti)
+            Pioggia.programma(ctx, subito = true)       // e se arriva la pioggia, un secondo avviso
+        }
     }
 
     fun togli(ctx: Context, auto: String?) {
         ctx.getSystemService(NotificationManager::class.java).cancel(auto?.trim().orEmpty(), ID_NOTIFICA)
+        Pioggia.togli(ctx, auto)
     }
 
     /** "finestrino ant. sx" -> "Finestrino ant. sx aperto"; piu' cose -> "Rimasti aperti: ..." */

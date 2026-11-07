@@ -16,6 +16,10 @@ object Storico {
     const val MASSIMO = 100
     /** un viaggio piu' corto di un minuto non e' un viaggio (Bluetooth che si collega e si stacca) */
     private const val MINIMO_MS = 60 * 1000L
+    /** un viaggio "a zero" (auto accesa ma ferma: meno di mezzo km coi dati dell'iDrive) non entra nello storico */
+    private const val MINIMO_KM = 0.5
+
+    private fun aZero(v: Voce) = v.km != null && v.km < MINIMO_KM
 
     class Voce(
         val auto: String,
@@ -64,7 +68,8 @@ object Storico {
         val testo = prefs(ctx).getString(k(bt), null) ?: return ArrayList()
         return try {
             val a = JSONArray(testo)
-            (0 until a.length()).mapNotNullTo(ArrayList()) { a.optJSONObject(it)?.let { o -> Voce.da(o) } }
+            // quelli a zero registrati dalle versioni precedenti si scartano qui
+            (0 until a.length()).mapNotNullTo(ArrayList()) { a.optJSONObject(it)?.let { o -> Voce.da(o) }?.takeIf { v -> !aZero(v) } }
         } catch (e: Exception) {
             ArrayList()
         }
@@ -94,7 +99,8 @@ object Storico {
         if (d.inCorso || d.durata() < MINIMO_MS) return
         val voci = leggi(ctx, d.auto)
         voci.removeAll { it.partenza == d.partenza }
-        voci.add(Voce(d.auto, d.partenza, d.arrivo, d.luogo, d.luogoArrivo, d.km(), d.litri(), d.rifornito))
+        val v = Voce(d.auto, d.partenza, d.arrivo, d.luogo, d.luogoArrivo, d.km(), d.litri(), d.rifornito)
+        if (!aZero(v)) voci.add(v)      // a zero: se c'era (km arrivati dopo lo scollegamento) si toglie
         scrivi(ctx, d.auto, voci)
     }
 
