@@ -113,7 +113,7 @@ class Disegno(private val ctx: Context) {
 
     /**
      * pagina Meteo come quella di serie dell'iDrive (Foreca): a sinistra il tempo di adesso con l'icona grande,
-     * a destra una colonna per giorno (oggi evidenziato) con data, giorno, icona, massima e minima
+     * a destra una colonna per giorno con data, giorno, icona, massima e minima (senza evidenziare: la pagina non si scorre)
      */
     fun paginaMeteo(m: Meteo, allerta: Allerta? = null): ByteArray {
         val (b, c) = nuovaTela()
@@ -156,9 +156,6 @@ class Disegno(private val ctx: Context) {
         val giorni = listOf(oggi) + m.giorni.take(5)
         val x0 = 424f
         val lc = (TELA_W - x0) / 6f
-        // oggi evidenziato come la colonna selezionata della pagina di serie
-        val fondo = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x33FFFFFF; setShadowLayer(6f, 0f, 2f, 0x33000000) }
-        c.drawRoundRect(RectF(x0 + 4f, 0f, x0 + lc - 4f, TELA_H - 8f), 14f, 14f, fondo)
         val pData = pennello(28f, true, BIANCO, Paint.Align.CENTER)
         val pNome = pennello(23f, false, TENUE, Paint.Align.CENTER)
         val pMax = pennello(32f, true, BIANCO, Paint.Align.CENTER)
