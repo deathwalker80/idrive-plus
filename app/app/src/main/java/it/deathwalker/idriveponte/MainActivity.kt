@@ -109,6 +109,8 @@ class MainActivity : Activity() {
     private lateinit var campoRiserva: EditText
     private lateinit var esitoRiserva: TextView
     private lateinit var chipPosizione: TextView
+    private lateinit var chipPioggiaSi: TextView
+    private lateinit var chipPioggiaNo: TextView
 
     // permessi
     private class Permesso(val tasto: TextView)
@@ -296,6 +298,13 @@ class MainActivity : Activity() {
             val t2 = rigaTasti(s)
             tasto(t2, "Salva città", false) { salvaCitta(campoRiserva, false) }
             esitoRiserva = piccolo(s, "")
+
+            etichetta(s, "Avviso pioggia con l'auto aperta")
+            val r4 = rigaChip(s)
+            chipPioggiaSi = chip(r4, "Sì") { Pioggia.imposta(this, true); aggiornaChip() }
+            chipPioggiaNo = chip(r4, "No") { Pioggia.imposta(this, false); aggiornaChip() }
+            piccolo(s, "Se scendi lasciando aperti finestrini, tetto, portellone o cofano e dove hai parcheggiato " +
+                "sta per piovere, ti avvisa.")
         }
 
         // ---- permessi
@@ -580,10 +589,13 @@ class MainActivity : Activity() {
 
     /** gli ultimi valori dell'auto: in diretta (0) o quelli salvati alla fine dell'ultimo viaggio (con l'ora) */
     private fun datiAuto(bt: String?): Pair<DatiAuto.Istantanea, Long>? {
-        if (DatiAuto.grezzi.isNotEmpty()) return DatiAuto.istantanea(DatiAuto.grezzi) to 0L
+        val mostra = PartiVisibili.mostrate(this, bt)
+        if (DatiAuto.grezzi.isNotEmpty()) return DatiAuto.istantanea(DatiAuto.grezzi, mostra) to 0L
         val v = Viaggio.di(this, bt) ?: return null
         if (v.grezzi.isEmpty()) return null
-        return v.ora() to v.aggiornato
+        // al parcheggio le porte non contano: l'ultimo stato arriva quando scendi, con la tua porta aperta, e
+        // l'iDrive si spegne prima che tu la chiuda
+        return DatiAuto.istantanea(v.grezzi, mostra - DatiAuto.PORTE_PARTI) to v.aggiornato
     }
 
     /** "oggi 17:06", "ieri 17:06", "lun 02/11 17:06" */
@@ -627,7 +639,7 @@ class MainActivity : Activity() {
     private fun dettaglioVettura(): Dettaglio {
         val dati = datiAuto(Parco.ultima(this))
         val aperti = dati?.first?.aperti ?: return Dettaglio("Porte e finestrini", "lo stato arriva dall'iDrive quando sei in auto")
-        val quando = if (dati.second == 0L) "in diretta" else "al parcheggio, ${quandoBreve(dati.second)}"
+        val quando = if (dati.second == 0L) "in diretta" else "al parcheggio, ${quandoBreve(dati.second)}, porte escluse"
         return if (aperti.isEmpty()) Dettaglio("Tutto chiuso", "Porte, finestrini e tetto · $quando")
         else Dettaglio(if (aperti.size == 1) "1 apertura" else "${aperti.size} aperture", aperti.joinToString(", ") + " · $quando")
     }
@@ -863,6 +875,8 @@ class MainActivity : Activity() {
         val gps = p.getBoolean("usa_posizione", true)
         scegli(chipPosizione, gps)
         chipPosizione.text = if (gps) "Dove sei (GPS del telefono)" else "Sempre la città di riserva"
+        scegli(chipPioggiaSi, Pioggia.attivo(this))
+        scegli(chipPioggiaNo, !Pioggia.attivo(this))
     }
 
     private fun campo(s: ViewGroup, valore: String): EditText {
@@ -1116,10 +1130,28 @@ class MainActivity : Activity() {
         if (foto == null) { scegliFoto(); return }
         val (d, s) = finestra(R.drawable.ic_auto, "Sistema i punti")
         piccolo(s, "Scegli una parte qui sotto, poi tocca sulla foto dove si trova (o trascina il suo pallino). " +
-            "Tieni premuto un pallino se quella parte è sul lato che la foto non mostra: diventa un anello vuoto.")
+            "Tieni premuto un pallino se quella parte è sul lato che la foto non mostra: diventa un anello vuoto. " +
+            "Con Mostra / Non mostrare scegli se quella parte compare nell'iDrive e nell'app (gli avvisi la contano sempre).")
         val chips = LinkedHashMap<DatiAuto.Parte, TextView>()
+        val spente = PartiVisibili.spente(this, bt).toMutableSet()
         lateinit var vista: CalibraPunti
-        val segna = { p: DatiAuto.Parte -> chips.forEach { (k, v) -> scegli(v, k == p) } }
+        lateinit var tastoMostra: TextView
+        lateinit var tastoNascondi: TextView
+        lateinit var notaParte: TextView
+        // parte scelta evidenziata; le parti spente (o che l'auto non ha) piu' tenui; sotto, Mostra / Non mostrare
+        val segna = { p: DatiAuto.Parte ->
+            chips.forEach { (k, v) ->
+                scegli(v, k == p)
+                v.alpha = if (k in spente || PartiVisibili.nonSegnalata(this, bt, k)) 0.45f else 1f
+            }
+            scegli(tastoMostra, p !in spente)
+            scegli(tastoNascondi, p in spente)
+            notaParte.text = when {
+                PartiVisibili.nonSegnalata(this, bt, p) -> "${p.etichetta}: la tua auto non manda questo dato, quindi non compare comunque."
+                p in spente -> "${p.etichetta}: non compare nell'iDrive né nell'app."
+                else -> "${p.etichetta}: compare nell'iDrive e nell'app."
+            }
+        }
         vista = CalibraPunti(this, foto, Foto.punti(this, bt), ACCENTO) { p -> segna(p) }
         s.addView(vista, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { topMargin = px(10) })
         // le 11 parti, tre per riga, nell'ordine della pagina
@@ -1130,16 +1162,23 @@ class MainActivity : Activity() {
         }
         val ultima = riga!!
         while (ultima.childCount < 3) ultima.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f).apply { marginStart = px(8) })
+        val rigaMostra = rigaChip(s).apply { setPadding(0, px(14), 0, 0) }
+        tastoMostra = chip(rigaMostra, "Mostra") { spente.remove(vista.scelto); segna(vista.scelto) }
+        tastoNascondi = chip(rigaMostra, "Non mostrare") { spente.add(vista.scelto); segna(vista.scelto) }
+        notaParte = TextView(this).apply { setTextColor(TENUE); textSize = 13f; setPadding(0, px(6), 0, 0) }
+        s.addView(notaParte)
         segna(vista.scelto)
         val tasti = rigaTasti(s)
         tasto(tasti, "Salva", true) {
             Foto.salvaPunti(this, bt, vista.punti)
+            PartiVisibili.salvaSpente(this, bt, spente)
             d.dismiss()
             firmaFoto = ""
             aggiornaSchermo()
         }
         tasto(tasti, "Predefiniti", false) {
             Foto.ripristinaPunti(this, bt)
+            PartiVisibili.salvaSpente(this, bt, emptySet())
             d.dismiss()
             calibraPunti(bt)
         }

@@ -76,6 +76,9 @@ object DatiAuto {
 
     enum class Stato { CHIUSO, APERTO, SOLLEVATO }
 
+    /** le quattro porte: a fine viaggio il loro stato non vale (si chiudono dopo che l'iDrive si e' spento) */
+    val PORTE_PARTI = setOf(Parte.PORTA_ANT_SX, Parte.PORTA_ANT_DX, Parte.PORTA_POST_SX, Parte.PORTA_POST_DX)
+
     /** "chiusa", "aperto", "sollevato"... con l'accordo di genere della parte */
     fun parola(p: Parte, s: Stato): String = when (s) {
         Stato.CHIUSO -> if (p.femminile) "chiusa" else "chiuso"
@@ -119,16 +122,26 @@ object DatiAuto {
     }
 
     /** lo stato di ogni parte che l'auto ha mandato (le parti senza dato valido non ci sono) */
-    fun parti(grezzi: Map<String, String>): Map<Parte, Stato> {
+    fun parti(grezzi: Map<String, String>): Map<Parte, Stato> = leggiParti(grezzi).first
+
+    /**
+     * le parti che l'auto ha mandato ma con un valore non valido (per esempio il tetto, sulle auto che non ce l'hanno,
+     * arriva sempre con stato 3); servono a capire quali parti quell'auto non ha
+     */
+    fun nonValide(grezzi: Map<String, String>): Set<Parte> = leggiParti(grezzi).second
+
+    private fun leggiParti(grezzi: Map<String, String>): Pair<Map<Parte, Stato>, Set<Parte>> {
         val m = LinkedHashMap<Parte, Stato>()
-        json(grezzi, "controls.sunroof")?.optJSONObject("sunroof")?.let { o -> apertura(o)?.let { m[Parte.TETTO] = it } }
-        json(grezzi, "sensors.trunk")?.let { o -> aperturaSemplice(o.opt("trunk"))?.let { m[Parte.PORTELLONE] = it } }
-        json(grezzi, "sensors.lid")?.let { o -> aperturaSemplice(o.opt("lid"))?.let { m[Parte.COFANO] = it } }
+        val ko = LinkedHashSet<Parte>()
+        fun metti(parte: Parte, s: Stato?) { if (s != null) m[parte] = s else ko += parte }
+        json(grezzi, "controls.sunroof")?.optJSONObject("sunroof")?.let { o -> metti(Parte.TETTO, apertura(o)) }
+        json(grezzi, "sensors.trunk")?.let { o -> metti(Parte.PORTELLONE, aperturaSemplice(o.opt("trunk"))) }
+        json(grezzi, "sensors.lid")?.let { o -> metti(Parte.COFANO, aperturaSemplice(o.opt("lid"))) }
         json(grezzi, "sensors.doors")?.optJSONObject("doors")?.let { p ->
-            for (k in p.keys()) { val parte = PORTE[k] ?: continue; aperturaSemplice(p.opt(k))?.let { m[parte] = it } }
+            for (k in p.keys()) { val parte = PORTE[k] ?: continue; metti(parte, aperturaSemplice(p.opt(k))) }
         }
-        for ((k, parte) in FINESTRINI) json(grezzi, "controls.$k")?.optJSONObject(k)?.let { o -> apertura(o)?.let { m[parte] = it } }
-        return m
+        for ((k, parte) in FINESTRINI) json(grezzi, "controls.$k")?.optJSONObject(k)?.let { o -> metti(parte, apertura(o)) }
+        return m to ko
     }
 
     // ---- lettura dei valori ---------------------------------------------------------------------------------------
@@ -157,9 +170,13 @@ object DatiAuto {
         return km.takeIf { it in 1.0..99.0 }
     }
 
-    fun istantanea(grezzi: Map<String, String>): Istantanea {
+    /**
+     * i valori dell'auto; [mostra] = le parti da contare nelle aperture (quelle che l'utente vuole vedere),
+     * null = tutte (gli avvisi contano sempre tutto)
+     */
+    fun istantanea(grezzi: Map<String, String>, mostra: Set<Parte>? = null): Istantanea {
         val carburante = json(grezzi, "sensors.fuel")?.optJSONObject("fuel")
-        val parti = parti(grezzi)
+        val parti = parti(grezzi).let { t -> if (mostra == null) t else t.filterKeys { it in mostra } }
         val aperti = parti.filterValues { it != Stato.CHIUSO }.map { (p, s) ->
             p.etichetta.replaceFirstChar { it.lowercase() } + if (s == Stato.SOLLEVATO) " (sollevato)" else ""
         }

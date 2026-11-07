@@ -61,6 +61,7 @@ object Parco {
         Storico.cancella(ctx, b)
         Rifornimenti.cancella(ctx, b)
         Foto.cancella(ctx, b)
+        PartiVisibili.cancella(ctx, b)
     }
 
     /** ultima auto vista; per chi aggiorna l'app la si ritrova nel parcheggio o nell'ultimo evento Bluetooth */

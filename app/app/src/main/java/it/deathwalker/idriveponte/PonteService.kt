@@ -164,10 +164,14 @@ class PonteService : Service() {
     private fun paginaAuto(disegno: Disegno, tutto: Boolean) {
         val bt = Parco.ultima(this)
         val adesso = System.currentTimeMillis()
-        val firma = "${DatiAuto.ultimoDato}/${adesso / 60000}/$bt/${Parco.mostra(this, bt)}/${Foto.firma(this, bt)}"
+        val firma = "${DatiAuto.ultimoDato}/${adesso / 60000}/$bt/${Parco.mostra(this, bt)}/${Foto.firma(this, bt)}/" +
+            PartiVisibili.firma(this, bt)
         if (!tutto && (firma == firmaAuto || adesso - autoDisegnata < 10_000)) return
         val grezzi = DatiAuto.grezzi
-        val ist = if (grezzi.isEmpty()) null else DatiAuto.istantanea(grezzi)
+        // quali parti ha quest'auto (il tetto non c'e' su tutte) e quali l'utente vuole vedere
+        PartiVisibili.registra(this, bt, grezzi)
+        val mostra = PartiVisibili.mostrate(this, bt)
+        val ist = if (grezzi.isEmpty()) null else DatiAuto.istantanea(grezzi, mostra)
         val v = Viaggio.di(this, bt)
         val rifornimenti = Rifornimenti.elenco(this, bt)
         // capienza del serbatoio: il livello piu' alto visto dopo un rifornimento (per l'arco dell'anello)
@@ -177,15 +181,15 @@ class PonteService : Service() {
 
         // Stato vettura (plugin Auto v9): Riepilogo + Porte, finestrini e tetto. La pagina delle porte si ridisegna
         // solo quando cambia qualcosa (stati, foto, punti) o ogni 5 minuti: il plugin la riscarica solo allora.
-        val parti = DatiAuto.parti(grezzi)
-        val firmaP = "$parti/${Foto.firma(this, bt)}/$bt"
+        val parti = DatiAuto.parti(grezzi).filterKeys { it in mostra }
+        val firmaP = "$parti/${Foto.firma(this, bt)}/$bt/${mostra.joinToString(",")}"
         val vecchie = Stato.vettura.notizie
         val porte = if (firmaP == firmaPorte && vecchie.size == 2 && adesso - porteDisegnate < 5 * 60_000) vecchie[1] else {
             val foto = Foto.immagine(this, bt)
             val ritaglio = Foto.contornoAuto(this, bt)
             firmaPorte = firmaP
             porteDisegnate = adesso
-            NotiziaPronta("Porte, finestrini e tetto", "", disegno.paginaPorte(foto, ritaglio, Foto.punti(this, bt), parti, DatiAuto.ultimoDato),
+            NotiziaPronta("Porte, finestrini e tetto", "", disegno.paginaPorte(foto, ritaglio, Foto.punti(this, bt), parti, DatiAuto.ultimoDato, mostra),
                 disegno.miniaturaPorte(foto, ritaglio, parti), ByteArray(0), max(adesso / 1000, (vecchie.getOrNull(1)?.versione ?: 0) + 1))
         }
         val versioneR = max(adesso / 1000, (vecchie.getOrNull(0)?.versione ?: 0) + 1)
