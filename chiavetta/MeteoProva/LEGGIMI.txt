@@ -1,0 +1,25 @@
+METEO PROVA - Meteo coi giorni selezionabili (prova)
+====================================================
+E' un plugin a parte: il Meteo che usi e gli altri plugin restano come sono.
+Telefono: MINI Plus 2.27 (o NBT Plus 3.22) - prepara anche le pagine della prova.
+
+INSTALLA
+ 1. Copia la cartella MeteoProva nella radice della chiavetta (accanto alle altre).
+ 2. PuTTY: host 169.254.199.99  porta 22  utente root
+      mount -o remount rw /net/hu-omap/fs/sda0
+      on -f /net/hu-omap/ /bin/sh
+      sh /mnt/umass*/MeteoProva/installa.sh
+ 3. Riavvio: tasto power premuto 30 secondi.
+
+COSA GUARDARE (MINI Connected -> "Meteo prova", app accesa sul telefono)
+ - Dove compaiono i sei giorni: come colonne affiancate (sopra la pagina) oppure come una lista.
+ - Girando la manopola: si sposta una cornice dell'iDrive? Lo sfondo evidenzia il giorno scelto?
+ - Premendo: si apre la pagina del giorno? BACK torna indietro?
+ Fai foto di: pagina appena aperta, dopo due scatti della manopola, un giorno aperto.
+ Poi:  cat /dev/shmem/MeteoProva.log   (le righe "selezione: giorno N" dicono se la manopola arriva al plugin)
+
+TOGLI
+   mount -o remount rw /net/hu-omap/fs/sda0
+   on -f /net/hu-omap/ /bin/sh
+   sh /mnt/umass*/MeteoProva/togli.sh
+   e riavvio.

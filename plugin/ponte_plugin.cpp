@@ -77,6 +77,17 @@
 #define NOME_PLUGIN "Locali"
 #define PREFISSO "/locali"
 #define CHIAVE_EPOCH "locali="
+#elif defined(PLUGIN_METEOPROVA)
+// PROVA (non nella chiavetta normale): Meteo con i 6 giorni selezionabili. Sei pulsanti con posizione e misura
+// (proprieta' 20/21/9/10) sopra una pagina di sfondo (raImageModel 71) che il telefono ridisegna col giorno
+// scelto evidenziato; girando la manopola arriva la selectAction (raAction 20..25), premendo si apre il giorno.
+// Serve a vedere se l'iDrive mette i pulsanti dove diciamo noi e come disegna la selezione.
+#define PLUGIN_ELENCO 1
+#define NOME_PLUGIN "MeteoProva"
+#define PREFISSO "/meteoprova"
+#define CHIAVE_EPOCH "meteoprova="
+#define MAX_RIGHE 6
+#define SCHEDA_LATERALE 1
 #else
 #error "compilare con -DPLUGIN_METEO / _CARBURANTI / _TRAFFICO (pagina singola) oppure -DPLUGIN_NOTIZIE / _LOCALI / _AUTO (elenco)"
 #endif
@@ -201,7 +212,9 @@ const u32   kTickMs           = 500;      // v5: mezzo secondo, le immagini pass
 const u32   kSecondiSano      = 60;      // giri da 500 ms = 30 s
 const u32   kImmaginiPerGiro  = 2;       // l'HMI perdeva aggiornamenti quando arrivavano 24 immagini tutte insieme
 const u32   kBytePerGiro      = 300u * 1024u;
+#ifndef SCHEDA_LATERALE
 #define SCHEDA_LATERALE 0
+#endif
 const u32   kMaxAvvii         = 3;
 const u32   kMaxRisposta      = 1536u * 1024u;      // una pagina PNG 1280x480 sta sotto i 300 KB
 enum { kSlotOnError = 21, kSlotOnInit = 22, kSlotOnFinalize = 23, kVtblSlots = 34 };
@@ -923,6 +936,9 @@ void schermataAttesa() {
     deposita(0, testoDaFile("attesa.txt", "In attesa del telefono"));
     for (u32 i = 1; i < kMaxNotizie; ++i) deposita(i, nuovoBlocco("", 0, true));
     for (u32 i = 0; i < kMaxNotizie; ++i) deposita(kMaxNotizie + i, bloccoDaFile("attesa.png"));
+#if defined(PLUGIN_METEOPROVA)
+    deposita(kPrimaScheda, bloccoDaFile("attesa.png"));       // sfondo "in attesa del telefono"
+#endif
 #endif
 }
 
@@ -930,6 +946,9 @@ void schermataAttesa() {
 #if defined(PLUGIN_ELENCO)
 bool rigaScelta(void* oggetto, const bmw::Parcel&) {
     u32 i = (u32)(unsigned long)oggetto;          // l'indice della riga viaggia al posto dell'oggetto
+#if defined(PLUGIN_METEOPROVA)
+    scriviLog("selezione: giorno %u", i);          // la prova: vedere nel log se la manopola manda la selezione
+#endif
     if (i < kMaxNotizie && i != g_fuoco) { g_fuoco = i; mostraScheda(i); }
     return true;
 }

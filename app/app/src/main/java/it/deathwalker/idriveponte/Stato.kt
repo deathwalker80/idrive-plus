@@ -56,6 +56,8 @@ object Stato {
     val locali = Elenco("Notizie locali")
     /** Stato vettura: riga 0 Riepilogo, riga 1 Porte, finestrini e tetto (plugin Auto v9) */
     val vettura = Elenco("Stato vettura")
+    /** PROVA: Meteo coi giorni selezionabili (plugin MeteoProva, fuori dalla chiavetta normale) */
+    val meteoProva = Elenco("Meteo prova")
 
     /** quando l'app ha ripreso a raccogliere i dati dell'auto (secondi, DatiAuto.azzera): se cambia, il plugin
      *  capisce che il telefono e' ripartito da zero e rimanda tutti gli ultimi valori, anche quelli fermi */

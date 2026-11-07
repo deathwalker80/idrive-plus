@@ -41,7 +41,7 @@ int main() {
     static unsigned char mem[0x200];
     g_app = (bmw::PluginApp*)mem;
     preparaCaselle();
-#if defined(PLUGIN_NOTIZIE) && SCHEDA_LATERALE
+#if defined(PLUGIN_ELENCO) && SCHEDA_LATERALE
     printf("== appOnInit (registrazione delle righe)\n");
     for (u32 i = 0; i < kMaxNotizie; ++i) { bmw::DelegatoAzione d; d.oggetto = (void*)(unsigned long)i; d.funzione = &rigaScelta; g_app->addHandler(kAzioneScelta0 + i, d); }
 #endif
@@ -55,7 +55,7 @@ int main() {
     bool ok = aggiornaDati(t, testo(ponte));
     printf("== aggiornaDati -> %d, epoch fatto %u\n", ok, g_epochFatto);
     svuotaCaselle();
-#if defined(PLUGIN_NOTIZIE) && SCHEDA_LATERALE
+#if defined(PLUGIN_ELENCO) && SCHEDA_LATERALE
     printf("== riga 3 selezionata\n");
     static char finto[64];
     rigaScelta((void*)2, *(const bmw::Parcel*)finto);
