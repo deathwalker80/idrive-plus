@@ -111,6 +111,7 @@ class MainActivity : Activity() {
     private lateinit var chipPosizione: TextView
     private lateinit var chipPioggiaSi: TextView
     private lateinit var chipPioggiaNo: TextView
+    private val chipPrepara = LinkedHashMap<String, TextView>()
 
     // permessi
     private class Permesso(val tasto: TextView)
@@ -299,6 +300,14 @@ class MainActivity : Activity() {
             tasto(t2, "Salva città", false) { salvaCitta(campoRiserva, false) }
             esitoRiserva = piccolo(s, "")
 
+            etichetta(s, "Prepara le pagine anche lontano dall'auto")
+            val r5 = rigaChip(s)
+            for ((modo, nome) in listOf("si" to "Sì", "wifi" to "Solo Wi-Fi", "no" to "No")) chipPrepara[modo] = chip(r5, nome) {
+                PreparaJob.imposta(this, modo); aggiornaChip()
+            }
+            piccolo(s, "Circa ogni ora meteo, notizie, carburanti e traffico si aggiornano da soli, così quando sali " +
+                "in auto l'iDrive li ha già pronti. Con Sì usa anche i dati mobili (qualche MB all'ora).")
+
             etichetta(s, "Avviso pioggia con l'auto aperta")
             val r4 = rigaChip(s)
             chipPioggiaSi = chip(r4, "Sì") { Pioggia.imposta(this, true); aggiornaChip() }
@@ -397,6 +406,9 @@ class MainActivity : Activity() {
         }
         setContentView(scorri)
         aggiornaChip()
+        // le ultime pagine salvate (anche preparate lontano dall'auto) e il lavoro di ogni ora che le tiene fresche
+        Thread({ Cache.carica(this) }, "cache").start()
+        PreparaJob.programma(this)
     }
 
     override fun onResume() {
@@ -877,6 +889,8 @@ class MainActivity : Activity() {
         chipPosizione.text = if (gps) "Dove sei (GPS del telefono)" else "Sempre la città di riserva"
         scegli(chipPioggiaSi, Pioggia.attivo(this))
         scegli(chipPioggiaNo, !Pioggia.attivo(this))
+        val prepara = PreparaJob.modo(this)
+        chipPrepara.forEach { (k, v) -> scegli(v, k == prepara) }
     }
 
     private fun campo(s: ViewGroup, valore: String): EditText {
