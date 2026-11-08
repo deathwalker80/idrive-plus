@@ -158,15 +158,16 @@ class PonteService : Service() {
     }
 
     /**
-     * pagina "Stato auto" dai dati dell'iDrive: si ridisegna quando arrivano valori nuovi (al massimo ogni 10 secondi)
-     * o quando passa un minuto (durata del viaggio); niente rete
+     * pagina "Stato auto" dai dati dell'iDrive: si ridisegna quando arrivano valori nuovi (al massimo ogni 30 secondi:
+     * ogni ridisegno e' una pagina che il plugin Auto riscarica e l'iDrive rimette sullo schermo) o quando passa un
+     * minuto (durata del viaggio); niente rete
      */
     private fun paginaAuto(disegno: Disegno, tutto: Boolean) {
         val bt = Parco.ultima(this)
         val adesso = System.currentTimeMillis()
         val firma = "${DatiAuto.ultimoDato}/${adesso / 60000}/$bt/${Parco.mostra(this, bt)}/${Foto.firma(this, bt)}/" +
             PartiVisibili.firma(this, bt)
-        if (!tutto && (firma == firmaAuto || adesso - autoDisegnata < 10_000)) return
+        if (!tutto && (firma == firmaAuto || adesso - autoDisegnata < 30_000)) return
         val grezzi = DatiAuto.grezzi
         // quali parti ha quest'auto (il tetto non c'e' su tutte) e quali l'utente vuole vedere
         PartiVisibili.registra(this, bt, grezzi)

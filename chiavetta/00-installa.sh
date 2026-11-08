@@ -1,5 +1,5 @@
 #!/bin/sh
-# iDrive Plus / NBT Plus - chiavetta v24 (unica per tutte le app) - plugin iDrive v9: Meteo (con allerte e dati
+# iDrive Plus / NBT Plus - chiavetta v25 (unica per tutte le app) - plugin iDrive v10: Meteo (con allerte e dati
 # dell'auto per l'app), Notizie, Notizie locali, Carburanti, Traffico, Stato vettura. Aggiornati dall'app del telefono.
 # Android Auto (NbtAad) non viene toccato.
 # Le librerie sono le stesse per tutte le app: cambiano le pagine "in attesa del telefono", col nome dell'app, e con

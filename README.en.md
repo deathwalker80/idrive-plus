@@ -70,7 +70,7 @@ cd app
 
 ## Installing
 The APKs and the USB-stick zip are in the **Releases**. Step-by-step instructions (Italian) in
-[`chiavetta/LEGGIMI-v24.txt`](chiavetta/LEGGIMI-v24.txt); in short, on the head unit shell:
+[`chiavetta/LEGGIMI-v25.txt`](chiavetta/LEGGIMI-v25.txt); in short, on the head unit shell:
 ```
 mount -o remount rw /net/hu-omap/fs/sda0
 on -f /net/hu-omap/ /bin/sh

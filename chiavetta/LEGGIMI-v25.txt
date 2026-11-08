@@ -1,6 +1,21 @@
-iDrive Plus / NBT Plus - chiavetta v24 (plugin iDrive v9)
-=========================================================
-COSA CAMBIA RISPETTO ALLA v23
+iDrive Plus / NBT Plus - chiavetta v25 (plugin iDrive v10)
+==========================================================
+COSA CAMBIA RISPETTO ALLA v24 (rallentamenti dell'iDrive, issue #1)
+ - I plugin si dicono l'indirizzo del telefono (/dev/shmem/idriveponte.rete): lo trova uno, gli altri lo usano.
+   La tabella ARP la legge un plugin solo ogni 15 s (prima tutti e sei ogni 20 s) e la scansione di
+   172.16.224.x si fa al massimo ogni 5 minuti (prima ognuno dei sei, di continuo, se il telefono non c'era).
+ - Senza telefono o senza app si riprova sempre piu' di rado: 20 s, 40, 80, 160, poi ogni 5 minuti; appena un
+   plugin trova il telefono gli altri partono subito.
+ - Partenze sfalsate (0-18 s) e immagini scaricate una alla volta fra tutti i plugin
+   (/dev/shmem/idriveponte.turno): meno traffico tutto insieme sul Wi-Fi che usa anche Android Auto e meno
+   immagini da decodificare insieme per l'iDrive.
+ - Pagine non arrivate: si riprova a 10, 20, 40, 80 s invece che sempre ogni 10 s.
+ - Una risposta interrotta a meta' (piu' corta del suo Content-Length) si scarta invece di finire sullo schermo.
+ - La pagina "in attesa" si carica solo nella prima riga degli elenchi (prima in tutte e otto).
+ - Con l'app NBT Plus 3.23 / MINI, BMW, Supra Plus 2.28 il Riepilogo dello Stato vettura si ridisegna al massimo ogni 30 s (prima 10).
+ - Nel log, se il telefono non e' nella tabella ARP: "scansione di 172.16.224.x".
+
+COSA CAMBIA NELLA v24 RISPETTO ALLA v23
  - "Stato auto" diventa "Stato vettura", con due voci: Riepilogo (la pagina di prima) e "Porte, finestrini
    e tetto": la foto dell'auto con gli 11 richiami, uno stato per riga (pallino verde chiuso, arancio aperto).
    La foto e i punti si scelgono nell'app (scheda Stato vettura); MINI Plus ha gia' la foto della MINI.

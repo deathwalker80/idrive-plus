@@ -49,6 +49,17 @@ int main() {
     g_telefono = ip4(127, 0, 0, 1);
     u32 t = trovaTelefono();
     printf("== trovaTelefono -> %s\n", t ? "127.0.0.1" : "NIENTE");
+    { u32 v[4]; leggiNumeri(kRete, v, 4); printf("== rete condivisa: ip %s, trovato %s\n", v[0] == ip4(127, 0, 0, 1) ? "127.0.0.1" : "SBAGLIATO", v[1] ? "si'" : "NO"); }
+    // v10: un altro plugin trova l'indirizzo condiviso senza ARP
+    g_telefono = 0;
+    printf("== trovaTelefono dall'indirizzo condiviso -> %s\n", trovaTelefono() ? "127.0.0.1" : "NIENTE");
+    g_telefono = t;
+    // v10: turno per le immagini; uno rimasto da un plugin fermo (ora vecchia) si libera
+    prendiTurno(); printf("== turno preso: %d\n", (int)(g_hoTurno && access(kTurno, F_OK_Q) == 0));
+    lasciaTurno(); printf("== turno lasciato: %d\n", (int)(access(kTurno, F_OK_Q) != 0));
+    { void* f = fopen(kTurno, "w"); if (f) { fprintf(f, "1000\n"); fclose(f); } }
+    prendiTurno(); printf("== turno vecchio liberato e ripreso: %d\n", (int)g_hoTurno); lasciaTurno();
+    { int c = 0; void* tr = scarica(t, "/troncato.png", &c); printf("== risposta troncata -> %p codice %d\n", tr, c); }
     int codice = 0;
     void* ponte = scarica(t, "/ponte", &codice);
     printf("== /ponte codice %d: %s", codice, ponte ? testo(ponte) : "(nulla)\n");
