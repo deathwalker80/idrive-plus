@@ -47,8 +47,16 @@ Data sources are Italian, so the news, fuel and traffic sections are for Italy; 
 ## What it looks like
 | In the car (MINI F60, 8.8" screen) | On the phone |
 |---|---|
-| <img src="docs/idrive_mini.gif" width="300" alt="MINI Connected menu with Weather, News, Local news, Fuel and Traffic"> | <img src="docs/app_nbtplus.png" width="300" alt="The app on the phone"> |
-| MINI Connected menu and the five pages. [Video (MP4, 30 s)](docs/idrive_mini.mp4) | NBT Plus: car status, parking spot, page previews |
+| <img src="docs/idrive_mini.gif" width="300" alt="MINI Connected menu with Weather, News, Local news, Fuel and Traffic"> | <img src="docs/app/home.jpg" width="300" alt="The app home on the phone"> |
+| MINI Connected menu and the five pages. [Video (MP4, 30 s)](docs/idrive_mini.mp4) | NBT Plus (MINI Plus in the pictures, it looks the same): car photo with fuel, range, km and consumption, then the sections two per row |
+
+The app sections:
+
+| | | | |
+|---|---|---|---|
+| <img src="docs/app/in_auto.jpg" width="180" alt="In the car"><br>In the car | <img src="docs/app/stato_vettura.jpg" width="180" alt="Vehicle status"><br>Vehicle status | <img src="docs/app/parcheggio.jpg" width="180" alt="Parking"><br>Parking | <img src="docs/app/meteo.jpg" width="180" alt="Weather"><br>Weather |
+| <img src="docs/app/notizie.jpg" width="180" alt="News"><br>News | <img src="docs/app/notizie_locali.jpg" width="180" alt="Local news"><br>Local news | <img src="docs/app/carburanti.jpg" width="180" alt="Fuel"><br>Fuel | <img src="docs/app/traffico.jpg" width="180" alt="Traffic"><br>Traffic |
+| <img src="docs/app/impostazioni.jpg" width="180" alt="Settings"><br>Settings | <img src="docs/app/permessi.jpg" width="180" alt="Permissions"><br>Permissions | | |
 
 Addresses, town and windscreen are blurred out; news photos are blurred.
 
