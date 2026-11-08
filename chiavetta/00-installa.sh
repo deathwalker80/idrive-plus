@@ -1,12 +1,12 @@
 #!/bin/sh
-# iDrive Plus / NBT Plus - chiavetta v25 (unica per tutte le app) - plugin iDrive v10: Meteo (con allerte e dati
-# dell'auto per l'app), Notizie, Notizie locali, Carburanti, Traffico, Stato vettura. Aggiornati dall'app del telefono.
-# Android Auto (NbtAad) non viene toccato.
-# Le librerie sono le stesse per tutte le app: cambiano le pagine "in attesa del telefono", col nome dell'app, e con
-# mini le icone di Stato vettura e Traffico (con le MINI disegnate).
-# Le librerie in uso dall'HMI non si possono sovrascrivere: si rinominano (.vecchia_*) e si copia la nuova.
-# Da lanciare DENTRO la shell di omap (dopo mount + on -f). Invocazione, secondo l'app che hai sul telefono:
-#   sh /mnt/umass*/00-installa.sh            NBT Plus (Play Store), su MINI, BMW o Supra
+# iDrive Plus / NBT Plus - USB stick v25 (one for all the apps) - iDrive plugins v10: Weather (with alerts and car
+# data for the app), News, Local news, Fuel, Traffic, Vehicle status. Updated by the phone app.
+# Android Auto (NbtAad) is not touched.
+# The libraries are the same for all the apps: what changes are the "waiting for the phone" pages, with the app
+# name, and with mini the Vehicle status and Traffic icons (with the MINIs drawn in).
+# Libraries in use by the HMI can't be overwritten: they are renamed (.vecchia_*) and the new one is copied.
+# Run it INSIDE the omap shell (after mount + on -f). Usage, depending on the app on your phone:
+#   sh /mnt/umass*/00-installa.sh            NBT Plus (Play Store), on MINI, BMW or Supra
 #   sh /mnt/umass*/00-installa.sh mini       MINI Plus
 #   sh /mnt/umass*/00-installa.sh bmw        BMW Plus
 #   sh /mnt/umass*/00-installa.sh supra      Supra Plus
@@ -14,42 +14,42 @@
 M=${1:-nbt}
 case "$M" in
   nbt|mini|bmw|supra) ;;
-  *) echo "ERRORE: '$M' sconosciuto - niente (NBT Plus), oppure mini, bmw, supra"; exit 1 ;;
+  *) echo "ERROR: unknown '$M' - nothing (NBT Plus), or mini, bmw, supra"; exit 1 ;;
 esac
 
 U=""
 for d in /mnt/umass*; do if [ -d "$d" ]; then U=${d#/mnt/}; break; fi; done
-if [ -z "$U" ]; then echo "ERRORE: chiavetta umass non trovata in /mnt"; exit 1; fi
-echo "Chiavetta: /mnt/$U - pagine di attesa per: $M"
+if [ -z "$U" ]; then echo "ERROR: umass USB stick not found in /mnt"; exit 1; fi
+echo "USB stick: /mnt/$U - waiting pages for: $M"
 
 P=/opt/hmi/ID5/data/ro/Plugins
-if [ ! -d "$P/NbtAad" ]; then echo "ERRORE: $P/NbtAad non c'e' - sei sulla shell di omap?"; exit 1; fi
+if [ ! -d "$P/NbtAad" ]; then echo "ERROR: $P/NbtAad missing - are you on the omap shell?"; exit 1; fi
 
 for N in Meteo Notizie Locali Carburanti Traffico Auto; do
-  if [ ! -f "/mnt/$U/$N/lib$N.so" ]; then echo "ERRORE: /mnt/$U/$N/lib$N.so non c'e' - hai estratto lo zip nella radice?"; exit 1; fi
-  if [ ! -f "/mnt/$U/$N/attesa.png" ]; then echo "ERRORE: /mnt/$U/$N/attesa.png non c'e'"; exit 1; fi
-  if [ "$M" != nbt ] && [ ! -f "/mnt/$U/marche/$M/$N/attesa.png" ]; then echo "ERRORE: /mnt/$U/marche/$M/$N/attesa.png non c'e'"; exit 1; fi
+  if [ ! -f "/mnt/$U/$N/lib$N.so" ]; then echo "ERROR: /mnt/$U/$N/lib$N.so missing - did you extract the zip to the root?"; exit 1; fi
+  if [ ! -f "/mnt/$U/$N/attesa.png" ]; then echo "ERROR: /mnt/$U/$N/attesa.png missing"; exit 1; fi
+  if [ "$M" != nbt ] && [ ! -f "/mnt/$U/marche/$M/$N/attesa.png" ]; then echo "ERROR: /mnt/$U/marche/$M/$N/attesa.png missing"; exit 1; fi
 done
 
 for N in Meteo Notizie Locali Carburanti Traffico Auto; do
   mkdir -p "$P/$N"
   rm -f "$P/$N"/lib$N.so.vecchia_* 2>/dev/null
   if [ -f "$P/$N/lib$N.so" ]; then
-    mv "$P/$N/lib$N.so" "$P/$N/lib$N.so.vecchia_$$" && echo "OK: lib$N.so vecchia rinominata (in uso fino al riavvio)"
+    mv "$P/$N/lib$N.so" "$P/$N/lib$N.so.vecchia_$$" && echo "OK: old lib$N.so renamed (in use until reboot)"
   fi
-  cp "/mnt/$U/$N"/* "$P/$N/" || { echo "ERRORE: copia $N fallita"; exit 1; }
+  cp "/mnt/$U/$N"/* "$P/$N/" || { echo "ERROR: copying $N failed"; exit 1; }
   if [ "$M" != nbt ]; then
-    cp "/mnt/$U/marche/$M/$N"/* "$P/$N/" || { echo "ERRORE: copia delle pagine $M di $N fallita"; exit 1; }
+    cp "/mnt/$U/marche/$M/$N"/* "$P/$N/" || { echo "ERROR: copying the $M pages of $N failed"; exit 1; }
   fi
   rm -f "/dev/shmem/$N.avvii"
   echo "OK: $N"
 done
-if [ -e /opt/aa/ponte.disable ]; then echo "ATTENZIONE: esiste /opt/aa/ponte.disable, i plugin resteranno spenti"; fi
-if [ -e /opt/aa/auto.disable ]; then echo "NOTA: esiste /opt/aa/auto.disable, il Meteo non leggera' i dati dell'auto"; fi
+if [ -e /opt/aa/ponte.disable ]; then echo "WARNING: /opt/aa/ponte.disable exists, the plugins will stay off"; fi
+if [ -e /opt/aa/auto.disable ]; then echo "NOTE: /opt/aa/auto.disable exists, Weather will not read the car data"; fi
 
-echo "===== PLUGIN ATTIVI ====="
+echo "===== ACTIVE PLUGINS ====="
 ls "$P"
 echo ""
-echo "########## FATTO - ORA RIAVVIA: tasto power premuto 30 secondi ##########"
-echo "Resoconto: cat /dev/shmem/Meteo.log /dev/shmem/Notizie.log /dev/shmem/Locali.log /dev/shmem/Carburanti.log /dev/shmem/Traffico.log /dev/shmem/Auto.log"
-echo "Dati dell'auto: grep auto: /dev/shmem/Meteo.log"
+echo "########## DONE - NOW REBOOT: hold the power button for 30 seconds ##########"
+echo "Report: cat /dev/shmem/Meteo.log /dev/shmem/Notizie.log /dev/shmem/Locali.log /dev/shmem/Carburanti.log /dev/shmem/Traffico.log /dev/shmem/Auto.log"
+echo "Car data: grep auto: /dev/shmem/Meteo.log"

@@ -69,8 +69,8 @@ cd app
 `libCoreFramework.A.so`) are not in the repository: copy them from your own head unit.
 
 ## Installing
-The APKs and the USB-stick zip are in the **Releases**. Step-by-step instructions (Italian) in
-[`chiavetta/LEGGIMI-v25.txt`](chiavetta/LEGGIMI-v25.txt); in short, on the head unit shell:
+The APKs and the USB-stick zip are in the **Releases**. Step-by-step instructions in
+[`chiavetta/README-v25.txt`](chiavetta/README-v25.txt); in short, on the head unit shell:
 ```
 mount -o remount rw /net/hu-omap/fs/sda0
 on -f /net/hu-omap/ /bin/sh
