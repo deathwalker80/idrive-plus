@@ -8,6 +8,12 @@
 //     pagine /vettura/...; dopo il titolo di ogni riga un TAB e la versione: pagina e miniatura si riscaricano solo
 //     quando la versione cambia. Meteo: se il telefono riparte da zero (avvio= in /ponte cambia) rimanda tutti gli
 //     ultimi dati dell'auto, anche quelli fermi (porte chiuse, km a motore spento).
+// v10: meno carico sull'iDrive e sul Wi-Fi di Android Auto (issue #1): i plugin si dicono l'indirizzo del telefono
+//     in /dev/shmem/idriveponte.rete (uno lo trova, gli altri lo usano), la tabella ARP la legge uno solo ogni 15 s
+//     e la scansione di 172.16.224.x si fa al massimo ogni 5 minuti; senza telefono si riprova sempre piu' di rado
+//     (20 s -> 5 min); partenze sfalsate; le immagini si scaricano una alla volta fra tutti i plugin
+//     (/dev/shmem/idriveponte.turno); una risposta piu' corta del suo Content-Length si scarta; elenco con pagine
+//     mancanti riprovato a 10, 20, 40, 80 s; "in attesa" solo nella prima pagina dell'elenco.
 // Lo stesso sorgente produce sei plugin:
 //   pagina singola : -DPLUGIN_METEO (libMeteo.so), -DPLUGIN_CARBURANTI (libCarburanti.so), -DPLUGIN_TRAFFICO (libTraffico.so)
 //   elenco         : -DPLUGIN_NOTIZIE (libNotizie.so), -DPLUGIN_LOCALI (libLocali.so, percorsi /locali/...),
@@ -48,21 +54,25 @@
 #define PLUGIN_PAGINA 1
 #define DATI_AUTO 1
 #define NOME_PLUGIN "Meteo"
+#define RITARDO_AVVIO 0
 #define PAGINA_PNG "/meteo.png"
 #define CHIAVE_EPOCH "meteo="
 #elif defined(PLUGIN_CARBURANTI)
 #define PLUGIN_PAGINA 1
 #define NOME_PLUGIN "Carburanti"
+#define RITARDO_AVVIO 6
 #define PAGINA_PNG "/carburanti.png"
 #define CHIAVE_EPOCH "carburanti="
 #elif defined(PLUGIN_TRAFFICO)
 #define PLUGIN_PAGINA 1
 #define NOME_PLUGIN "Traffico"
+#define RITARDO_AVVIO 9
 #define PAGINA_PNG "/traffico.png"
 #define CHIAVE_EPOCH "traffico="
 #elif defined(PLUGIN_AUTO)
 #define PLUGIN_ELENCO 1
 #define NOME_PLUGIN "Auto"
+#define RITARDO_AVVIO 3
 #define PREFISSO "/vettura"
 #define CHIAVE_EPOCH "vettura="
 #define MAX_RIGHE 2
@@ -70,11 +80,13 @@
 #elif defined(PLUGIN_NOTIZIE)
 #define PLUGIN_ELENCO 1
 #define NOME_PLUGIN "Notizie"
+#define RITARDO_AVVIO 12
 #define PREFISSO ""
 #define CHIAVE_EPOCH "notizie="
 #elif defined(PLUGIN_LOCALI)
 #define PLUGIN_ELENCO 1
 #define NOME_PLUGIN "Locali"
+#define RITARDO_AVVIO 15
 #define PREFISSO "/locali"
 #define CHIAVE_EPOCH "locali="
 #elif defined(PLUGIN_METEOPROVA)
@@ -84,6 +96,7 @@
 // Serve a vedere se l'iDrive mette i pulsanti dove diciamo noi e come disegna la selezione.
 #define PLUGIN_ELENCO 1
 #define NOME_PLUGIN "MeteoProva"
+#define RITARDO_AVVIO 18
 #define PREFISSO "/meteoprova"
 #define CHIAVE_EPOCH "meteoprova="
 #define MAX_RIGHE 6
@@ -94,7 +107,10 @@
 #ifndef GIRO_SECONDI
 #define GIRO_SECONDI 30                    // attesa fra un controllo del telefono e il successivo
 #endif
-#define VERSIONE_PLUGIN "v9"
+#ifndef RITARDO_AVVIO
+#define RITARDO_AVVIO 0                    // secondi in piu' prima del primo giro di rete (partenze sfalsate)
+#endif
+#define VERSIONE_PLUGIN "v10"
 
 typedef unsigned int  u32;
 typedef unsigned short u16;
@@ -119,6 +135,7 @@ int   open(const char*, int, ...);
 ssize_t_q read(int, void*, u32);
 int   close(int);
 int   access(const char*, int);
+int   unlink(const char*);
 void* opendir(const char*);
 void* readdir(void*);
 int   closedir(void*);
@@ -434,6 +451,7 @@ enum { F_GETFL_Q = 3, F_SETFL_Q = 4, O_NONBLOCK_Q = 0x80 };
 enum { EINPROGRESS_Q = 236, EALREADY_Q = 237, EISCONN_Q = 256, ETIMEDOUT_Q = 260, ECONNREFUSED_Q = 261 };
 // v2: in auto un connect ripetuto mentre il collegamento e' ancora in corso risponde EBUSY (16), non EALREADY
 enum { EBUSY_Q = 16 };
+enum { O_WRONLY_Q = 1, O_CREAT_Q = 0400, O_EXCL_Q = 02000, EEXIST_Q = 17 };
 struct IndirizzoIn { unsigned char len, family; u16 port; u32 addr; unsigned char zero[8]; };
 #else
 // solo per la prova sul PC (Linux): stessa logica, costanti Linux
@@ -441,6 +459,7 @@ enum { AF_INET_Q = 2, SOCK_STREAM_Q = 1, SOL_SOCKET_Q = 1, SO_SNDTIMEO_Q = 21, S
 enum { F_GETFL_Q = 3, F_SETFL_Q = 4, O_NONBLOCK_Q = 04000 };
 enum { EINPROGRESS_Q = 115, EALREADY_Q = 114, EISCONN_Q = 106, ETIMEDOUT_Q = 110, ECONNREFUSED_Q = 111 };
 enum { EBUSY_Q = 16 };
+enum { O_WRONLY_Q = 1, O_CREAT_Q = 0100, O_EXCL_Q = 0200, EEXIST_Q = 17 };
 struct IndirizzoIn { unsigned short family_len; u16 port; u32 addr; unsigned char zero[8]; };
 #endif
 struct TempoQ { long sec, usec; };
@@ -540,6 +559,14 @@ void* scarica(u32 ip, const char* percorso, int* codice) {
     if (*codice != 200 || !fine) { free(b); return 0; }
     u32 inizio = (u32)(fine + 4 - (const char*)b);
     u32 n = tot - inizio;
+    // v10: tempo scaduto a meta' risposta -> corpo piu' corto del Content-Length: non si porta un PNG troncato all'HMI
+    const char* cl = strstr((const char*)b, "Content-Length:");
+    if (cl && cl < fine) {
+        u32 atteso = 0;
+        for (cl += 15; *cl == ' '; ++cl) {}
+        while (*cl >= '0' && *cl <= '9') { atteso = atteso * 10 + (u32)(*cl - '0'); ++cl; }
+        if (n < atteso) { free(b); *codice = -2; return 0; }
+    }
     void* blocco = nuovoBlocco(b + inizio, n, true);
     free(b);
     return blocco;
@@ -617,12 +644,51 @@ void scansione() {
     }
 }
 
-// cerca il telefono con l'app accesa: ritorna l'IP oppure 0
-u32 trovaTelefono() {
-    g_nCandidati = 0;
-    if (g_telefono) aggiungiCandidato(g_telefono);
-    candidatiDaArp();
-    if (g_nCandidati == 0) scansione();
+// v10: quello che i plugin si dicono (stesso HMI, file in RAM): "ip trovato_alle arp_alle scansione_alle"
+#if defined(PROVA_HOST)
+const char* const kRete  = "/tmp/idriveponte.rete";            // prova sul PC: /dev/shmem e' di QNX
+const char* const kTurno = "/tmp/idriveponte.turno";
+#else
+const char* const kRete  = "/dev/shmem/idriveponte.rete";
+const char* const kTurno = "/dev/shmem/idriveponte.turno";
+#endif
+const u32 kOgniArp       = 15;      // la tabella ARP (popen di sh + arp) la legge un plugin solo, al massimo ogni 15 s
+const u32 kOgniScansione = 300;     // la scansione di 172.16.224.x al massimo ogni 5 minuti, per tutti i plugin
+struct Rete { u32 ip, trovato, arp, scansione; };
+
+// numeri separati da spazi nella prima riga di un file in /dev/shmem; ritorna quanti ne ha letti
+u32 leggiNumeri(const char* path, u32* v, u32 quanti) {
+    for (u32 i = 0; i < quanti; ++i) v[i] = 0;
+    void* f = fopen(path, "r");
+    if (!f) return 0;
+    char riga[96];
+    u32 k = 0;
+    if (fgets(riga, sizeof(riga), f)) {
+        const char* p = riga;
+        while (k < quanti) {
+            while (*p == ' ') ++p;
+            if (*p < '0' || *p > '9') break;
+            while (*p >= '0' && *p <= '9') { v[k] = v[k] * 10 + (u32)(*p - '0'); ++p; }
+            ++k;
+        }
+    }
+    fclose(f);
+    return k;
+}
+
+void leggiRete(Rete* r) { u32 v[4]; leggiNumeri(kRete, v, 4); r->ip = v[0]; r->trovato = v[1]; r->arp = v[2]; r->scansione = v[3]; }
+
+void scriviRete(const Rete& r) {
+    void* f = fopen(kRete, "w");
+    if (!f) return;
+    fprintf(f, "%u %u %u %u\n", r.ip, r.trovato, r.arp, r.scansione);
+    fclose(f);
+}
+
+// true se da "quando" sono passati almeno "secondi" (o l'orologio e' tornato indietro: l'ora arriva dal GPS)
+bool passati(u32 quando, u32 ora, u32 secondi) { return !quando || ora < quando || ora - quando >= secondi; }
+
+u32 provaCandidati() {
     for (u32 i = 0; i < g_nCandidati; ++i) {
         int codice = 0;
         void* b = scarica(g_candidati[i], "/ponte", &codice);
@@ -630,11 +696,87 @@ u32 trovaTelefono() {
             char ip[24]; scriviIp(ip, sizeof(ip), g_candidati[i]);
             scriviLog("telefono trovato: %s - %s", ip, testo(b));
             free(b);
+            Rete r; leggiRete(&r);
+            r.ip = g_candidati[i]; r.trovato = (u32)time(0);
+            scriviRete(r);
             return g_candidati[i];
         }
         if (b) free(b);
     }
     return 0;
+}
+
+// cerca il telefono con l'app accesa: ritorna l'IP oppure 0. Prima l'indirizzo gia' noto (suo o di un altro
+// plugin), poi la tabella ARP se nessuno l'ha letta da poco, la scansione solo se nessuno l'ha fatta da 5 minuti
+u32 trovaTelefono() {
+    Rete r; leggiRete(&r);
+    g_nCandidati = 0;
+    if (g_telefono) aggiungiCandidato(g_telefono);
+    if (r.ip) aggiungiCandidato(r.ip);                  // gia' verificato da chi l'ha scritto
+    u32 ip = provaCandidati();
+    if (ip) return ip;
+    g_nCandidati = 0;
+    u32 ora = (u32)time(0);
+    leggiRete(&r);
+    if (passati(r.arp, ora, kOgniArp)) {
+        r.arp = ora; scriviRete(r);
+        candidatiDaArp();
+        if (g_nCandidati == 0 && passati(r.scansione, ora, kOgniScansione)) {
+            r.scansione = ora; scriviRete(r);
+            scriviLog("telefono non nella tabella ARP: scansione di 172.16.224.x");
+            scansione();
+        }
+    }
+    return provaCandidati();
+}
+
+// attesa senza telefono: si esce prima se intanto un altro plugin l'ha trovato
+void attendiTelefono(u32 secondi, u32 dopo) {
+    for (u32 i = 0; i < secondi && !g_finito; ++i) {
+        sleep(1);
+        if ((i & 1) == 0) continue;
+        Rete r; leggiRete(&r);
+        if (r.ip && r.trovato >= dopo && !passati(r.trovato, (u32)time(0), 60)) return;
+    }
+}
+
+// ---- turno per le immagini: una alla volta fra tutti i plugin (Wi-Fi di Android Auto e HMI meno carichi) ----
+bool g_hoTurno = false;
+
+void prendiTurno() {
+    u32 vuoto = 0;
+    for (u32 prova = 0; prova < 100 && !g_finito; ++prova) {        // al massimo ~20 s, poi si scarica lo stesso
+        int fd = open(kTurno, O_WRONLY_Q | O_CREAT_Q | O_EXCL_Q, 0666);
+        if (fd >= 0) {
+            close(fd);
+            void* f = fopen(kTurno, "w");
+            if (f) { fprintf(f, "%u\n", (u32)time(0)); fclose(f); }
+            g_hoTurno = true;
+            return;
+        }
+        if (erroreAttuale() != EEXIST_Q) return;                     // /dev/shmem non lo permette: senza turni
+        // turno rimasto a un plugin fermo (HMI ripartito a meta') o tenuto troppo: si libera
+        u32 t = 0;
+        leggiNumeri(kTurno, &t, 1);
+        u32 ora = (u32)time(0);
+        if (!t) { if (++vuoto > 15) unlink(kTurno); }               // ancora vuoto dopo 3 s
+        else if (ora + 5 < t || ora - t > 25) unlink(kTurno);
+        usleep(200000);
+    }
+}
+
+void lasciaTurno() {
+    if (!g_hoTurno) return;
+    unlink(kTurno);
+    g_hoTurno = false;
+    usleep(300000);         // gli altri plugin (che riprovano ogni 200 ms) fanno in tempo a prenderlo
+}
+
+void* scaricaImmagine(u32 ip, const char* percorso, int* codice) {
+    prendiTurno();
+    void* b = scarica(ip, percorso, codice);
+    lasciaTurno();
+    return b;
 }
 
 // numero dopo "chiave=" nella risposta di /ponte
@@ -793,7 +935,7 @@ bool aggiornaDati(u32 ip, const char* ponte) {
     u32 e = valore(ponte, CHIAVE_EPOCH);
     if (!e || e == g_epochFatto) return true;
     int codice = 0;
-    void* png = scarica(ip, PAGINA_PNG, &codice);
+    void* png = scaricaImmagine(ip, PAGINA_PNG, &codice);
     if (!png) { scriviLog("%s: errore %d", PAGINA_PNG, codice); return false; }
     scriviLog("%s: %u byte (epoch %u)", PAGINA_PNG, lunghezza(png), e);
     // il blocco ha lo 0 finale in piu': per l'immagine conta solo la lunghezza scritta in testa
@@ -841,15 +983,15 @@ bool aggiornaDati(u32 ip, const char* ponte) {
         bool rigaOk = true;
         char percorso[40];
         snprintf(percorso, sizeof(percorso), PREFISSO "/mini/%u.png", i);
-        void* mini = scarica(ip, percorso, &codice);
+        void* mini = scaricaImmagine(ip, percorso, &codice);
         if (mini) deposita(kMaxNotizie * 2 + i, mini); else { tutto = false; rigaOk = false; }
         snprintf(percorso, sizeof(percorso), PREFISSO "/notizia/%u.png", i);
-        void* pag = scarica(ip, percorso, &codice);
+        void* pag = scaricaImmagine(ip, percorso, &codice);
         if (pag) deposita(kMaxNotizie + i, pag); else { tutto = false; rigaOk = false; scriviLog("%s: errore %d", percorso, codice); }
         if (rigaOk) g_versioneRiga[i] = versione[i];
 #if SCHEDA_LATERALE
         snprintf(percorso, sizeof(percorso), PREFISSO "/anteprima/%u.png", i);
-        void* sch = scarica(ip, percorso, &codice);
+        void* sch = scaricaImmagine(ip, percorso, &codice);
         if (sch) deposita(kPrimaScheda + i, sch);
         else if (codice != 404) { tutto = false; scriviLog("%s: errore %d", percorso, codice); }   // 404: app 1.0, senza schede
 #endif
@@ -862,12 +1004,21 @@ bool aggiornaDati(u32 ip, const char* ponte) {
 #endif
 
 void* threadRete(void*) {
-    sleep(10);
-    u32 errori = 0;
+    sleep(10 + RITARDO_AVVIO);
+    u32 errori = 0, mancati = 0, incompleti = 0;
     while (!g_finito) {
         if (!g_telefono) {
+            u32 prima = (u32)time(0);
             g_telefono = trovaTelefono();
-            if (!g_telefono) { attendi(20, 0); continue; }
+            if (!g_telefono) {
+                // v10: senza telefono (o senza app) si riprova a 20, 40, 80, 160 s, poi ogni 5 minuti
+                u32 attesa = 20u << (mancati < 4 ? mancati : 4);
+                if (attesa > 300) attesa = 300;
+                if (mancati < 8) ++mancati;
+                attendiTelefono(attesa, prima);
+                continue;
+            }
+            mancati = 0;
         }
         int codice = 0;
         void* ponte = scarica(g_telefono, "/ponte", &codice);
@@ -883,7 +1034,10 @@ void* threadRete(void*) {
 #endif
         bool ok = aggiornaDati(g_telefono, testo(ponte));
         free(ponte);
-        attendi(ok ? GIRO_SECONDI : 10, g_telefono);
+        // v10: pagine non arrivate: si riprova a 10, 20, 40, 80 s invece che sempre a 10 (il telefono o il Wi-Fi
+        // sono gia' in affanno)
+        if (ok) incompleti = 0; else if (incompleti < 4) ++incompleti;
+        attendi(ok ? GIRO_SECONDI : 10u << (incompleti - 1), g_telefono);
     }
     return 0;
 }
@@ -935,7 +1089,7 @@ void schermataAttesa() {
 #else
     deposita(0, testoDaFile("attesa.txt", "In attesa del telefono"));
     for (u32 i = 1; i < kMaxNotizie; ++i) deposita(i, nuovoBlocco("", 0, true));
-    for (u32 i = 0; i < kMaxNotizie; ++i) deposita(kMaxNotizie + i, bloccoDaFile("attesa.png"));
+    deposita(kMaxNotizie, bloccoDaFile("attesa.png"));       // v10: solo la prima pagina (le altre righe sono vuote)
 #if defined(PLUGIN_METEOPROVA)
     deposita(kPrimaScheda, bloccoDaFile("attesa.png"));       // sfondo "in attesa del telefono"
 #endif

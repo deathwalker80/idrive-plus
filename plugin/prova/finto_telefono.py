@@ -17,6 +17,10 @@ class H(http.server.BaseHTTPRequestHandler):
             q = parse_qs(urlparse(p).query)
             with open('/tmp/finto_telefono_auto.txt', 'a') as f: f.write(q['n'][0] + ' = ' + q['v'][0] + '\n')
             return self.manda(200, 'text/plain', b'OK\n')
+        if p == '/troncato.png':
+            # v10: Content-Length piu' lungo del corpo (tempo scaduto a meta'): il plugin deve scartarla
+            self.send_response(200); self.send_header('Content-Type', 'image/png'); self.send_header('Content-Length', '1000')
+            self.end_headers(); self.wfile.write(b'\x89PNG troncato'); return
         if p == '/ponte':
             # avvio cambia a ogni richiesta dopo la terza: la prova vede il Meteo rimandare i dati dell'auto
             H.giri = getattr(H, 'giri', 0) + 1

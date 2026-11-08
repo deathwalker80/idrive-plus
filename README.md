@@ -82,7 +82,7 @@ L'APK e lo zip della chiavetta sono nelle **Release**. Sul telefono va installat
 se c'è ancora una delle vecchie app (MINI Plus, BMW Plus o Supra Plus) va disinstallata, perché
 due app insieme si contenderebbero il collegamento con l'iDrive.
 
-Istruzioni passo passo in [`chiavetta/LEGGIMI-v24.txt`](chiavetta/LEGGIMI-v24.txt); in breve, sulla shell della testata:
+Istruzioni passo passo in [`chiavetta/LEGGIMI-v25.txt`](chiavetta/LEGGIMI-v25.txt); in breve, sulla shell della testata:
 ```
 mount -o remount rw /net/hu-omap/fs/sda0
 on -f /net/hu-omap/ /bin/sh
