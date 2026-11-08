@@ -44,8 +44,16 @@ Stesso codice per tutte e tre: cambiano solo nome, icona, colore e il nome dell'
 ## Come si vede
 | In auto (MINI F60, schermo 8,8") | Sul telefono |
 |---|---|
-| <img src="docs/idrive_mini.gif" width="300" alt="Menu MINI Connected con Meteo, Notizie, Notizie locali, Carburanti e Traffico"> | <img src="docs/app_nbtplus.png" width="300" alt="Schermata dell'app sul telefono"> |
-| Menu MINI Connected e le cinque pagine. [Video (MP4, 30 s)](docs/idrive_mini.mp4) | NBT Plus (MINI Plus è uguale): stato in auto, parcheggio, anteprime delle pagine |
+| <img src="docs/idrive_mini.gif" width="300" alt="Menu MINI Connected con Meteo, Notizie, Notizie locali, Carburanti e Traffico"> | <img src="docs/app/home.jpg" width="300" alt="Home dell'app sul telefono"> |
+| Menu MINI Connected e le cinque pagine. [Video (MP4, 30 s)](docs/idrive_mini.mp4) | MINI Plus (NBT Plus è uguale): foto dell'auto con carburante, autonomia, km e consumo, poi le sezioni due per riga |
+
+Le sezioni dell'app:
+
+| | | | |
+|---|---|---|---|
+| <img src="docs/app/in_auto.jpg" width="180" alt="In auto"><br>In auto | <img src="docs/app/stato_vettura.jpg" width="180" alt="Stato vettura"><br>Stato vettura | <img src="docs/app/parcheggio.jpg" width="180" alt="Parcheggio"><br>Parcheggio | <img src="docs/app/meteo.jpg" width="180" alt="Meteo"><br>Meteo |
+| <img src="docs/app/notizie.jpg" width="180" alt="Notizie"><br>Notizie | <img src="docs/app/notizie_locali.jpg" width="180" alt="Notizie locali"><br>Notizie locali | <img src="docs/app/carburanti.jpg" width="180" alt="Carburanti"><br>Carburanti | <img src="docs/app/traffico.jpg" width="180" alt="Traffico"><br>Traffico |
+| <img src="docs/app/impostazioni.jpg" width="180" alt="Impostazioni"><br>Impostazioni | <img src="docs/app/permessi.jpg" width="180" alt="Permessi"><br>Permessi | | |
 
 Indirizzi, comune e parabrezza sono oscurati; le foto delle notizie sono sfocate.
 
