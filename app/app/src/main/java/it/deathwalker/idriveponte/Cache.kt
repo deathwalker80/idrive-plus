@@ -18,7 +18,7 @@ object Cache {
     private val salvate = HashMap<String, Long>()       // sezione -> epoch gia' scritto
 
     private fun pagine() = listOf("meteo" to Stato.meteo, "carburanti" to Stato.carburanti, "traffico" to Stato.traffico)
-    private fun elenchi() = listOf("notizie" to Stato.notizie, "locali" to Stato.locali, "meteoprova" to Stato.meteoProva)
+    private fun elenchi() = listOf("notizie" to Stato.notizie, "locali" to Stato.locali, "meteogiorni" to Stato.meteoGiorni)
 
     private fun cartella(ctx: Context) = File(ctx.filesDir, "pronte").apply { mkdirs() }
 

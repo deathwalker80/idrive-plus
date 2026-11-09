@@ -49,13 +49,16 @@ class ProvaPagineTest {
         val m = Dati.meteoDaJson(File("src/test/resources/dati/meteo.json").readText(), "La Spezia")
         val meteo = d.paginaMeteo(m, Allerta("Bacini Liguri Marittimi di Levante", 1, "temporali", 2, "idrogeologico"))
         File(uscita, "meteo.png").writeBytes(meteo)
-        // PROVA MeteoProva: pagina col giorno 2 evidenziato, colonna del giorno 2, pagina di oggi e di un giorno;
-        // i pulsanti del plugin devono stare esattamente sulle colonne disegnate
-        File(uscita, "meteoprova_sfondo2.png").writeBytes(d.paginaMeteo(m, null, 2))
-        File(uscita, "meteoprova_colonna2.png").writeBytes(d.colonnaMeteo(m, 2))
-        File(uscita, "meteoprova_oggi.png").writeBytes(d.paginaGiornoMeteo(m, 0))
-        File(uscita, "meteoprova_giorno3.png").writeBytes(d.paginaGiornoMeteo(m, 3))
-        val xml = File("../../chiavetta/MeteoProva/MeteoProva.xml").readText()
+        // plugin Meteo v12: pagina col giorno 2 evidenziato, colonna del giorno 2, pagina di oggi e di un giorno coi
+        // dettagli; i pulsanti del plugin devono stare esattamente sulle colonne disegnate
+        File(uscita, "meteo_sfondo2.png").writeBytes(d.paginaMeteo(m, null, 2))
+        File(uscita, "meteo_colonna2.png").writeBytes(d.colonnaMeteo(m, 2))
+        File(uscita, "meteo_oggi.png").writeBytes(d.paginaGiornoMeteo(m, 0))
+        File(uscita, "meteo_giorno3.png").writeBytes(d.paginaGiornoMeteo(m, 3))
+        val g3 = d.giorniMeteo(m)[3]
+        assertEquals(18, g3.ventoMax); assertEquals(34, g3.raffiche); assertEquals("O", g3.direzione)
+        assertEquals(8, g3.ore.size); assertTrue(g3.umidita in 60..90)
+        val xml = File("../../chiavetta/Meteo/Meteo.xml").readText()
         for (i in 0 until 6) {
             val r = d.rettangoloGiorno(i)
             val blocco = Regex("id=\"${200 + i}\"[\\s\\S]*?</button>").find(xml)!!.value

@@ -19,7 +19,14 @@ import kotlin.math.roundToInt
 
 /** pioggia: probabilita' in % (open-meteo); mm: millimetri previsti (MET Norway, che la probabilita' non la da') */
 class Ora(val ora: String, val codice: Int, val giorno: Boolean, val temp: Int, val pioggia: Int, val mm: Double = 0.0)
-class Giorno(val nome: String, val codice: Int, val max: Int, val min: Int, val pioggia: Int, val mm: Double = 0.0, val data: String = "")
+class Giorno(
+    val nome: String, val codice: Int, val max: Int, val min: Int, val pioggia: Int, val mm: Double = 0.0, val data: String = "",
+    // dettagli per la pagina del giorno (Meteo v12); -1 / "" / vuoto = non noti (MET Norway non li da' tutti)
+    val ventoMax: Int = -1, val raffiche: Int = -1, val direzione: String = "", val uv: Double = -1.0,
+    val umidita: Int = -1, val percMax: Int? = null, val percMin: Int? = null, val alba: String = "", val tramonto: String = "",
+    /** ogni 3 ore (00, 03 ... 21) */
+    val ore: List<Ora> = emptyList(),
+)
 
 class Meteo(
     val citta: String,
@@ -34,6 +41,8 @@ class Meteo(
     val nuvole: Int = 0,
     /** tempo previsto per oggi (come le colonne dei giorni); -1 = non noto, si usa quello di adesso */
     val codiceOggi: Int = -1,
+    /** oggi coi dettagli del giorno (vento massimo, UV...), per la pagina di oggi; null = non noti */
+    val oggi: Giorno? = null,
 )
 
 class Notizia(val titolo: String, val ora: String, var testo: String, val link: String, var foto: Bitmap? = null)
@@ -193,8 +202,10 @@ object Dati {
         val url = "https://api.open-meteo.com/v1/forecast?latitude=${citta.lat}&longitude=${citta.lon}" +
             "&current=temperature_2m,apparent_temperature,weather_code,is_day,relative_humidity_2m," +
             "wind_speed_10m,wind_direction_10m,wind_gusts_10m,pressure_msl" +
-            "&hourly=temperature_2m,weather_code,precipitation_probability,is_day" +
-            "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset" +
+            "&hourly=temperature_2m,weather_code,precipitation_probability,is_day,relative_humidity_2m" +
+            "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset," +
+            "precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant,uv_index_max," +
+            "apparent_temperature_max,apparent_temperature_min" +
             "&timezone=Europe%2FRome&forecast_days=6"
         return meteoDaJson(Rete.scaricaTesto(ctx, url), citta.nome)
     }
@@ -227,27 +238,65 @@ object Dati {
             }
         }
 
-        // prossimi 5 giorni (da domani)
-        val nomi = arrayOf("Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab")
-        val giorni = ArrayList<Giorno>()
-        if (d != null) {
-            val t = d.getJSONArray("time")
-            val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = ROMA }
-            for (i in 1 until t.length()) {
-                if (giorni.size >= 5) break
-                val cal = Calendar.getInstance(ROMA).apply { time = fmt.parse(t.getString(i)) ?: Date() }
-                giorni.add(
-                    Giorno(
-                        nomi[cal.get(Calendar.DAY_OF_WEEK) - 1],
-                        d.getJSONArray("weather_code").optInt(i),
-                        d.getJSONArray("temperature_2m_max").optDouble(i).roundToInt(),
-                        d.getJSONArray("temperature_2m_min").optDouble(i).roundToInt(),
-                        d.getJSONArray("precipitation_probability_max").optInt(i),
-                        data = String.format(Locale.US, "%02d.%02d.", cal.get(Calendar.DAY_OF_MONTH), cal.get(Calendar.MONTH) + 1)
+        // per ogni giorno (aaaa-mm-gg): ogni 3 ore e l'umidita' media, dalle ore
+        val ogni3 = HashMap<String, ArrayList<Ora>>()
+        val umidita = HashMap<String, ArrayList<Int>>()
+        if (h != null) {
+            val t = h.getJSONArray("time")
+            val um = h.optJSONArray("relative_humidity_2m")
+            for (i in 0 until t.length()) {
+                val quando = t.getString(i)
+                if (quando.length < 13) continue
+                val giorno = quando.substring(0, 10)
+                um?.optDouble(i)?.takeIf { !it.isNaN() }?.let { umidita.getOrPut(giorno) { ArrayList() }.add(it.roundToInt()) }
+                val ora = quando.substring(11, 13).toIntOrNull() ?: continue
+                if (ora % 3 != 0) continue
+                ogni3.getOrPut(giorno) { ArrayList() }.add(
+                    Ora(
+                        quando.substring(11, 13),
+                        h.getJSONArray("weather_code").optInt(i),
+                        h.getJSONArray("is_day").optInt(i) == 1,
+                        h.getJSONArray("temperature_2m").optDouble(i).roundToInt(),
+                        h.getJSONArray("precipitation_probability").optInt(i)
                     )
                 )
             }
         }
+
+        // un giorno coi suoi dettagli (indice nel "daily"; 0 = oggi)
+        val nomi = arrayOf("Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab")
+        val fmtGiorno = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = ROMA }
+        fun intero(nome: String, i: Int): Int? = d?.optJSONArray(nome)?.optDouble(i)?.takeIf { !it.isNaN() }?.roundToInt()
+        fun giornoDa(i: Int, nome: String?): Giorno? {
+            if (d == null) return null
+            val t = d.optJSONArray("time") ?: return null
+            if (i >= t.length()) return null
+            val giorno = t.getString(i)
+            val cal = Calendar.getInstance(ROMA).apply { time = fmtGiorno.parse(giorno) ?: Date() }
+            fun oraDi(campo: String) = d.optJSONArray(campo)?.optString(i)?.takeIf { it.length >= 16 }?.substring(11, 16) ?: ""
+            return Giorno(
+                nome ?: nomi[cal.get(Calendar.DAY_OF_WEEK) - 1],
+                d.getJSONArray("weather_code").optInt(i),
+                d.getJSONArray("temperature_2m_max").optDouble(i).roundToInt(),
+                d.getJSONArray("temperature_2m_min").optDouble(i).roundToInt(),
+                d.getJSONArray("precipitation_probability_max").optInt(i),
+                mm = d.optJSONArray("precipitation_sum")?.optDouble(i)?.takeIf { !it.isNaN() } ?: 0.0,
+                data = String.format(Locale.US, "%02d.%02d.", cal.get(Calendar.DAY_OF_MONTH), cal.get(Calendar.MONTH) + 1),
+                ventoMax = intero("wind_speed_10m_max", i) ?: -1,
+                raffiche = intero("wind_gusts_10m_max", i) ?: -1,
+                direzione = d.optJSONArray("wind_direction_10m_dominant")?.optDouble(i)?.let { direzione(it) } ?: "",
+                uv = d.optJSONArray("uv_index_max")?.optDouble(i)?.takeIf { !it.isNaN() } ?: -1.0,
+                umidita = umidita[giorno]?.takeIf { it.isNotEmpty() }?.average()?.roundToInt() ?: -1,
+                percMax = intero("apparent_temperature_max", i),
+                percMin = intero("apparent_temperature_min", i),
+                alba = oraDi("sunrise"),
+                tramonto = oraDi("sunset"),
+                ore = ogni3[giorno].orEmpty(),
+            )
+        }
+
+        // prossimi 5 giorni (da domani)
+        val giorni = (1..5).mapNotNull { giornoDa(it, null) }
 
         fun daily(nome: String): String =
             d?.optJSONArray(nome)?.optDouble(0)?.takeIf { !it.isNaN() }?.roundToInt()?.toString() ?: "--"
@@ -272,7 +321,8 @@ object Dati {
             tramonto = orario("sunset"),
             ore = ore,
             giorni = giorni,
-            codiceOggi = d?.optJSONArray("weather_code")?.optInt(0, -1) ?: -1
+            codiceOggi = d?.optJSONArray("weather_code")?.optInt(0, -1) ?: -1,
+            oggi = try { giornoDa(0, "Oggi") } catch (e: Exception) { null },
         )
     }
 

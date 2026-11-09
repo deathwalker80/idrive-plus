@@ -119,7 +119,7 @@ class Disegno(private val ctx: Context) {
 
     /** oggi + i 5 giorni seguenti: le sei colonne della pagina Meteo */
     fun giorniMeteo(m: Meteo): List<Giorno> {
-        val oggi = Giorno(
+        val oggi = m.oggi ?: Giorno(
             "Oggi", if (m.codiceOggi >= 0) m.codiceOggi else m.codice,
             m.max.toIntOrNull() ?: m.temp, m.min.toIntOrNull() ?: m.temp, m.pioggiaOggi, m.pioggiaOggiMm,
             java.text.SimpleDateFormat("dd.MM.", Locale.ITALY).format(java.util.Date())
@@ -128,8 +128,8 @@ class Disegno(private val ctx: Context) {
     }
 
     /**
-     * PROVA del Meteo coi giorni selezionabili (plugin MeteoProva): dove cade sullo schermo 1280x480 la colonna del
-     * giorno i (x, y, larghezza, altezza): li' il plugin mette il pulsante del giorno
+     * Meteo coi giorni selezionabili (plugin Meteo v12): dove cade sullo schermo 1280x480 la colonna del giorno i
+     * (x, y, larghezza, altezza): li' il plugin mette il pulsante del giorno (Meteo.xml)
      */
     fun rettangoloGiorno(i: Int): IntArray {
         val scala = min((W - PL - PR) / TELA_W, (H - PT - PB) / TELA_H)
@@ -141,7 +141,7 @@ class Disegno(private val ctx: Context) {
         )
     }
 
-    /** PROVA: la colonna del giorno i ritagliata dalla pagina (immagine del pulsante) */
+    /** la colonna del giorno i ritagliata dalla pagina (immagine del pulsante) */
     fun colonnaMeteo(m: Meteo, i: Int): ByteArray {
         val pagina = bitmapMeteo(m, null, -1)
         val r = rettangoloGiorno(i)
@@ -150,27 +150,60 @@ class Disegno(private val ctx: Context) {
         return png(col)
     }
 
-    /** PROVA: la pagina di un giorno, quando lo premi */
+    /**
+     * la pagina di un giorno, quando lo premi: icona, massima e minima, i dettagli del giorno (pioggia, vento, raffiche,
+     * umidita', UV, alba e tramonto: quelli che la fonte da') e sotto il giorno ora per ora (oggi le prossime 8 ore,
+     * gli altri giorni ogni 3 ore)
+     */
     fun paginaGiornoMeteo(m: Meteo, i: Int): ByteArray {
         val g = giorniMeteo(m).getOrNull(i) ?: return paginaAvviso("Meteo", "Giorno non disponibile")
         val (b, c) = nuovaTela()
-        intestazione(c, "${g.nome} ${g.data} · ${m.citta}", Dati.cielo(g.codice))
-        disegnaIcona(c, Dati.iconaMeteo(g.codice, true), 20f, 80f, 280f)
-        scrivi(c, "${g.max} °C", 360f, 110f, pennello(72f, true, BIANCO), 80f)
-        scrivi(c, "minima ${g.min} °C", 360f, 200f, pennello(30f, false, TENUE))
-        scrivi(c, if (m.inMillimetri) "Pioggia ${mm(g.mm)}" else "Probabilità di pioggia ${g.pioggia}%", 360f, 246f,
-            pennello(26f, false, AZZURRO))
-        if (i == 0) {
-            // oggi: le prossime ore
-            val ore = m.ore.take(8)
-            val lo = (TELA_W - 360f) / 8f
+        intestazione(c, "${if (i == 0) "Oggi" else g.nome} ${g.data} · ${m.citta}", Dati.cielo(g.codice))
+
+        // ---- a sinistra: icona, massima, minima, percepita
+        disegnaIcona(c, Dati.iconaMeteo(g.codice, true), -6f, 64f, 210f)
+        scrivi(c, "${g.max} °C", 230f, 82f, pennello(64f, true, BIANCO), 70f)
+        scrivi(c, "minima ${g.min} °C", 230f, 160f, pennello(28f, false, TENUE))
+        if (g.percMax != null && g.percMin != null)
+            scrivi(c, "percepita ${g.percMax}° / ${g.percMin}°", 230f, 200f, pennello(20f, false, TENUE))
+
+        // ---- a destra: i dettagli che ci sono, su due colonne
+        val pioggia = when {
+            m.inMillimetri -> mm(g.mm)
+            g.mm >= 0.05 -> "${g.pioggia}% · ${mm(g.mm)}"
+            else -> "${g.pioggia}%"
+        }
+        val dettagli = listOfNotNull(
+            "Pioggia" to pioggia,
+            if (g.ventoMax >= 0) "Vento" to "${g.ventoMax} km/h ${g.direzione}".trim() else null,
+            if (g.raffiche >= 0) "Raffiche" to "${g.raffiche} km/h" else null,
+            if (g.umidita >= 0) "Umidità" to "${g.umidita}%" else null,
+            if (g.uv >= 0) "Indice UV" to String.format(Locale.ITALY, "%.0f", g.uv) else null,
+            if (g.alba.isNotEmpty() && g.tramonto.isNotEmpty()) "Alba · tramonto" to "${g.alba} · ${g.tramonto}" else null,
+        )
+        val pEt = pennello(18f, false, TENUE)
+        val pVal = pennello(26f, true, BIANCO)
+        dettagli.forEachIndexed { k, (et, v) ->
+            val x = 560f + (k / 3) * 330f
+            val y = 70f + (k % 3) * 62f
+            scrivi(c, et, x, y, pEt)
+            scrivi(c, ellissi(v, pVal, 320f), x, y + 22f, pVal)
+        }
+
+        // ---- sotto: il giorno ora per ora
+        val ore = if (i == 0) m.ore.take(8) else g.ore.take(8)
+        if (ore.isNotEmpty()) {
+            linea(c, 0f, 262f, TELA_W, 264f)
+            val lo = TELA_W / 8f
             ore.forEachIndexed { k, o ->
-                val cx = 360f + k * lo + lo / 2f
-                scrivi(c, o.ora, cx, 300f, pennello(19f, false, TENUE, Paint.Align.CENTER))
-                disegnaIcona(c, Dati.iconaMeteo(o.codice, o.giorno), cx - 26f, 326f, 52f)
-                scrivi(c, "${o.temp}°", cx, 384f, pennello(22f, true, BIANCO, Paint.Align.CENTER))
+                val cx = k * lo + lo / 2f
+                scrivi(c, "${o.ora}:00", cx, 274f, pennello(19f, false, TENUE, Paint.Align.CENTER))
+                disegnaIcona(c, Dati.iconaMeteo(o.codice, o.giorno), cx - 30f, 298f, 60f)
+                scrivi(c, "${o.temp}°", cx, 362f, pennello(24f, true, BIANCO, Paint.Align.CENTER))
+                if (!m.inMillimetri) scrivi(c, "☂ ${o.pioggia}%", cx, 396f, pennello(18f, false, AZZURRO, Paint.Align.CENTER))
             }
         }
+        if (m.fonte != "open-meteo") scrivi(c, "dati ${m.fonte}", TELA_W, 418f, pennello(14f, false, TENUE, Paint.Align.RIGHT))
         return png(b)
     }
 
@@ -210,7 +243,7 @@ class Disegno(private val ctx: Context) {
         val giorni = giorniMeteo(m)
         val x0 = 424f
         val lc = (TELA_W - x0) / 6f
-        // PROVA (MeteoProva): il giorno scelto con la manopola evidenziato
+        // il giorno scelto con la manopola evidenziato (plugin Meteo v12)
         if (evidenzia in giorni.indices) {
             val fondo = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x33FFFFFF; setShadowLayer(6f, 0f, 2f, 0x33000000) }
             c.drawRoundRect(RectF(x0 + evidenzia * lc + 4f, 0f, x0 + (evidenzia + 1) * lc - 4f, TELA_H - 8f), 14f, 14f, fondo)

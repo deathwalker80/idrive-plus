@@ -92,7 +92,7 @@ The APK and the USB-stick zip are in the **Releases**. Install only NBT Plus on 
 old apps (MINI Plus, BMW Plus or Supra Plus) is still there, uninstall it, because two apps at once would
 fight over the link with iDrive.
 
-Step-by-step instructions in [`chiavetta/README-v26.txt`](chiavetta/README-v26.txt); in short, on the head unit shell:
+Step-by-step instructions in [`chiavetta/README-v27.txt`](chiavetta/README-v27.txt); in short, on the head unit shell:
 ```
 mount -o remount rw /net/hu-omap/fs/sda0
 on -f /net/hu-omap/ /bin/sh

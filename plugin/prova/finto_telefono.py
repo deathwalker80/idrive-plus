@@ -26,7 +26,7 @@ class H(http.server.BaseHTTPRequestHandler):
             H.giri = getattr(H, 'giri', 0) + 1
             avvio = 1000 if H.giri < 3 else 2000
             return self.manda(200, 'text/plain', ('IDRIVEPONTE 2.18 meteo=111 notizie=222 n=8 locali=333 carburanti=444 traffico=555 '
-                                                  'auto=666 vettura=777 avvio=%d meteoprova=888\n' % avvio).encode())
+                                                  'auto=666 vettura=777 avvio=%d meteogiorni=888\n' % avvio).encode())
         if p in ('/meteo.png', '/carburanti.png', '/traffico.png', '/auto.png'): return self.manda(200, 'image/png', open(D + p, 'rb').read())
         if p == '/vettura/notizie.txt':
             # Stato vettura: due righe con la versione dopo il TAB
@@ -34,11 +34,11 @@ class H(http.server.BaseHTTPRequestHandler):
         if p.startswith('/vettura/'):
             f = {'/vettura/notizia/0.png': '/auto.png', '/vettura/notizia/1.png': '/porte.png'}.get(p, '/auto.png')
             return self.manda(200, 'image/png', open(D + f, 'rb').read())
-        if p == '/meteoprova/notizie.txt':
-            # prova MeteoProva: sei giorni
+        if p == '/meteogiorni/notizie.txt':
+            # Meteo v12: sei giorni
             return self.manda(200, 'text/plain; charset=iso-8859-1', b'NOTIZIE 888 6\nOggi 15/12\nSab 16/10\nDom 16/10\nLun 15/13\nMar 16/13\nMer 18/16\n')
-        if p.startswith('/meteoprova/'):
-            f = {'mini': 'meteoprova_colonna2.png', 'notizia': 'meteoprova_giorno3.png', 'anteprima': 'meteoprova_sfondo2.png'}.get(p.split('/')[2])
+        if p.startswith('/meteogiorni/'):
+            f = {'mini': 'meteo_colonna2.png', 'notizia': 'meteo_giorno3.png', 'anteprima': 'meteo_sfondo2.png'}.get(p.split('/')[2])
             if f: return self.manda(200, 'image/png', open(D + '/' + f, 'rb').read())
         if p.startswith('/locali/'): p = p[7:]
         if p == '/notizie.txt' or self.path == '/locali/notizie.txt': return self.manda(200, 'text/plain; charset=utf-8', ('NOTIZIE 222 8\n' + '\n'.join(TITOLI) + '\n').encode())
