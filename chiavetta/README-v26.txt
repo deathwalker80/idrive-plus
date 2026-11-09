@@ -1,6 +1,15 @@
-iDrive Plus / NBT Plus - USB stick v25 (iDrive plugins v10)
+iDrive Plus / NBT Plus - USB stick v26 (iDrive plugins v11)
 ===========================================================
-WHAT CHANGES FROM v24 (iDrive slowdowns, issue #1)
+WHAT CHANGES FROM v25
+ - The phone is found sooner when you get in the car: with no phone the plugins retry after 20 s and then every
+   30 s (v25 went up to 5 minutes, so the first pages could take minutes to show up). The ARP table and the
+   172.16.224.x scan stay limited for all the plugins together (one ARP read every 15 s, one scan every 5 minutes).
+ - Images still go one at a time across all the plugins, but with shorter waits between them.
+ - With NBT Plus 3.25 / MINI, BMW, Supra Plus 2.30: the last car data read stays on the Vehicle status pages
+   until the iDrive sends new values (doors excluded), with its date; news articles and fuel stations are
+   downloaded 4 at a time.
+
+WHAT CHANGED IN v25 FROM v24 (iDrive slowdowns, issue #1)
  - The plugins share the phone's address (/dev/shmem/idriveponte.rete): one finds it, the others use it.
    The ARP table is read by a single plugin at most every 15 s (before: all six every 20 s) and 172.16.224.x
    is scanned at most every 5 minutes (before: each of the six, nonstop, when the phone wasn't there).
@@ -46,10 +55,10 @@ ALREADY THERE SINCE v20 / v22
    (or the Meteo.log file on the stick, if it is plugged in).
 
 PHONE (install ONLY ONE: two apps together would fight over the link with the iDrive)
- - NBT Plus:   NBTPlus-3.23-release.apk (or from the Play Store), for MINI, BMW and Supra
- - MINI Plus:  MINIPlus-2.28-release.apk  (installs over 2.6 and later, keeps the settings)
- - BMW Plus:   BMWPlus-2.28-release.apk
- - Supra Plus: SupraPlus-2.28-release.apk
+ - NBT Plus:   NBTPlus-3.25-release.apk (or from the Play Store), for MINI, BMW and Supra
+ - MINI Plus:  MINIPlus-2.30-release.apk  (installs over 2.6 and later, keeps the settings)
+ - BMW Plus:   BMWPlus-2.30-release.apk
+ - Supra Plus: SupraPlus-2.30-release.apk
 
 CAR
  0. Extract EVERYTHING in this zip to the ROOT of the USB stick (overwrite).

@@ -116,6 +116,7 @@ class MainActivity : Activity() {
     private lateinit var chipPioggiaSi: TextView
     private lateinit var chipPioggiaNo: TextView
     private val chipPrepara = LinkedHashMap<String, TextView>()
+    private var notaPrepara: TextView? = null
 
     // permessi
     private class Permesso(val tasto: TextView)
@@ -155,6 +156,7 @@ class MainActivity : Activity() {
     private val ripeti = object : Runnable {
         override fun run() {
             aggiornaSchermo()
+            aggiornaNotaPrepara()
             mano.postDelayed(this, 1500)
         }
     }
@@ -333,6 +335,7 @@ class MainActivity : Activity() {
             }
             piccolo(s, "Circa ogni ora meteo, notizie, carburanti e traffico si aggiornano da soli, così quando sali " +
                 "in auto l'iDrive li ha già pronti. Con Sì usa anche i dati mobili (qualche MB all'ora).")
+            notaPrepara = piccolo(s, "")
 
             etichetta(s, "Avviso pioggia con l'auto aperta")
             val r4 = rigaChip(s)
@@ -438,6 +441,7 @@ class MainActivity : Activity() {
         // le ultime pagine salvate (anche preparate lontano dall'auto) e il lavoro di ogni ora che le tiene fresche
         Thread({ Cache.carica(this) }, "cache").start()
         PreparaJob.programma(this)
+        PreparaJob.forseSubito(this)
     }
 
     /** marca cambiata: si ricostruisce la schermata tenendo testi scritti, esiti e punto di scorrimento.
@@ -640,9 +644,11 @@ class MainActivity : Activity() {
             i?.kmLitro?.let { String.format(Locale.ITALY, "%.1f km/l", it) }
         )
         celleCopertina.forEachIndexed { k, c -> (testi[k] ?: "–").let { if (c.valore.text.toString() != it) c.valore.text = it } }
+        val inViaggio = Viaggio.di(this, Parco.ultima(this))?.inCorso == true
         notaCopertina.text = when {
             dati == null -> "I dati arrivano dall'iDrive quando sei in auto con l'app accesa."
             dati.second == 0L -> "Dati dell'iDrive in diretta"
+            inViaggio -> "Ultimi dati dell'iDrive, ${quandoBreve(dati.second)}: i nuovi arrivano tra poco"
             else -> "Dati dell'iDrive al parcheggio, ${quandoBreve(dati.second)}"
         }
     }
@@ -651,11 +657,11 @@ class MainActivity : Activity() {
     private fun datiAuto(bt: String?): Pair<DatiAuto.Istantanea, Long>? {
         val mostra = PartiVisibili.mostrate(this, bt)
         if (DatiAuto.grezzi.isNotEmpty()) return DatiAuto.istantanea(DatiAuto.grezzi, mostra) to 0L
-        val v = Viaggio.di(this, bt) ?: return null
-        if (v.grezzi.isEmpty()) return null
-        // al parcheggio le porte non contano: l'ultimo stato arriva quando scendi, con la tua porta aperta, e
-        // l'iDrive si spegne prima che tu la chiuda
-        return DatiAuto.istantanea(v.grezzi, mostra - DatiAuto.PORTE_PARTI) to v.aggiornato
+        // al parcheggio (o a viaggio appena partito, finche' l'iDrive non manda i valori nuovi) gli ultimi valori;
+        // le porte no: l'ultimo stato arriva quando scendi, con la tua porta aperta, e l'iDrive si spegne prima
+        // che tu la chiuda
+        val (grezzi, quando) = Viaggio.ultimiDati(this, bt) ?: return null
+        return DatiAuto.istantanea(grezzi, mostra - DatiAuto.PORTE_PARTI) to quando
     }
 
     /** "oggi 17:06", "ieri 17:06", "lun 02/11 17:06" */
@@ -940,6 +946,19 @@ class MainActivity : Activity() {
         scegli(chipPioggiaNo, !Pioggia.attivo(this))
         val prepara = PreparaJob.modo(this)
         chipPrepara.forEach { (k, v) -> scegli(v, k == prepara) }
+        aggiornaNotaPrepara()
+    }
+
+    /** quando ha preparato le pagine lontano dall'auto l'ultima volta, e cosa */
+    private fun aggiornaNotaPrepara() {
+        val n = notaPrepara ?: return
+        val (quando, esito) = PreparaJob.ultimo(this)
+        val testo = when {
+            PreparaJob.modo(this) == "no" -> ""
+            quando == 0L -> "Ultimo aggiornamento lontano dall'auto: non ancora (parte appena Android lo permette)."
+            else -> "Ultimo aggiornamento lontano dall'auto: ${quandoBreve(quando)} - $esito."
+        }
+        if (n.text.toString() != testo) n.text = testo
     }
 
     private fun campo(s: ViewGroup, valore: String): EditText {

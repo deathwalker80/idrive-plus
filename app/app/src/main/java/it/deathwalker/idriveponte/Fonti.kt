@@ -105,9 +105,8 @@ object Fonti {
             )
         }
         val ordinati = lista.sortedWith(compareBy({ it.prezzo }, { it.km })).take(7)
-        // indirizzo dalla scheda dell'impianto (la ricerca non lo restituisce)
-        for (d in ordinati) {
-            if (d.indirizzo.isNotEmpty()) continue
+        // indirizzo dalla scheda dell'impianto (la ricerca non lo restituisce), 4 schede alla volta
+        Rete.ognuno(ordinati.filter { it.indirizzo.isEmpty() }) { d ->
             try {
                 val s = JSONObject(Rete.scaricaTesto(ctx, "https://carburanti.mise.gov.it/ospzApi/registry/servicearea/${d.id}", 8000))
                 d.indirizzo = s.optString("address").let { a -> a.substringBefore(" - ").ifEmpty { a } }

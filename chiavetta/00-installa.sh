@@ -1,5 +1,5 @@
 #!/bin/sh
-# iDrive Plus / NBT Plus - USB stick v25 (one for all the apps) - iDrive plugins v10: Weather (with alerts and car
+# iDrive Plus / NBT Plus - USB stick v26 (one for all the apps) - iDrive plugins v11: Weather (with alerts and car
 # data for the app), News, Local news, Fuel, Traffic, Vehicle status. Updated by the phone app.
 # Android Auto (NbtAad) is not touched.
 # The libraries are the same for all the apps: what changes are the "waiting for the phone" pages, with the app

@@ -62,7 +62,8 @@ class CacheTest {
         PreparaJob.imposta(ctx, "si")
         assertNotNull(js.allPendingJobs.firstOrNull { it.service.className == PreparaJob::class.java.name })
         PreparaJob.imposta(ctx, "wifi")
-        assertEquals(1, js.allPendingJobs.count { it.service.className == PreparaJob::class.java.name })
+        // uno ogni ora e, appena cambiata l'impostazione, un giro subito
+        assertEquals(1, js.allPendingJobs.count { it.service.className == PreparaJob::class.java.name && it.isPeriodic })
         PreparaJob.imposta(ctx, "no")
         assertNull(js.allPendingJobs.firstOrNull { it.service.className == PreparaJob::class.java.name })
     }

@@ -388,6 +388,14 @@ class Disegno(private val ctx: Context) {
     }
 
     // ------------------------------------------------------------------------------ stato auto ----
+    /** ora dei dati dell'auto: "10:31" se sono di oggi, "07/11 18:30" se sono gli ultimi di un altro giorno */
+    fun quandoDati(quando: Long): String {
+        val giorno = java.text.SimpleDateFormat("yyyyMMdd", Locale.ITALY).apply { timeZone = Dati.ROMA }
+        val oggi = giorno.format(java.util.Date()) == giorno.format(java.util.Date(quando))
+        return java.text.SimpleDateFormat(if (oggi) "HH:mm" else "dd/MM HH:mm", Locale.ITALY)
+            .apply { timeZone = Dati.ROMA }.format(java.util.Date(quando))
+    }
+
     /**
      * stato dell'auto per l'iDrive, nello stile delle altre pagine (niente riquadri pieni: il fondo e' quello dell'iDrive).
      * A sinistra l'anello dell'autonomia, come gli strumenti tondi della MINI: l'arco e' il carburante nel serbatoio
@@ -399,7 +407,7 @@ class Disegno(private val ctx: Context) {
     ): ByteArray {
         val (b, c) = nuovaTela()
         val ora = java.text.SimpleDateFormat("HH:mm", Locale.ITALY).apply { timeZone = Dati.ROMA }
-        intestazione(c, nome, if (i != null && quando > 0) "Dati dell'iDrive · ${ora.format(java.util.Date(quando))}" else "")
+        intestazione(c, nome, if (i != null && quando > 0) "Dati dell'iDrive · ${quandoDati(quando)}" else "")
         if (i == null || listOf(i.km, i.litri, i.autonomia, i.kmLitro, i.esterna, i.interna).all { it == null } && i.aperti == null) {
             val l = blocco("In attesa dei dati dell'auto. Li legge il plugin Meteo della chiavetta e li manda al telefono sul Wi-Fi " +
                 "dell'auto, pochi secondi dopo l'accensione dell'iDrive.", pennello(25f, false, TENUE), 1200, 33f, 4)
@@ -543,9 +551,8 @@ class Disegno(private val ctx: Context) {
         mostra: Set<DatiAuto.Parte> = DatiAuto.Parte.values().toSet(),
     ): ByteArray {
         val (b, c) = nuovaTela()
-        val ora = java.text.SimpleDateFormat("HH:mm", Locale.ITALY).apply { timeZone = Dati.ROMA }
         intestazione(c, "Porte, finestrini e tetto",
-            riassuntoAperture(parti) + if (quando > 0) "  ·  Dati dell'iDrive ${ora.format(java.util.Date(quando))}" else "")
+            riassuntoAperture(parti) + if (quando > 0) "  ·  Dati dell'iDrive ${quandoDati(quando)}" else "")
         val verde = 0xFF66BB6A.toInt()
         val arancio = 0xFFFFA726.toInt()
         val grigio = 0x99FFFFFF.toInt()
