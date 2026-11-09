@@ -10,14 +10,14 @@ import java.util.concurrent.Executors
 /**
  * Piccolo server HTTP sul telefono, porta 8765: i plugin dell'iDrive chiedono qui le pagine pronte.
  *   GET /ponte            -> "IDRIVEPONTE <versione> meteo=<epoch> notizie=<epoch> n=<numero> locali=<epoch>
- *                             carburanti=<epoch> traffico=<epoch> auto=<epoch> vettura=<epoch> avvio=<secondi> meteoprova=<epoch>"
+ *                             carburanti=<epoch> traffico=<epoch> auto=<epoch> vettura=<epoch> avvio=<secondi> meteogiorni=<epoch>"
  *   GET /meteo.png, /carburanti.png, /traffico.png, /auto.png -> pagine 1280x480 (auto = riepilogo dello stato auto,
- *                            per il plugin Auto v8)
+ *                            per il plugin Auto v8; meteo per il plugin Meteo fino alla v11)
  *   GET /locali/...       -> come le notizie qui sotto, per le notizie locali
  *   GET /vettura/...      -> come le notizie, per lo Stato vettura (plugin Auto v9): riga 0 Riepilogo, riga 1 Porte,
  *                            finestrini e tetto; dopo il titolo un TAB e la versione della riga
- *   GET /meteoprova/...   -> PROVA (plugin MeteoProva): come le notizie, 6 righe = i giorni del meteo; mini = colonna
- *                            del giorno, notizia = pagina del giorno, anteprima = pagina col giorno evidenziato
+ *   GET /meteogiorni/...  -> plugin Meteo v12: come le notizie, 6 righe = i giorni del meteo; mini = colonna del
+ *                            giorno, notizia = pagina del giorno coi dettagli, anteprima = pagina col giorno evidenziato
  *   GET /notizie.txt      -> riga 1 "NOTIZIE <epoch> <n>", poi un titolo per riga (ISO-8859-1: l'iDrive legge cosi'
  *                            il testo dei plugin; in UTF-8 "Morì" diventava "MorÃ¬")
  *   GET /notizia/<i>.png  -> pagina della notizia i (0..7)
@@ -114,7 +114,7 @@ class Server(private val quandoChiede: () -> Unit) {
                 out, 200, "text/plain",
                 ("IDRIVEPONTE ${Stato.VERSIONE} meteo=${Stato.meteo.epoch} notizie=${Stato.notizie.epoch} n=${Stato.notizie.notizie.size} " +
                     "locali=${Stato.locali.epoch} carburanti=${Stato.carburanti.epoch} traffico=${Stato.traffico.epoch} " +
-                    "auto=${Stato.auto.epoch} vettura=${Stato.vettura.epoch} avvio=${Stato.avvio} meteoprova=${Stato.meteoProva.epoch}\n").toByteArray()
+                    "auto=${Stato.auto.epoch} vettura=${Stato.vettura.epoch} avvio=${Stato.avvio} meteogiorni=${Stato.meteoGiorni.epoch}\n").toByteArray()
             )
             pagina != null -> {
                 val png = pagina.png
@@ -129,7 +129,7 @@ class Server(private val quandoChiede: () -> Unit) {
             }
             percorso.startsWith("/locali/") -> elenco(out, Stato.locali, percorso.removePrefix("/locali"))
             percorso.startsWith("/vettura/") -> elenco(out, Stato.vettura, percorso.removePrefix("/vettura"))
-            percorso.startsWith("/meteoprova/") -> elenco(out, Stato.meteoProva, percorso.removePrefix("/meteoprova"))
+            percorso.startsWith("/meteogiorni/") -> elenco(out, Stato.meteoGiorni, percorso.removePrefix("/meteogiorni"))
             else -> elenco(out, Stato.notizie, percorso)
         }
     }

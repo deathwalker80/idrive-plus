@@ -1,5 +1,5 @@
 #!/bin/sh
-# iDrive Plus / NBT Plus - USB stick v26 (one for all the apps) - iDrive plugins v11: Weather (with alerts and car
+# iDrive Plus / NBT Plus - USB stick v27 (one for all the apps) - iDrive plugins v12: Weather (with alerts and car
 # data for the app), News, Local news, Fuel, Traffic, Vehicle status. Updated by the phone app.
 # Android Auto (NbtAad) is not touched.
 # The libraries are the same for all the apps: what changes are the "waiting for the phone" pages, with the app
@@ -44,6 +44,13 @@ for N in Meteo Notizie Locali Carburanti Traffico Auto; do
   rm -f "/dev/shmem/$N.avvii"
   echo "OK: $N"
 done
+# v27: the "Meteo prova" test is now the normal Weather: if it is installed it goes to /opt/aa/plugins_off
+if [ -d "$P/MeteoProva" ]; then
+  mkdir -p /opt/aa/plugins_off
+  DEST=/opt/aa/plugins_off/MeteoProva; if [ -e "$DEST" ]; then DEST="${DEST}_$$"; fi
+  if mv "$P/MeteoProva" "$DEST"; then echo "OK: Meteo prova removed (now it is Weather), moved to $DEST"
+  else echo "WARNING: cannot move $P/MeteoProva - remove it by hand"; fi
+fi
 if [ -e /opt/aa/ponte.disable ]; then echo "WARNING: /opt/aa/ponte.disable exists, the plugins will stay off"; fi
 if [ -e /opt/aa/auto.disable ]; then echo "NOTE: /opt/aa/auto.disable exists, Weather will not read the car data"; fi
 

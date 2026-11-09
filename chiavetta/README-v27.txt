@@ -1,6 +1,15 @@
-iDrive Plus / NBT Plus - USB stick v26 (iDrive plugins v11)
+iDrive Plus / NBT Plus - USB stick v27 (iDrive plugins v12)
 ===========================================================
-WHAT CHANGES FROM v25
+WHAT CHANGES FROM v26
+ - New Weather: the six days (today and the next 5) can be chosen with the controller, turning it moves along the
+   days and the page highlights the chosen one; pressing opens the page of that day with the details: maximum,
+   minimum and feels-like, rain (probability and mm), wind and gusts, humidity, UV index, sunrise and sunset, and
+   the day hour by hour (today the next 8 hours, the other days every 3 hours).
+ - It is the "Meteo prova" test made the normal Weather: if "Meteo prova" is installed, the install moves it to
+   /opt/aa/plugins_off. The Weather plugin still reads the car data for the app.
+ - Needs NBT Plus 3.26 / MINI, BMW, Supra Plus 2.31 or later: with older apps Weather stays "waiting for the phone".
+
+WHAT CHANGED IN v26 FROM v25
  - The phone is found sooner when you get in the car: with no phone the plugins retry after 20 s and then every
    30 s (v25 went up to 5 minutes, so the first pages could take minutes to show up). The ARP table and the
    172.16.224.x scan stay limited for all the plugins together (one ARP read every 15 s, one scan every 5 minutes).
@@ -55,10 +64,10 @@ ALREADY THERE SINCE v20 / v22
    (or the Meteo.log file on the stick, if it is plugged in).
 
 PHONE (install ONLY ONE: two apps together would fight over the link with the iDrive)
- - NBT Plus:   NBTPlus-3.25-release.apk (or from the Play Store), for MINI, BMW and Supra
- - MINI Plus:  MINIPlus-2.30-release.apk  (installs over 2.6 and later, keeps the settings)
- - BMW Plus:   BMWPlus-2.30-release.apk
- - Supra Plus: SupraPlus-2.30-release.apk
+ - NBT Plus:   NBTPlus-3.26-release.apk (or from the Play Store), for MINI, BMW and Supra
+ - MINI Plus:  MINIPlus-2.31-release.apk  (installs over 2.6 and later, keeps the settings)
+ - BMW Plus:   BMWPlus-2.31-release.apk
+ - Supra Plus: SupraPlus-2.31-release.apk
 
 CAR
  0. Extract EVERYTHING in this zip to the ROOT of the USB stick (overwrite).

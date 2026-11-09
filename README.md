@@ -76,7 +76,7 @@ cd app
 
 ## Installare
 Le APK e lo zip della chiavetta sono nelle **Release**. Istruzioni passo passo in
-[`chiavetta/README-v26.txt`](chiavetta/README-v26.txt); in breve, sulla shell della testata:
+[`chiavetta/README-v27.txt`](chiavetta/README-v27.txt); in breve, sulla shell della testata:
 ```
 mount -o remount rw /net/hu-omap/fs/sda0
 on -f /net/hu-omap/ /bin/sh

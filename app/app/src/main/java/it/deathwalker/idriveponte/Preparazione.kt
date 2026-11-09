@@ -68,8 +68,8 @@ object Preparazione {
             try {
                 val m = try { Dati.meteo(ctx, qui) } catch (e: Exception) { Dati.meteoMet(ctx, qui) }
                 Stato.meteo.metti(disegno.paginaMeteo(m, allerta))
-                // PROVA (plugin MeteoProva): un giorno per riga, con colonna, pagina del giorno e pagina evidenziata
-                Stato.meteoProva.metti(disegno.giorniMeteo(m).indices.map { i ->
+                // plugin Meteo v12: un giorno per riga, con colonna, pagina del giorno e pagina col giorno evidenziato
+                Stato.meteoGiorni.metti(disegno.giorniMeteo(m).indices.map { i ->
                     val g = disegno.giorniMeteo(m)[i]
                     NotiziaPronta("${g.nome} ${g.max}°/${g.min}°", "", disegno.paginaGiornoMeteo(m, i),
                         disegno.colonnaMeteo(m, i), disegno.paginaMeteo(m, allerta, i))
@@ -81,7 +81,10 @@ object Preparazione {
                 Stato.meteo.esito = "OK alle ${ora()} - ${m.citta} ${m.temp}° (${Stato.fonteCitta}, ${m.fonte})"
             } catch (e: Exception) {
                 Stato.meteo.esito = "ERRORE alle ${ora()}: ${e.message ?: e.javaClass.simpleName}"
-                if (Stato.meteo.png == null) Stato.meteo.metti(disegno.paginaAvviso("Meteo", "Meteo non disponibile in questo momento. Nuovo tentativo tra poco."))
+                val avviso = disegno.paginaAvviso("Meteo", "Meteo non disponibile in questo momento. Nuovo tentativo tra poco.")
+                if (Stato.meteo.png == null) Stato.meteo.metti(avviso)
+                if (Stato.meteoGiorni.notizie.isEmpty())
+                    Stato.meteoGiorni.metti(listOf(NotiziaPronta("Meteo non disponibile", "", avviso, avviso, avviso)))
             }
         }
 

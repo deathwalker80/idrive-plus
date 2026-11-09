@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 python3 finto_telefono.py & T=$!
 trap 'kill $T' EXIT
 sleep 1
-for P in METEO NOTIZIE LOCALI CARBURANTI AUTO METEOPROVA; do
+for P in METEO NOTIZIE LOCALI CARBURANTI AUTO; do
   clang++ -O1 -fno-exceptions -fno-rtti -DPROVA_HOST -DPLUGIN_$P prova_host.cpp -o /tmp/prova_$P
   echo "===== $P"; /tmp/prova_$P
 done
