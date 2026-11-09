@@ -15,8 +15,12 @@ import kotlin.math.sqrt
 class Distributore(
     val marchio: String, val nome: String, var indirizzo: String,
     val prezzo: Double, val self: Boolean, val km: Double, val aggiornato: String, val id: Long,
-    var logo: android.graphics.Bitmap? = null
+    var logo: android.graphics.Bitmap? = null,
+    /** tutti i prezzi dell'impianto (dalla sua scheda MIMIT), per la pagina del distributore */
+    var prezzi: List<Prezzo> = emptyList(),
 )
+
+class Prezzo(val nome: String, val self: Boolean, val prezzo: Double)
 
 class EventoTraffico(
     val strada: String, val tipo: String, val testo: String, val km: Double,
@@ -105,16 +109,38 @@ object Fonti {
             )
         }
         val ordinati = lista.sortedWith(compareBy({ it.prezzo }, { it.km })).take(7)
-        // indirizzo dalla scheda dell'impianto (la ricerca non lo restituisce), 4 schede alla volta
-        Rete.ognuno(ordinati.filter { it.indirizzo.isEmpty() }) { d ->
+        // dalla scheda dell'impianto: l'indirizzo (la ricerca non lo restituisce) e tutti i prezzi, 4 schede alla volta
+        Rete.ognuno(ordinati.take(6)) { d ->
             try {
                 val s = JSONObject(Rete.scaricaTesto(ctx, "https://carburanti.mise.gov.it/ospzApi/registry/servicearea/${d.id}", 8000))
-                d.indirizzo = s.optString("address").let { a -> a.substringBefore(" - ").ifEmpty { a } }
+                if (d.indirizzo.isEmpty()) d.indirizzo = s.optString("address").let { a -> a.substringBefore(" - ").ifEmpty { a } }
                     .lowercase(Locale.ITALY).split(' ').joinToString(" ") { w -> w.replaceFirstChar { it.titlecase(Locale.ITALY) } }
+                d.prezzi = prezziImpianto(s, tipo)
             } catch (e: Exception) { }
         }
         for (d in ordinati) d.logo = logo(ctx, d.marchio)
         return ordinati
+    }
+
+    /**
+     * i prezzi della scheda MIMIT di un impianto ("fuels": nome, isSelf, price): uno per carburante e modalita' (il
+     * piu' basso se ripetuto), prima quelli del carburante cercato, poi gli altri; quelli strani (sotto 0,30) no
+     */
+    fun prezziImpianto(scheda: JSONObject, tipo: Int): List<Prezzo> {
+        val f = scheda.optJSONArray("fuels") ?: return emptyList()
+        val migliori = LinkedHashMap<Pair<String, Boolean>, Pair<Double, Int>>()
+        for (k in 0 until f.length()) {
+            val o = f.optJSONObject(k) ?: continue
+            val p = o.optDouble("price")
+            val nome = o.optString("name").trim().ifEmpty { CARBURANTI[o.optInt("fuelId")] ?: "" }
+            if (p.isNaN() || p <= 0.3 || nome.isEmpty()) continue
+            val chiave = nome.lowercase(Locale.ITALY).replaceFirstChar { it.titlecase(Locale.ITALY) } to o.optBoolean("isSelf")
+            val prima = migliori[chiave]
+            if (prima == null || p < prima.first) migliori[chiave] = p to o.optInt("fuelId")
+        }
+        return migliori.entries
+            .sortedWith(compareBy({ if (it.value.second == tipo) 0 else 1 }, { it.value.second }, { !it.key.second }, { it.key.first }))
+            .map { Prezzo(it.key.first, it.key.second, it.value.first) }
     }
 
     // ------------------------------------------------------------------ loghi dei marchi ----

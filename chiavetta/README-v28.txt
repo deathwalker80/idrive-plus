@@ -1,6 +1,15 @@
-iDrive Plus / NBT Plus - USB stick v27 (iDrive plugins v12)
+iDrive Plus / NBT Plus - USB stick v28 (iDrive plugins v13)
 ===========================================================
-WHAT CHANGES FROM v26
+WHAT CHANGES FROM v27
+ - News and Local news "in primo piano": on the right the eight news as rows drawn by the phone (no more iDrive list
+   with the rows on top of each other), turning the controller shows the chosen one large on the left (photo, time,
+   title, start of the text); pressing opens the article.
+ - Fuel: the six stations can be chosen with the controller; pressing opens the station card with its address, the
+   distance, how much it costs compared with the average of the nearby stations and all its prices (self and
+   attended for each fuel).
+ - Needs NBT Plus 3.27 / MINI, BMW, Supra Plus 2.32 or later: with older apps these three stay "waiting for the phone".
+
+WHAT CHANGED IN v27 FROM v26
  - New Weather: the six days (today and the next 5) can be chosen with the controller, turning it moves along the
    days and the page highlights the chosen one; pressing opens the page of that day with the details: maximum,
    minimum and feels-like, rain (probability and mm), wind and gusts, humidity, UV index, sunrise and sunset, and
@@ -64,10 +73,10 @@ ALREADY THERE SINCE v20 / v22
    (or the Meteo.log file on the stick, if it is plugged in).
 
 PHONE (install ONLY ONE: two apps together would fight over the link with the iDrive)
- - NBT Plus:   NBTPlus-3.26-release.apk (or from the Play Store), for MINI, BMW and Supra
- - MINI Plus:  MINIPlus-2.31-release.apk  (installs over 2.6 and later, keeps the settings)
- - BMW Plus:   BMWPlus-2.31-release.apk
- - Supra Plus: SupraPlus-2.31-release.apk
+ - NBT Plus:   NBTPlus-3.27-release.apk (or from the Play Store), for MINI, BMW and Supra
+ - MINI Plus:  MINIPlus-2.32-release.apk  (installs over 2.6 and later, keeps the settings)
+ - BMW Plus:   BMWPlus-2.32-release.apk
+ - Supra Plus: SupraPlus-2.32-release.apk
 
 CAR
  0. Extract EVERYTHING in this zip to the ROOT of the USB stick (overwrite).

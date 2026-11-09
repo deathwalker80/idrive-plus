@@ -89,7 +89,7 @@ object Preparazione {
         }
 
         sezione("Notizie", Stato.notizie.ultimo, 10 * MIN, tutto, continua) {
-            elenco(Stato.notizie, disegno, "ANSA") { Dati.notizie(ctx) }
+            elenco(Stato.notizie, Stato.notizieScelta, "Notizie", disegno, "ANSA") { Dati.notizie(ctx) }
         }
 
         sezione("Traffico", Stato.traffico.ultimo, 5 * MIN, tutto, continua) {
@@ -118,6 +118,16 @@ object Preparazione {
             try {
                 val lista = Fonti.carburanti(ctx, qui.lat, qui.lon, tipo, raggio)
                 Stato.carburanti.metti(disegno.paginaCarburanti(lista, nome, qui.nome, raggio))
+                // plugin Carburanti v13: un distributore per riga, la sua scheda quando lo premi
+                val sei = lista.take(6)
+                val media = if (lista.size > 1) lista.map { it.prezzo }.average() else null
+                Stato.carburantiScelta.metti(
+                    if (sei.isEmpty()) listOf(NotiziaPronta("Nessun distributore", "", Stato.carburanti.png!!, Stato.carburanti.png!!, Stato.carburanti.png!!))
+                    else sei.indices.map { i ->
+                        NotiziaPronta(sei[i].marchio, "", disegno.paginaDistributore(sei[i], nome, media),
+                            disegno.schedaDistributore(lista, nome, qui.nome, raggio, i), disegno.paginaCarburanti(lista, nome, qui.nome, raggio, i))
+                    }
+                )
                 Stato.carburanti.ultimo = System.currentTimeMillis()
                 latCarburanti = qui.lat; lonCarburanti = qui.lon; tipoCarburanti = tipo
                 Stato.carburanti.esito = "OK alle ${ora()} - $nome, ${lista.size} distributori entro $raggio km" +
@@ -129,6 +139,9 @@ object Preparazione {
             } catch (e: Exception) {
                 Stato.carburanti.esito = "ERRORE alle ${ora()}: ${e.message ?: e.javaClass.simpleName}"
                 if (Stato.carburanti.png == null) Stato.carburanti.metti(disegno.paginaAvviso("Carburanti", "Prezzi dei carburanti non disponibili in questo momento. Nuovo tentativo tra poco."))
+                if (Stato.carburantiScelta.notizie.isEmpty()) Stato.carburanti.png?.let { a ->
+                    Stato.carburantiScelta.metti(listOf(NotiziaPronta("Carburanti non disponibili", "", a, a, a)))
+                }
             }
         }
 
@@ -141,20 +154,31 @@ object Preparazione {
             if (feed == null) {
                 Stato.locali.esito = "ERRORE: regione \"$regione\" sconosciuta, scegli di nuovo la città nell'app"
             } else {
-                elenco(Stato.locali, disegno, "ANSA ${feed.second}") {
+                elenco(Stato.locali, Stato.localiScelta, "Notizie locali", disegno, "ANSA ${feed.second}") {
                     Dati.notizie(ctx, feed.first, listOf(citta, provincia).filter { it.isNotEmpty() }.distinct())
                 }
             }
         }
     }
 
-    private inline fun elenco(e: Elenco, disegno: Disegno, fonte: String, scarica: () -> List<Notizia>) {
+    /**
+     * e: l'elenco per i plugin fino alla v12 (lista dell'iDrive con miniature); scelta: lo stesso "in primo piano" per
+     * i plugin v13 (riga = notizia, mini = riga dell'elenco disegnata, anteprima = pagina con la notizia scelta grande)
+     */
+    private inline fun elenco(e: Elenco, scelta: Elenco, titolo: String, disegno: Disegno, fonte: String, scarica: () -> List<Notizia>) {
         try {
             val lista = scarica()
             if (lista.isEmpty()) throw IllegalStateException("nessuna notizia nel feed")
             val pronte = lista.map { n -> NotiziaPronta(n.titolo, n.ora, disegno.paginaNotizia(n, fonte), disegno.miniatura(n), disegno.anteprima(n, fonte)) }
+            val otto = lista.take(8)
+            val scelte = otto.indices.map { i ->
+                NotiziaPronta(otto[i].titolo, otto[i].ora, pronte[i].pagina, disegno.rigaNotizia(otto, titolo, fonte, i),
+                    disegno.primoPiano(otto, titolo, fonte, i))
+            }
             val conFoto = lista.count { it.foto != null }
             lista.forEach { it.foto?.recycle() }
+            scelta.metti(scelte)
+            scelta.ultimo = System.currentTimeMillis()
             e.metti(pronte)
             e.ultimo = System.currentTimeMillis()
             e.esito = "OK alle ${ora()} - ${pronte.size} notizie, $conFoto con foto"

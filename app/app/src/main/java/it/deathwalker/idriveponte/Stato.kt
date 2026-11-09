@@ -59,6 +59,15 @@ object Stato {
     /** Meteo coi giorni selezionabili (plugin Meteo v12): una riga per giorno, oggi + i 5 seguenti */
     val meteoGiorni = Elenco("Meteo")
 
+    /**
+     * plugin Notizie, Notizie locali e Carburanti v13: le stesse notizie e distributori da scegliere con la manopola.
+     * Riga = pagina che si apre (notizia o scheda del distributore), mini = pezzo di pagina sotto il pulsante,
+     * anteprima = pagina con la riga scelta evidenziata (notizie: in primo piano a sinistra)
+     */
+    val notizieScelta = Elenco("Notizie")
+    val localiScelta = Elenco("Notizie locali")
+    val carburantiScelta = Elenco("Carburanti")
+
     /** quando l'app ha ripreso a raccogliere i dati dell'auto (secondi, DatiAuto.azzera): se cambia, il plugin
      *  capisce che il telefono e' ripartito da zero e rimanda tutti gli ultimi valori, anche quelli fermi */
     @Volatile var avvio = System.currentTimeMillis() / 1000

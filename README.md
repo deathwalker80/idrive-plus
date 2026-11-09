@@ -31,8 +31,8 @@ dell'auto (oppure si sceglie nelle impostazioni) e cambia il colore dell'app e i
 ## Funzioni
 - **Meteo** (open-meteo.com; se non risponde, MET Norway) con le **allerte della Protezione Civile** per il comune in cui ti trovi. Si aggiorna ogni ora e subito quando passi in un altro comune.
   Nell'iDrive i sei giorni (oggi e i 5 seguenti) si scelgono con la manopola e la pagina evidenzia quello scelto; premendo si apre il giorno con massima, minima e percepita, pioggia (probabilità e mm), vento e raffiche, umidità, indice UV, alba e tramonto, e il giorno ora per ora (oggi le prossime 8 ore, gli altri giorni ogni 3 ore).
-- **Notizie** nazionali e **notizie locali** della città scelta (feed RSS ANSA), con miniature.
-- **Carburanti** vicini con prezzi ufficiali MIMIT (Osservaprezzi) e logo del marchio.
+- **Notizie** nazionali e **notizie locali** della città scelta (feed RSS ANSA). Nell'iDrive sono "in primo piano": a destra le otto notizie, girando la manopola a sinistra compare quella scelta in grande (foto, ora, titolo, inizio del testo); premendo si apre.
+- **Carburanti** vicini con prezzi ufficiali MIMIT (Osservaprezzi) e logo del marchio. Il distributore si sceglie con la manopola; premendo si apre la sua scheda con indirizzo, distanza, differenza dalla media dei vicini e tutti i prezzi.
 - **Traffico** vicino (Autostrade per l'Italia).
 - **Stato vettura** nell'iDrive: il Riepilogo (autonomia, litri nel serbatoio, chilometri, consumo medio, il viaggio in corso, temperature) e la pagina **Porte, finestrini e tetto** con la foto dell'auto e uno stato per ogni porta, finestrino, tetto, portellone e cofano. La foto e i suoi punti si scelgono nell'app.
 - **Dove ho parcheggiato**: quando il telefono si scollega dal Bluetooth dell'auto salva la posizione.
@@ -92,7 +92,7 @@ L'APK e lo zip della chiavetta sono nelle **Release**. Sul telefono va installat
 se c'è ancora una delle vecchie app (MINI Plus, BMW Plus o Supra Plus) va disinstallata, perché
 due app insieme si contenderebbero il collegamento con l'iDrive.
 
-Istruzioni passo passo in [`chiavetta/README-v27.txt`](chiavetta/README-v27.txt); in breve, sulla shell della testata:
+Istruzioni passo passo in [`chiavetta/README-v28.txt`](chiavetta/README-v28.txt); in breve, sulla shell della testata:
 ```
 mount -o remount rw /net/hu-omap/fs/sda0
 on -f /net/hu-omap/ /bin/sh
