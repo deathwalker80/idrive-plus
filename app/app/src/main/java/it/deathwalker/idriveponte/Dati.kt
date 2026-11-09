@@ -360,9 +360,8 @@ object Dati {
             val (vicine, altre) = tutte.partition { n -> val t = normalizza(n.titolo + " " + n.testo); chiavi.any { t.contains(it) } }
             (vicine + altre).take(MAX_NOTIZIE)
         }
-        // foto e testo piu' lungo dalla pagina dell'articolo (anteprima per le condivisioni)
-        for (n in lista) {
-            if (n.link.isEmpty()) continue
+        // foto e testo piu' lungo dalla pagina dell'articolo (anteprima per le condivisioni), 4 articoli alla volta
+        Rete.ognuno(lista.filter { it.link.isNotEmpty() }) { n ->
             try {
                 val html = Rete.scaricaTesto(ctx, n.link, 8000)
                     .let { if (it.length > 400000) it.substring(0, 400000) else it }

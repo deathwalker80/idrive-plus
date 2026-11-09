@@ -99,7 +99,31 @@ object Viaggio {
         val adesso = System.currentTimeMillis()
         if (!forza && adesso - (scritto[d.auto] ?: 0L) < SCRITTURA_MS) return
         scritto[d.auto] = adesso
-        prefs(ctx).edit().putString(k(d.auto), d.json()).apply()
+        val e = prefs(ctx).edit().putString(k(d.auto), d.json())
+        // gli ultimi valori letti dall'iDrive restano anche quando parte un viaggio nuovo (che riparte da zero)
+        if (d.grezzi.isNotEmpty()) e.putString(kUltimi(d.auto), JSONObject().apply {
+            put("quando", d.aggiornato); put("grezzi", JSONObject(d.grezzi as Map<*, *>))
+        }.toString())
+        e.apply()
+    }
+
+    private fun kUltimi(bt: String) = "ultimi:$bt"
+
+    /**
+     * gli ultimi valori dell'auto con l'ora in cui sono arrivati: quelli del viaggio in corso o, finche' l'iDrive
+     * non ne manda di nuovi, quelli dell'ultima volta. null se l'auto non ne ha mai mandati.
+     */
+    @Synchronized
+    fun ultimiDati(ctx: Context, auto: String?): Pair<Map<String, String>, Long>? {
+        val bt = auto?.trim().orEmpty()
+        di(ctx, bt)?.let { d -> if (d.grezzi.isNotEmpty()) return d.grezzi to d.aggiornato }
+        return try {
+            val o = JSONObject(prefs(ctx).getString(kUltimi(bt), null) ?: return null)
+            val g = o.getJSONObject("grezzi")
+            g.keys().asSequence().associateWith { g.optString(it) }.takeIf { it.isNotEmpty() }?.let { it to o.optLong("quando") }
+        } catch (e: Exception) {
+            null
+        }
     }
 
     /** il telefono si e' collegato all'auto: nuovo viaggio, oppure lo stesso se ci si ricollega entro pochi minuti */

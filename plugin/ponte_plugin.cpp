@@ -14,6 +14,8 @@
 //     (20 s -> 5 min); partenze sfalsate; le immagini si scaricano una alla volta fra tutti i plugin
 //     (/dev/shmem/idriveponte.turno); una risposta piu' corta del suo Content-Length si scarta; elenco con pagine
 //     mancanti riprovato a 10, 20, 40, 80 s; "in attesa" solo nella prima pagina dell'elenco.
+// v11: senza telefono si riprova a 20 s e poi ogni 30 (la v10 arrivava a 5 minuti: salendo in auto il telefono
+//     poteva restare non visto a lungo); turni delle immagini piu' svelti (attesa 100 ms invece di 200 + 300).
 // Lo stesso sorgente produce sei plugin:
 //   pagina singola : -DPLUGIN_METEO (libMeteo.so), -DPLUGIN_CARBURANTI (libCarburanti.so), -DPLUGIN_TRAFFICO (libTraffico.so)
 //   elenco         : -DPLUGIN_NOTIZIE (libNotizie.so), -DPLUGIN_LOCALI (libLocali.so, percorsi /locali/...),
@@ -110,7 +112,7 @@
 #ifndef RITARDO_AVVIO
 #define RITARDO_AVVIO 0                    // secondi in piu' prima del primo giro di rete (partenze sfalsate)
 #endif
-#define VERSIONE_PLUGIN "v10"
+#define VERSIONE_PLUGIN "v11"
 
 typedef unsigned int  u32;
 typedef unsigned short u16;
@@ -745,7 +747,7 @@ bool g_hoTurno = false;
 
 void prendiTurno() {
     u32 vuoto = 0;
-    for (u32 prova = 0; prova < 100 && !g_finito; ++prova) {        // al massimo ~20 s, poi si scarica lo stesso
+    for (u32 prova = 0; prova < 200 && !g_finito; ++prova) {        // al massimo ~20 s, poi si scarica lo stesso
         int fd = open(kTurno, O_WRONLY_Q | O_CREAT_Q | O_EXCL_Q, 0666);
         if (fd >= 0) {
             close(fd);
@@ -759,9 +761,9 @@ void prendiTurno() {
         u32 t = 0;
         leggiNumeri(kTurno, &t, 1);
         u32 ora = (u32)time(0);
-        if (!t) { if (++vuoto > 15) unlink(kTurno); }               // ancora vuoto dopo 3 s
+        if (!t) { if (++vuoto > 30) unlink(kTurno); }               // ancora vuoto dopo 3 s
         else if (ora + 5 < t || ora - t > 25) unlink(kTurno);
-        usleep(200000);
+        usleep(100000);
     }
 }
 
@@ -769,7 +771,7 @@ void lasciaTurno() {
     if (!g_hoTurno) return;
     unlink(kTurno);
     g_hoTurno = false;
-    usleep(300000);         // gli altri plugin (che riprovano ogni 200 ms) fanno in tempo a prenderlo
+    usleep(150000);         // gli altri plugin (che riprovano ogni 100 ms) fanno in tempo a prenderlo
 }
 
 void* scaricaImmagine(u32 ip, const char* percorso, int* codice) {
@@ -1011,9 +1013,9 @@ void* threadRete(void*) {
             u32 prima = (u32)time(0);
             g_telefono = trovaTelefono();
             if (!g_telefono) {
-                // v10: senza telefono (o senza app) si riprova a 20, 40, 80, 160 s, poi ogni 5 minuti
-                u32 attesa = 20u << (mancati < 4 ? mancati : 4);
-                if (attesa > 300) attesa = 300;
+                // v11: senza telefono (o senza app) si riprova a 20 s, poi ogni 30 (ARP e scansione restano
+                // limitate per tutti i plugin insieme: kOgniArp, kOgniScansione)
+                u32 attesa = mancati ? 30 : 20;
                 if (mancati < 8) ++mancati;
                 attendiTelefono(attesa, prima);
                 continue;

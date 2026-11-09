@@ -149,16 +149,21 @@ class PonteService : Service() {
         val firma = "${DatiAuto.ultimoDato}/${adesso / 60000}/$bt/${Parco.mostra(this, bt)}/${Foto.firma(this, bt)}/" +
             PartiVisibili.firma(this, bt)
         if (!tutto && (firma == firmaAuto || adesso - autoDisegnata < 30_000)) return
-        val grezzi = DatiAuto.grezzi
+        val vivi = DatiAuto.grezzi
         // quali parti ha quest'auto (il tetto non c'e' su tutte) e quali l'utente vuole vedere
-        PartiVisibili.registra(this, bt, grezzi)
+        PartiVisibili.registra(this, bt, vivi)
         val mostra = PartiVisibili.mostrate(this, bt)
+        // finche' l'iDrive non manda i valori nuovi: gli ultimi letti (con la loro ora), porte escluse (l'ultimo
+        // stato arriva quando scendi, con la tua porta aperta)
+        val ultimi = if (vivi.isEmpty()) Viaggio.ultimiDati(this, bt) else null
+        val grezzi = if (ultimi != null) ultimi.first.filterKeys { it != "sensors.doors" } else vivi
+        val quando = if (ultimi != null) ultimi.second else DatiAuto.ultimoDato
         val ist = if (grezzi.isEmpty()) null else DatiAuto.istantanea(grezzi, mostra)
         val v = Viaggio.di(this, bt)
         val rifornimenti = Rifornimenti.elenco(this, bt)
         // capienza del serbatoio: il livello piu' alto visto dopo un rifornimento (per l'arco dell'anello)
         val riepilogo = disegno.paginaAuto(Parco.mostra(this, bt).ifEmpty { Marca.AUTO }, ist, v, rifornimenti.firstOrNull(),
-            DatiAuto.ultimoDato, rifornimenti.maxOfOrNull { it.livello })
+            quando, rifornimenti.maxOfOrNull { it.livello })
         Stato.auto.metti(riepilogo)
 
         // Stato vettura (plugin Auto v9): Riepilogo + Porte, finestrini e tetto. La pagina delle porte si ridisegna
@@ -171,7 +176,7 @@ class PonteService : Service() {
             val ritaglio = Foto.contornoAuto(this, bt)
             firmaPorte = firmaP
             porteDisegnate = adesso
-            NotiziaPronta("Porte, finestrini e tetto", "", disegno.paginaPorte(foto, ritaglio, Foto.punti(this, bt), parti, DatiAuto.ultimoDato, mostra),
+            NotiziaPronta("Porte, finestrini e tetto", "", disegno.paginaPorte(foto, ritaglio, Foto.punti(this, bt), parti, quando, mostra),
                 disegno.miniaturaPorte(foto, ritaglio, parti), ByteArray(0), max(adesso / 1000, (vecchie.getOrNull(1)?.versione ?: 0) + 1))
         }
         val versioneR = max(adesso / 1000, (vecchie.getOrNull(0)?.versione ?: 0) + 1)
@@ -180,6 +185,7 @@ class PonteService : Service() {
         autoDisegnata = adesso
         Stato.auto.ultimo = adesso
         Stato.auto.esito = if (grezzi.isEmpty()) "in attesa dei dati dell'auto dal plugin Meteo dell'iDrive"
+        else if (ultimi != null) "in attesa dei dati dell'auto: per ora gli ultimi letti"
         else "OK alle ${oraAdesso()} - ${grezzi.size} valori dall'iDrive"
         Stato.vettura.ultimo = adesso
         Stato.vettura.esito = if (grezzi.isEmpty()) Stato.auto.esito else "OK alle ${oraAdesso()} - ${disegno.riassuntoAperture(parti)}"

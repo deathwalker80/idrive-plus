@@ -78,7 +78,7 @@ cd app
 
 ## Installing
 The APKs and the USB-stick zip are in the **Releases**. Step-by-step instructions in
-[`chiavetta/README-v25.txt`](chiavetta/README-v25.txt); in short, on the head unit shell:
+[`chiavetta/README-v26.txt`](chiavetta/README-v26.txt); in short, on the head unit shell:
 ```
 mount -o remount rw /net/hu-omap/fs/sda0
 on -f /net/hu-omap/ /bin/sh

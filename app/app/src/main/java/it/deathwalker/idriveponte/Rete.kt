@@ -62,6 +62,21 @@ object Rete {
     fun scaricaTesto(ctx: Context, indirizzo: String, timeoutMs: Int = 10000): String =
         String(scarica(ctx, indirizzo, timeoutMs), Charsets.UTF_8)
 
+    /**
+     * il corpo per ogni elemento, fino a "fili" alla volta (articoli delle notizie, schede dei distributori):
+     * una pagina lenta non ferma le altre. Gli errori del singolo elemento restano suoi.
+     */
+    fun <T> ognuno(lista: List<T>, fili: Int = 4, corpo: (T) -> Unit) {
+        if (lista.size <= 1) { lista.forEach { try { corpo(it) } catch (e: Exception) { } }; return }
+        val pool = java.util.concurrent.Executors.newFixedThreadPool(minOf(fili, lista.size))
+        try {
+            lista.map { x -> pool.submit { try { corpo(x) } catch (e: Exception) { } } }
+                .forEach { try { it.get() } catch (e: Exception) { } }
+        } finally {
+            pool.shutdown()
+        }
+    }
+
     /** IP del telefono sul Wi-Fi della macchina (172.16.224.x Android Auto wireless, 172.16.222.x Wi-Fi Direct). */
     fun ipWifiAuto(): String? {
         return try {
