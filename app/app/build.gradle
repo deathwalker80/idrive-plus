@@ -11,8 +11,8 @@ android {
         applicationId "it.deathwalker.idriveponte"
         minSdk 26
         targetSdk 35
-        versionCode 393
-        versionName "2.31"
+        versionCode 394
+        versionName "2.32"
     }
 
     buildFeatures {

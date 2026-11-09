@@ -93,6 +93,27 @@ class ProvaPagineTest {
         )
         File(uscita, "carburanti.png").writeBytes(d.paginaCarburanti(carb, "Benzina", "La Spezia", 5))
         File(uscita, "carburanti_vuoto.png").writeBytes(d.paginaCarburanti(emptyList(), "GPL", "La Spezia", 3))
+
+        // v13: notizie in primo piano e carburanti da scegliere con la manopola, coi pulsanti dei plugin esattamente
+        // sulle righe e sulle schede disegnate
+        File(uscita, "pp_scelta2.png").writeBytes(d.primoPiano(lista, "Notizie", "ANSA", 2))
+        File(uscita, "pp_riga2.png").writeBytes(d.rigaNotizia(lista, "Notizie", "ANSA", 2))
+        carb[1].prezzi = listOf(Prezzo("Benzina", true, 1.979), Prezzo("Benzina", false, 2.119), Prezzo("Gasolio", true, 1.899),
+            Prezzo("Gasolio", false, 2.039), Prezzo("Gpl", false, 0.719))
+        File(uscita, "carb_scelta1.png").writeBytes(d.paginaCarburanti(carb, "Benzina", "La Spezia", 5, 1))
+        File(uscita, "carb_scheda1.png").writeBytes(d.schedaDistributore(carb, "Benzina", "La Spezia", 5, 1))
+        File(uscita, "carb_distributore0.png").writeBytes(d.paginaDistributore(carb[1], "Benzina", carb.map { it.prezzo }.average()))
+        File(uscita, "carb_distributore_solo.png").writeBytes(d.paginaDistributore(carb[0], "Benzina", null))
+        for ((nome, righe, rett) in listOf(Triple("Notizie", 8, d::rettangoloRigaNotizia), Triple("Locali", 8, d::rettangoloRigaNotizia),
+                Triple("Carburanti", 6, d::rettangoloDistributore))) {
+            val testo = File("../../chiavetta/$nome/$nome.xml").readText()
+            for (i in 0 until righe) {
+                val r = rett(i)
+                val blocco = Regex("id=\"${200 + i}\"[\\s\\S]*?</button>").find(testo)!!.value
+                fun prop(id: Int) = Regex("property id=\"$id\" value=\"(\\d+)\"").find(blocco)!!.groupValues[1].toInt()
+                assertEquals("$nome riga $i", r.toList(), listOf(prop(20), prop(21), prop(9), prop(10)))
+            }
+        }
         val tr = listOf(
             EventoTraffico("A12 GENOVA-ROMA", "Coda", "Coda di 2 km tra Chiavari e Rapallo per lavori", 57.0, 2.0, "14:21", 2),
             EventoTraffico("A11 FIRENZE-PISA NORD", "Lavori", "Restringimento di carreggiata tra Lucca e Pisa nord per lavori", 70.0, 0.0, "13:10", 1),

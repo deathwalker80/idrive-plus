@@ -20,6 +20,8 @@
 //     sopra la pagina di sfondo (raImageModel 71), che il telefono ridisegna col giorno scelto evidenziato; girando
 //     la manopola arriva la selectAction (raAction 20..25), premendo si apre la pagina del giorno coi dettagli.
 //     Tiene anche i dati dell'auto. Righe e pagine da /meteogiorni/..., epoch "meteogiorni=".
+// v13: allo stesso modo Notizie e Notizie locali (in primo piano: righe disegnate a destra, la notizia scelta grande a
+//     sinistra; /notiziesel/, /localisel/) e Carburanti (sei schede, premendo la scheda del distributore; /carburantisel/).
 // Lo stesso sorgente produce sei plugin:
 //   pagina singola : -DPLUGIN_METEO (libMeteo.so), -DPLUGIN_CARBURANTI (libCarburanti.so), -DPLUGIN_TRAFFICO (libTraffico.so)
 //   elenco         : -DPLUGIN_NOTIZIE (libNotizie.so), -DPLUGIN_LOCALI (libLocali.so, percorsi /locali/...),
@@ -67,11 +69,14 @@
 #define MAX_RIGHE 6
 #define SCHEDA_LATERALE 1
 #elif defined(PLUGIN_CARBURANTI)
-#define PLUGIN_PAGINA 1
+// v13: sei distributori da scegliere con la manopola, premendo la scheda con tutti i prezzi
+#define PLUGIN_ELENCO 1
 #define NOME_PLUGIN "Carburanti"
 #define RITARDO_AVVIO 6
-#define PAGINA_PNG "/carburanti.png"
-#define CHIAVE_EPOCH "carburanti="
+#define PREFISSO "/carburantisel"
+#define CHIAVE_EPOCH "carburantisel="
+#define MAX_RIGHE 6
+#define SCHEDA_LATERALE 1
 #elif defined(PLUGIN_TRAFFICO)
 #define PLUGIN_PAGINA 1
 #define NOME_PLUGIN "Traffico"
@@ -87,17 +92,20 @@
 #define MAX_RIGHE 2
 #define GIRO_SECONDI 10
 #elif defined(PLUGIN_NOTIZIE)
+// v13: in primo piano (otto righe disegnate a destra, la notizia scelta grande a sinistra)
 #define PLUGIN_ELENCO 1
 #define NOME_PLUGIN "Notizie"
 #define RITARDO_AVVIO 12
-#define PREFISSO ""
-#define CHIAVE_EPOCH "notizie="
+#define PREFISSO "/notiziesel"
+#define CHIAVE_EPOCH "notiziesel="
+#define SCHEDA_LATERALE 1
 #elif defined(PLUGIN_LOCALI)
 #define PLUGIN_ELENCO 1
 #define NOME_PLUGIN "Locali"
 #define RITARDO_AVVIO 15
-#define PREFISSO "/locali"
-#define CHIAVE_EPOCH "locali="
+#define PREFISSO "/localisel"
+#define CHIAVE_EPOCH "localisel="
+#define SCHEDA_LATERALE 1
 #else
 #error "compilare con -DPLUGIN_METEO / _CARBURANTI / _TRAFFICO (pagina singola) oppure -DPLUGIN_NOTIZIE / _LOCALI / _AUTO (elenco)"
 #endif
@@ -107,7 +115,7 @@
 #ifndef RITARDO_AVVIO
 #define RITARDO_AVVIO 0                    // secondi in piu' prima del primo giro di rete (partenze sfalsate)
 #endif
-#define VERSIONE_PLUGIN "v12"
+#define VERSIONE_PLUGIN "v13"
 
 typedef unsigned int  u32;
 typedef unsigned short u16;
@@ -1087,7 +1095,7 @@ void schermataAttesa() {
     deposita(0, testoDaFile("attesa.txt", "In attesa del telefono"));
     for (u32 i = 1; i < kMaxNotizie; ++i) deposita(i, nuovoBlocco("", 0, true));
     deposita(kMaxNotizie, bloccoDaFile("attesa.png"));       // v10: solo la prima pagina (le altre righe sono vuote)
-#if defined(PLUGIN_METEO)
+#if SCHEDA_LATERALE
     deposita(kPrimaScheda, bloccoDaFile("attesa.png"));       // sfondo "in attesa del telefono"
 #endif
 #endif
@@ -1097,8 +1105,8 @@ void schermataAttesa() {
 #if defined(PLUGIN_ELENCO)
 bool rigaScelta(void* oggetto, const bmw::Parcel&) {
     u32 i = (u32)(unsigned long)oggetto;          // l'indice della riga viaggia al posto dell'oggetto
-#if defined(PLUGIN_METEO)
-    scriviLog("selezione: giorno %u", i);          // il giorno scelto con la manopola
+#if SCHEDA_LATERALE
+    scriviLog("selezione: %u", i);                 // la riga scelta con la manopola
 #endif
     if (i < kMaxNotizie && i != g_fuoco) { g_fuoco = i; mostraScheda(i); }
     return true;

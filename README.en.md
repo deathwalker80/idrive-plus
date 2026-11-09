@@ -30,8 +30,8 @@ One codebase for all three: only the name, icon, colour and the car's name in th
 ## Features
 - **Weather** (open-meteo.com; MET Norway when it does not answer) with the **Italian Civil Protection warnings** for the municipality you are in. Updated every hour and at once when you enter another municipality.
   In iDrive the six days (today and the next 5) are chosen with the controller and the page highlights the chosen one; pressing opens the day with maximum, minimum and feels-like, rain (probability and mm), wind and gusts, humidity, UV index, sunrise and sunset, and the day hour by hour (today the next 8 hours, the other days every 3 hours).
-- **National news** and **local news** for a chosen city (ANSA RSS feeds), with thumbnails.
-- **Fuel stations** nearby with official MIMIT (Osservaprezzi) prices and the brand logo.
+- **National news** and **local news** for a chosen city (ANSA RSS feeds). In iDrive they are "in primo piano": the eight news on the right, turning the controller shows the chosen one large on the left (photo, time, title, start of the text); pressing opens it.
+- **Fuel stations** nearby with official MIMIT (Osservaprezzi) prices and the brand logo. The station is chosen with the controller; pressing opens its card with address, distance, difference from the nearby average and all its prices.
 - **Traffic** nearby (Autostrade per l'Italia).
 - **Vehicle status** in iDrive: the summary (range, litres in the tank, odometer, average consumption, the current trip, temperatures) and the **Doors, windows and roof** page with a photo of the car and one state for each door, window, roof, tailgate and bonnet. The photo and its anchor points are set in the app.
 - **Where I parked**: when the phone disconnects from the car's Bluetooth, the position is saved.
@@ -80,7 +80,7 @@ cd app
 
 ## Installing
 The APKs and the USB-stick zip are in the **Releases**. Step-by-step instructions in
-[`chiavetta/README-v27.txt`](chiavetta/README-v27.txt); in short, on the head unit shell:
+[`chiavetta/README-v28.txt`](chiavetta/README-v28.txt); in short, on the head unit shell:
 ```
 mount -o remount rw /net/hu-omap/fs/sda0
 on -f /net/hu-omap/ /bin/sh

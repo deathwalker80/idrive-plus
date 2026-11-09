@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <pluginApps>
   <pluginApp applicationType="Custom" applicationWeight="200" entryButtonFocusID="32764" insertStateID="50" text="Notizie">
-    <comment>Notizie v6 compilato - lista a tutta larghezza con miniature, aggiornati dall'app del telefono (NBT Plus)</comment>
+    <comment>Notizie v13 (pulsanti: x,y,w,h come Disegno.rettangoloRigaNotizia) - in primo piano: a destra otto righe disegnate dal telefono, girando la manopola a sinistra compare la notizia scelta in grande, premendo si apre</comment>
     <entryButton action="5" id="1" model="3" imageModel="4">
       <properties/>
     </entryButton>
@@ -15,6 +15,14 @@
       <hmiAction id="11" target="115"/>
       <hmiAction id="12" target="116"/>
       <hmiAction id="13" target="117"/>
+      <raAction id="20"/>
+      <raAction id="21"/>
+      <raAction id="22"/>
+      <raAction id="23"/>
+      <raAction id="24"/>
+      <raAction id="25"/>
+      <raAction id="26"/>
+      <raAction id="27"/>
     </actions>
     <models>
       <textIdModel id="3" textId="1">
@@ -45,6 +53,7 @@
       <raImageModel id="66"/>
       <raImageModel id="67"/>
       <raImageModel id="68"/>
+      <raImageModel id="71"/>
     </models>
     <events/>
     <hmiStates>
@@ -53,14 +62,80 @@
           <property id="24" value="3"/>
         </properties>
         <components>
-          <button action="6" id="200" model="41" imageModel="61" text="Notizia 1"/>
-          <button action="7" id="201" model="42" imageModel="62" text="Notizia 2"/>
-          <button action="8" id="202" model="43" imageModel="63" text="Notizia 3"/>
-          <button action="9" id="203" model="44" imageModel="64" text="Notizia 4"/>
-          <button action="10" id="204" model="45" imageModel="65" text="Notizia 5"/>
-          <button action="11" id="205" model="46" imageModel="66" text="Notizia 6"/>
-          <button action="12" id="206" model="47" imageModel="67" text="Notizia 7"/>
-          <button action="13" id="207" model="48" imageModel="68" text="Notizia 8"/>
+          <image id="300" model="71">
+            <properties>
+              <property id="2" value="false"/>
+              <property id="3" value="true"/>
+              <property id="9" value="1280"/>
+              <property id="10" value="480"/>
+              <property id="20" value="0"/>
+              <property id="21" value="0"/>
+            </properties>
+          </image>
+          <button action="6" selectAction="20" id="200" model="41" imageModel="61" text="Notizia 1">
+            <properties>
+              <property id="9" value="559"/>
+              <property id="10" value="43"/>
+              <property id="20" value="580"/>
+              <property id="21" value="68"/>
+            </properties>
+          </button>
+          <button action="7" selectAction="21" id="201" model="42" imageModel="62" text="Notizia 2">
+            <properties>
+              <property id="9" value="559"/>
+              <property id="10" value="43"/>
+              <property id="20" value="580"/>
+              <property id="21" value="111"/>
+            </properties>
+          </button>
+          <button action="8" selectAction="22" id="202" model="43" imageModel="63" text="Notizia 3">
+            <properties>
+              <property id="9" value="559"/>
+              <property id="10" value="43"/>
+              <property id="20" value="580"/>
+              <property id="21" value="155"/>
+            </properties>
+          </button>
+          <button action="9" selectAction="23" id="203" model="44" imageModel="64" text="Notizia 4">
+            <properties>
+              <property id="9" value="559"/>
+              <property id="10" value="43"/>
+              <property id="20" value="580"/>
+              <property id="21" value="199"/>
+            </properties>
+          </button>
+          <button action="10" selectAction="24" id="204" model="45" imageModel="65" text="Notizia 5">
+            <properties>
+              <property id="9" value="559"/>
+              <property id="10" value="43"/>
+              <property id="20" value="580"/>
+              <property id="21" value="243"/>
+            </properties>
+          </button>
+          <button action="11" selectAction="25" id="205" model="46" imageModel="66" text="Notizia 6">
+            <properties>
+              <property id="9" value="559"/>
+              <property id="10" value="43"/>
+              <property id="20" value="580"/>
+              <property id="21" value="287"/>
+            </properties>
+          </button>
+          <button action="12" selectAction="26" id="206" model="47" imageModel="67" text="Notizia 7">
+            <properties>
+              <property id="9" value="559"/>
+              <property id="10" value="43"/>
+              <property id="20" value="580"/>
+              <property id="21" value="330"/>
+            </properties>
+          </button>
+          <button action="13" selectAction="27" id="207" model="48" imageModel="68" text="Notizia 8">
+            <properties>
+              <property id="9" value="559"/>
+              <property id="10" value="43"/>
+              <property id="20" value="580"/>
+              <property id="21" value="374"/>
+            </properties>
+          </button>
         </components>
       </hmiState>
       <hmiState id="110" parentId="100" text="Notizie" textModel="3">

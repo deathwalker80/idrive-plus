@@ -114,7 +114,8 @@ class Server(private val quandoChiede: () -> Unit) {
                 out, 200, "text/plain",
                 ("IDRIVEPONTE ${Stato.VERSIONE} meteo=${Stato.meteo.epoch} notizie=${Stato.notizie.epoch} n=${Stato.notizie.notizie.size} " +
                     "locali=${Stato.locali.epoch} carburanti=${Stato.carburanti.epoch} traffico=${Stato.traffico.epoch} " +
-                    "auto=${Stato.auto.epoch} vettura=${Stato.vettura.epoch} avvio=${Stato.avvio} meteogiorni=${Stato.meteoGiorni.epoch}\n").toByteArray()
+                    "auto=${Stato.auto.epoch} vettura=${Stato.vettura.epoch} avvio=${Stato.avvio} meteogiorni=${Stato.meteoGiorni.epoch} " +
+                    "notiziesel=${Stato.notizieScelta.epoch} localisel=${Stato.localiScelta.epoch} carburantisel=${Stato.carburantiScelta.epoch}\n").toByteArray()
             )
             pagina != null -> {
                 val png = pagina.png
@@ -130,6 +131,9 @@ class Server(private val quandoChiede: () -> Unit) {
             percorso.startsWith("/locali/") -> elenco(out, Stato.locali, percorso.removePrefix("/locali"))
             percorso.startsWith("/vettura/") -> elenco(out, Stato.vettura, percorso.removePrefix("/vettura"))
             percorso.startsWith("/meteogiorni/") -> elenco(out, Stato.meteoGiorni, percorso.removePrefix("/meteogiorni"))
+            percorso.startsWith("/notiziesel/") -> elenco(out, Stato.notizieScelta, percorso.removePrefix("/notiziesel"))
+            percorso.startsWith("/localisel/") -> elenco(out, Stato.localiScelta, percorso.removePrefix("/localisel"))
+            percorso.startsWith("/carburantisel/") -> elenco(out, Stato.carburantiScelta, percorso.removePrefix("/carburantisel"))
             else -> elenco(out, Stato.notizie, percorso)
         }
     }

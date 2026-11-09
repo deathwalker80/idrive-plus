@@ -328,13 +328,120 @@ class Disegno(private val ctx: Context) {
         return png(b)
     }
 
+    // ----------------------------------------------------------------- pagine con le schede da scegliere ----
+    // (plugin Notizie, Notizie locali e Carburanti v13, come il Meteo v12: pulsanti con posizione e misura sopra uno
+    // sfondo che il telefono ridisegna con la scheda scelta; premendo si apre la pagina della scheda)
+
+    /** un riquadro della tela 1200x440 in coordinate dello schermo 1280x480 (x, y, larghezza, altezza) */
+    private fun suSchermo(x: Float, y: Float, w: Float, h: Float): IntArray {
+        val scala = min((W - PL - PR) / TELA_W, (H - PT - PB) / TELA_H)
+        return intArrayOf((PL + x * scala).toInt(), (PT + y * scala).toInt(), (w * scala).toInt(), (h * scala).toInt())
+    }
+
+    /** il pezzo di pagina sotto un pulsante (immagine del pulsante) */
+    private fun ritaglio(pagina: Bitmap, r: IntArray): ByteArray {
+        val pezzo = Bitmap.createBitmap(pagina, r[0], r[1], r[2], r[3])
+        pagina.recycle()
+        return png(pezzo)
+    }
+
+    /** la scheda scelta con la manopola: alone e bordo nel colore della marca */
+    private fun evidenziaScheda(c: Canvas, r: RectF, raggio: Float) {
+        c.drawRoundRect(r, raggio, raggio, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0x38FFFFFF; setShadowLayer(14f, 0f, 0f, Marca.ACCENTO and 0x00FFFFFF or 0xAA000000.toInt())
+        })
+        c.drawRoundRect(RectF(r.left + 1.5f, r.top + 1.5f, r.right - 1.5f, r.bottom - 1.5f), raggio, raggio,
+            Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 3f; color = Marca.ACCENTO })
+    }
+
+    // ---- notizie "in primo piano": a sinistra la notizia scelta in grande, a destra l'elenco
+    private val ppX = 606f
+    private val ppY = 66f
+    private val ppRiga = 46.5f
+
+    /** dove cade sullo schermo la riga i dell'elenco: li' il plugin mette il pulsante (Notizie.xml, Locali.xml) */
+    fun rettangoloRigaNotizia(i: Int): IntArray = suSchermo(ppX, ppY + i * ppRiga, TELA_W - ppX, ppRiga)
+
+    /** la pagina con la notizia "scelta" in grande e la sua riga evidenziata */
+    fun primoPiano(lista: List<Notizia>, titolo: String, fonte: String, scelta: Int): ByteArray =
+        png(bitmapPrimoPiano(lista, titolo, fonte, scelta))
+
+    /** la riga i senza evidenza (immagine del pulsante) */
+    fun rigaNotizia(lista: List<Notizia>, titolo: String, fonte: String, i: Int): ByteArray =
+        ritaglio(bitmapPrimoPiano(lista, titolo, fonte, -1), rettangoloRigaNotizia(i))
+
+    private fun bitmapPrimoPiano(lista: List<Notizia>, titolo: String, fonte: String, scelta: Int): Bitmap {
+        val (b, c) = nuovaTela()
+        intestazione(c, titolo, "$fonte · ${lista.size} notizie")
+
+        // a sinistra: foto, ora, titolo e inizio del testo della notizia scelta
+        val n = lista.getOrNull(scelta)
+        val grande = RectF(0f, 70f, ppX - 18f, TELA_H - 2f)
+        c.drawRoundRect(grande, 18f, 18f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x24FFFFFF; setShadowLayer(6f, 0f, 2f, 0x40000000) })
+        if (n != null) {
+            var y = grande.top + 8f
+            val foto = n.foto
+            if (foto != null) {
+                val r = RectF(grande.left + 8f, y, grande.right - 8f, y + 196f)
+                disegnaCopertina(c, foto, r, 12f)
+                y = r.bottom + 10f
+            } else {
+                y += 6f
+            }
+            val testata = listOf(n.ora, fonte).filter { it.isNotEmpty() }.joinToString(" · ")
+            scrivi(c, testata, grande.left + 20f, y, pennello(18f, true, Marca.ACCENTO))
+            y += 26f
+            val lw = (grande.width() - 40f).toInt()
+            val lt = blocco(n.titolo, pennello(26f, true, BIANCO), lw, 31f, if (foto != null) 2 else 4)
+            c.save(); c.translate(grande.left + 20f, y); lt.draw(c); c.restore()
+            y += lt.height + 8f
+            val righe = ((grande.bottom - 10f - y) / 23f).toInt()
+            if (n.testo.isNotEmpty() && righe > 0) {
+                val ld = blocco(n.testo, pennello(18f, false, TENUE), lw, 23f, righe)
+                c.save(); c.translate(grande.left + 20f, y); ld.draw(c); c.restore()
+            }
+        } else {
+            val l = blocco("Gira la manopola per scegliere una notizia, premi per leggerla.", pennello(22f, false, TENUE),
+                (grande.width() - 40f).toInt(), 28f, 3)
+            c.save(); c.translate(grande.left + 20f, grande.centerY() - l.height / 2f); l.draw(c); c.restore()
+        }
+
+        // a destra: una riga per notizia (miniatura, ora, titolo), la scelta evidenziata
+        lista.take(8).forEachIndexed { i, nn ->
+            val y = ppY + i * ppRiga
+            val riga = RectF(ppX, y + 2f, TELA_W, y + ppRiga - 2f)
+            val sel = i == scelta
+            if (sel) evidenziaScheda(c, riga, 12f)
+            val mr = RectF(ppX + 8f, y + 6f, ppX + 64f, y + ppRiga - 6f)
+            val f = nn.foto
+            if (f != null) disegnaCopertina(c, f, mr, 6f)
+            else c.drawRoundRect(mr, 6f, 6f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x30FFFFFF })
+            val po = pennello(16f, true, if (sel) BIANCO else TENUE)
+            scrivi(c, nn.ora, ppX + 74f, y + 13f, po)
+            val x = ppX + 74f + max(po.measureText("00:00"), po.measureText(nn.ora)) + 12f
+            val pt = pennello(18f, sel, if (sel) BIANCO else TENUE)
+            scrivi(c, ellissi(nn.titolo, pt, TELA_W - x - 12f), x, y + 12f, pt)
+        }
+        return b
+    }
+
     // ------------------------------------------------------------------------------ carburanti ----
-    fun paginaCarburanti(lista: List<Distributore>, carburante: String, luogo: String, raggio: Int): ByteArray {
+    fun paginaCarburanti(lista: List<Distributore>, carburante: String, luogo: String, raggio: Int, scelto: Int = -1): ByteArray =
+        png(bitmapCarburanti(lista, carburante, luogo, raggio, scelto))
+
+    /** dove cade sullo schermo la scheda del distributore i: li' il plugin mette il pulsante (Carburanti.xml) */
+    fun rettangoloDistributore(i: Int): IntArray = suSchermo((i % 3) * (388f + 18f), 74f + (i / 3) * (172f + 18f), 388f, 172f)
+
+    /** la scheda del distributore i senza evidenza (immagine del pulsante) */
+    fun schedaDistributore(lista: List<Distributore>, carburante: String, luogo: String, raggio: Int, i: Int): ByteArray =
+        ritaglio(bitmapCarburanti(lista, carburante, luogo, raggio, -1), rettangoloDistributore(i))
+
+    private fun bitmapCarburanti(lista: List<Distributore>, carburante: String, luogo: String, raggio: Int, scelto: Int): Bitmap {
         val (b, c) = nuovaTela()
         intestazione(c, "$carburante · $luogo", "MIMIT Osservaprezzi · entro $raggio km")
         if (lista.isEmpty()) {
             scrivi(c, "Nessun distributore con prezzo di $carburante entro $raggio km.", 0f, 90f, pennello(25f, false, TENUE))
-            return png(b)
+            return b
         }
         // sei schede in due file da tre: logo, prezzo grande, marchio, indirizzo, distanza; la piu' conveniente in verde
         val minimo = lista.minOf { it.prezzo }
@@ -346,6 +453,7 @@ class Disegno(private val ctx: Context) {
             val y = 74f + (i / 3) * (lh + gap)
             val r = RectF(x, y, x + lw, y + lh)
             val migliore = d.prezzo == minimo
+            if (i == scelto) evidenziaScheda(c, RectF(r.left - 3f, r.top - 3f, r.right + 3f, r.bottom + 3f), 20f)
             val fondo = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = if (migliore) 0x3343A047 else 0x24FFFFFF; setShadowLayer(6f, 0f, 2f, 0x40000000) }
             c.drawRoundRect(r, 18f, 18f, fondo)
             val bordo = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -401,6 +509,70 @@ class Disegno(private val ctx: Context) {
             val pv = pennello(17f, false, TENUE)
             val via = d.indirizzo.ifEmpty { d.nome }
             scrivi(c, ellissi(via + (if (d.aggiornato.isNotEmpty()) " · agg. ${d.aggiornato}" else ""), pv, lw - 36f), x + 18f, y + 140f, pv)
+        }
+        return b
+    }
+
+    /**
+     * la scheda di un distributore, quando lo premi: logo, marchio e indirizzo, distanza, quanto costa rispetto alla
+     * media dei distributori vicini e tutti i prezzi dell'impianto (quello cercato evidenziato)
+     */
+    fun paginaDistributore(d: Distributore, carburante: String, media: Double?): ByteArray {
+        val (b, c) = nuovaTela()
+        val km = String.format(Locale.ITALY, "%.1f km", d.km)
+        intestazione(c, "${d.marchio} · $km", if (d.aggiornato.isNotEmpty()) "prezzi aggiornati ${d.aggiornato}" else "MIMIT Osservaprezzi")
+
+        // a sinistra: chi e dove
+        val sx = RectF(0f, 70f, 500f, TELA_H - 2f)
+        c.drawRoundRect(sx, 18f, 18f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x24FFFFFF; setShadowLayer(6f, 0f, 2f, 0x40000000) })
+        val lr = RectF(22f, 92f, 142f, 212f)
+        c.drawRoundRect(lr, 20f, 20f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt(); setShadowLayer(3f, 0f, 1f, 0x40000000) })
+        val logo = d.logo
+        if (logo != null) {
+            val sc = minOf((lr.width() - 16f) / logo.width, (lr.height() - 16f) / logo.height)
+            val w = logo.width * sc
+            val h = logo.height * sc
+            c.drawBitmap(logo, null, RectF(lr.centerX() - w / 2, lr.centerY() - h / 2, lr.centerX() + w / 2, lr.centerY() + h / 2),
+                Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG))
+        } else {
+            val iniziali = d.marchio.split(' ', '-').filter { it.isNotEmpty() }.take(2).joinToString("") { it.take(1) }.uppercase(Locale.ITALY)
+                .ifEmpty { "?" }
+            scrivi(c, iniziali, lr.centerX(), lr.top + 34f, pennello(44f, true, coloreMarchio(d.marchio), Paint.Align.CENTER).apply { clearShadowLayer() }, 52f)
+        }
+        val pm = pennello(28f, true, BIANCO)
+        scrivi(c, ellissi(d.marchio, pm, 330f), 160f, 92f, pm)
+        val dove = listOf(d.nome, d.indirizzo).filter { it.isNotEmpty() && !it.equals(d.marchio, true) }.distinct().joinToString("\n")
+        if (dove.isNotEmpty()) {
+            val l = blocco(dove, pennello(17f, false, TENUE), 320, 23f, 4)
+            c.save(); c.translate(160f, 132f); l.draw(c); c.restore()
+        }
+        scrivi(c, "Distanza", 22f, 240f, pennello(17f, false, TENUE))
+        scrivi(c, "$km in linea d'aria", 22f, 262f, pennello(26f, true, BIANCO))
+        if (media != null) {
+            val diff = d.prezzo - media
+            val testo = when {
+                kotlin.math.abs(diff) < 0.0005 -> "nella media"
+                diff < 0 -> String.format(Locale.ITALY, "%.3f €/l in meno", -diff)
+                else -> String.format(Locale.ITALY, "%.3f €/l in più", diff)
+            }
+            scrivi(c, "Rispetto alla media dei distributori vicini", 22f, 318f, pennello(17f, false, TENUE))
+            scrivi(c, testo, 22f, 340f, pennello(26f, true, if (diff < -0.0005) 0xFF81C784.toInt() else if (diff > 0.0005) 0xFFFFB74D.toInt() else BIANCO))
+        }
+
+        // a destra: i prezzi dell'impianto
+        val prezzi = d.prezzi.ifEmpty { listOf(Prezzo(carburante, d.self, d.prezzo)) }.take(5)
+        val ph = 62f
+        val gap = (TELA_H - 70f - prezzi.size * ph).coerceAtMost(12f * (prezzi.size - 1)) / maxOf(1, prezzi.size - 1)
+        prezzi.forEachIndexed { k, p ->
+            val y = 70f + k * (ph + gap)
+            val r = RectF(520f, y, TELA_W, y + ph)
+            val cercato = p.nome.equals(carburante, true) && p.self == d.self && kotlin.math.abs(p.prezzo - d.prezzo) < 0.0005
+            if (cercato) evidenziaScheda(c, r, 14f)
+            else c.drawRoundRect(r, 14f, 14f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x24FFFFFF })
+            val pn = pennello(24f, true, BIANCO)
+            scrivi(c, ellissi(p.nome, pn, 300f), 542f, y + 16f, pn)
+            scrivi(c, if (p.self) "self" else "servito", 870f, y + 20f, pennello(18f, false, TENUE))
+            scrivi(c, String.format(Locale.ITALY, "%.3f €/l", p.prezzo), TELA_W - 20f, y + 12f, pennello(30f, true, BIANCO, Paint.Align.RIGHT))
         }
         return png(b)
     }
@@ -729,8 +901,15 @@ class Disegno(private val ctx: Context) {
         return png(b)
     }
 
-    private fun ellissi(s: String, p: Paint, larghezza: Float): String =
-        TextUtils.ellipsize(s, TextPaint(p), larghezza, TextUtils.TruncateAt.END).toString()
+    private fun ellissi(s: String, p: Paint, larghezza: Float): String {
+        if (p.measureText(s) <= larghezza) return s
+        // tagliata a fine parola se si puo', coi puntini (misurata a mano: uguale sul telefono e nelle prove)
+        var fine = s.length
+        while (fine > 0 && p.measureText(s, 0, fine) + p.measureText("…") > larghezza) fine--
+        val spazio = s.lastIndexOf(' ', fine - 1)
+        val taglio = if (spazio > fine * 2 / 3) spazio else fine
+        return s.substring(0, taglio).trimEnd(' ', ',', '.', ':', ';', '·', '-') + "…"
+    }
 
     /** miniatura di riga per la lista delle notizie (63x54, angoli arrotondati) */
     fun miniatura(n: Notizia): ByteArray {
