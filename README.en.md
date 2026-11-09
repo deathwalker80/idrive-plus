@@ -29,12 +29,14 @@ One codebase for all three: only the name, icon, colour and the car's name in th
 
 ## Features
 - **Weather** (open-meteo.com; MET Norway when it does not answer) with the **Italian Civil Protection warnings** for the municipality you are in. Updated every hour and at once when you enter another municipality.
+  In iDrive the six days (today and the next 5) are chosen with the controller and the page highlights the chosen one; pressing opens the day with maximum, minimum and feels-like, rain (probability and mm), wind and gusts, humidity, UV index, sunrise and sunset, and the day hour by hour (today the next 8 hours, the other days every 3 hours).
 - **National news** and **local news** for a chosen city (ANSA RSS feeds), with thumbnails.
 - **Fuel stations** nearby with official MIMIT (Osservaprezzi) prices and the brand logo.
 - **Traffic** nearby (Autostrade per l'Italia).
 - **Vehicle status** in iDrive: the summary (range, litres in the tank, odometer, average consumption, the current trip, temperatures) and the **Doors, windows and roof** page with a photo of the car and one state for each door, window, roof, tailgate and bonnet. The photo and its anchor points are set in the app.
 - **Where I parked**: when the phone disconnects from the car's Bluetooth, the position is saved.
 - The app starts by itself with the car's Bluetooth and stops when you get out.
+- **Pages ready before you get in**: about once an hour, even away from the car, weather, news, fuel and traffic update by themselves and stay saved on the phone, so iDrive has them at once (Settings: Yes, Wi-Fi only or No). Until iDrive sends new data, Vehicle status shows the last values read, with their date.
 - **Trip**: while driving and then in the parking box, start place, duration, distance, fuel used and left, temperatures and openings (doors, windows, roof). The car data is read by the Meteo plugin inside iDrive (read only) and sent to the app over the car's Wi-Fi: no AAIdrive, no extra Bluetooth link.
 - **Trip history**: every finished trip with start and end place, duration, distance, fuel used and km/l; the monthly summary.
 - **Refuels**: detected on their own when the tank level goes up, with litres, place and, if you were at a station in the MIMIT list, brand, price and estimated cost.

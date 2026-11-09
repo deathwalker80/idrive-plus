@@ -29,12 +29,14 @@ Stesso codice per tutte e tre: cambiano solo nome, icona, colore e il nome dell'
 
 ## Funzioni
 - **Meteo** (open-meteo.com; se non risponde, MET Norway) con le **allerte della Protezione Civile** per il comune in cui ti trovi. Si aggiorna ogni ora e subito quando passi in un altro comune.
+  Nell'iDrive i sei giorni (oggi e i 5 seguenti) si scelgono con la manopola e la pagina evidenzia quello scelto; premendo si apre il giorno con massima, minima e percepita, pioggia (probabilità e mm), vento e raffiche, umidità, indice UV, alba e tramonto, e il giorno ora per ora (oggi le prossime 8 ore, gli altri giorni ogni 3 ore).
 - **Notizie** nazionali e **notizie locali** della città scelta (feed RSS ANSA), con miniature.
 - **Carburanti** vicini con prezzi ufficiali MIMIT (Osservaprezzi) e logo del marchio.
 - **Traffico** vicino (Autostrade per l'Italia).
 - **Stato vettura** nell'iDrive: il Riepilogo (autonomia, litri nel serbatoio, chilometri, consumo medio, il viaggio in corso, temperature) e la pagina **Porte, finestrini e tetto** con la foto dell'auto e uno stato per ogni porta, finestrino, tetto, portellone e cofano. La foto e i suoi punti si scelgono nell'app.
 - **Dove ho parcheggiato**: quando il telefono si scollega dal Bluetooth dell'auto salva la posizione.
 - L'app si accende da sola col Bluetooth dell'auto e si spegne quando scendi.
+- **Pagine pronte prima di salire**: circa ogni ora, anche lontano dall'auto, meteo, notizie, carburanti e traffico si aggiornano da soli e restano salvati nel telefono, così l'iDrive li ha subito (Impostazioni: Sì, Solo Wi-Fi o No). Finché l'iDrive non manda i dati nuovi, Stato vettura mostra gli ultimi letti, con la loro data.
 - **Viaggio**: mentre guidi e poi nel riquadro del parcheggio, partenza, durata, km percorsi, carburante consumato e nel serbatoio, temperature e aperture (porte, finestrini, tetto). I dati dell'auto li legge il plugin Meteo nell'iDrive (sola lettura) e li manda all'app sul Wi-Fi dell'auto: niente AAIdrive, nessun Bluetooth in più.
 - **Storico viaggi**: ogni viaggio finito con partenza e arrivo, durata, km, carburante consumato e km/l; il riassunto del mese.
 - **Rifornimenti**: riconosciuti da soli quando sale il livello del serbatoio, con litri, posizione e, se eri a un distributore dell'elenco MIMIT, marchio, prezzo e spesa stimata.
