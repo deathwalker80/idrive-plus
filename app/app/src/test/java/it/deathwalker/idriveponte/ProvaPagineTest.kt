@@ -36,6 +36,49 @@ class ProvaPagineTest {
         assertTrue(!AutoBtReceiver.eAuto("Toyota Yaris")); assertTrue(!AutoBtReceiver.eAuto("BMW Motorrad"))
     }
 
+    // 2.33: pagine in PNG a 256 colori: molto piu' piccole e, sopra lo sfondo dell'iDrive, uguali a vista
+    @Test
+    fun pngLeggero() {
+        val ctx = RuntimeEnvironment.getApplication()
+        val d = Disegno(ctx)
+        val cartella = File(uscita, "confronto").apply { mkdirs() }
+        val m = Dati.meteoDaJson(File("src/test/resources/dati/meteo.json").readText(), "La Spezia")
+        val lista = Dati.notizieDaRss(File("src/test/resources/dati/rss.xml").readBytes())
+        lista[0].foto = Dati.decodificaFoto(File("src/test/resources/dati/foto0.jpg").readBytes())
+        val pagine = listOf<Pair<String, () -> ByteArray>>(
+            "meteo" to { d.paginaMeteo(m, null) },
+            "meteo_sfondo2" to { d.paginaMeteo(m, null, 2) },
+            "meteo_oggi" to { d.paginaGiornoMeteo(m, 0) },
+            "notizia0" to { d.paginaNotizia(lista[0]) },
+            "pp_scelta2" to { d.primoPiano(lista, "Notizie", "ANSA", 2) })
+        for ((nome, disegna) in pagine) {
+            PngLeggero.imposta(ctx, false)
+            val pieno = disegna()
+            PngLeggero.imposta(ctx, true)
+            val inizio = System.nanoTime()
+            val leggero = disegna()
+            val ms = (System.nanoTime() - inizio) / 1_000_000
+            File(cartella, "${nome}_pieno.png").writeBytes(pieno)
+            File(cartella, "${nome}_leggero.png").writeBytes(leggero)
+            val a = BitmapFactory.decodeByteArray(pieno, 0, pieno.size)
+            val b = BitmapFactory.decodeByteArray(leggero, 0, leggero.size)
+            assertEquals(1280, b.width); assertEquals(480, b.height)
+            // differenza media sopra uno sfondo come quello dell'iDrive (0x285A69)
+            val pa = IntArray(1280 * 480); val pb = IntArray(1280 * 480)
+            a.getPixels(pa, 0, 1280, 0, 0, 1280, 480); b.getPixels(pb, 0, 1280, 0, 0, 1280, 480)
+            fun sopra(c: Int, sh: Int, fondo: Int): Int { val al = c ushr 24; return ((c ushr sh and 255) * al + fondo * (255 - al)) / 255 }
+            var somma = 0L
+            for (i in pa.indices) for ((sh, f) in listOf(16 to 0x28, 8 to 0x5A, 0 to 0x69))
+                somma += kotlin.math.abs(sopra(pa[i], sh, f) - sopra(pb[i], sh, f))
+            val media = somma.toDouble() / (pa.size * 3)
+            println("PNG $nome: pieno ${pieno.size / 1024} KB, leggero ${leggero.size / 1024} KB (${leggero.size * 100 / pieno.size}%), " +
+                "differenza media %.2f, disegno+codifica $ms ms".format(media))
+            assertTrue("$nome: ${leggero.size} contro ${pieno.size}", leggero.size * 100 < pieno.size * 45)
+            assertTrue("$nome: differenza media $media", media < 3.0)
+        }
+        PngLeggero.imposta(ctx, true)
+    }
+
     @Test
     fun pagineEServer() {
         val ctx = RuntimeEnvironment.getApplication()

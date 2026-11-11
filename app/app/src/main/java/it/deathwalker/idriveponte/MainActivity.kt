@@ -111,6 +111,8 @@ class MainActivity : Activity() {
     private lateinit var chipPosizione: TextView
     private lateinit var chipPioggiaSi: TextView
     private lateinit var chipPioggiaNo: TextView
+    private lateinit var chipPngLeggero: TextView
+    private lateinit var chipPngPieno: TextView
     private val chipPrepara = LinkedHashMap<String, TextView>()
     private var notaPrepara: TextView? = null
 
@@ -317,6 +319,13 @@ class MainActivity : Activity() {
             chipPioggiaNo = chip(r4, "No") { Pioggia.imposta(this, false); aggiornaChip() }
             piccolo(s, "Se scendi lasciando aperti finestrini, tetto, portellone o cofano e dove hai parcheggiato " +
                 "sta per piovere, ti avvisa.")
+
+            etichetta(s, "Immagini per l'iDrive")
+            val r6 = rigaChip(s)
+            chipPngLeggero = chip(r6, "Leggere (256 colori)") { PngLeggero.imposta(this, true); aggiornaChip() }
+            chipPngPieno = chip(r6, "Piene") { PngLeggero.imposta(this, false); aggiornaChip() }
+            piccolo(s, "Leggere: pagine circa 5 volte più piccole, l'iDrive le riceve e le apre prima. Se nell'iDrive " +
+                "vedi colori o bordi strani scegli Piene. Vale dal prossimo aggiornamento delle pagine.")
         }
 
         // ---- permessi
@@ -895,6 +904,8 @@ class MainActivity : Activity() {
         chipPosizione.text = if (gps) "Dove sei (GPS del telefono)" else "Sempre la città di riserva"
         scegli(chipPioggiaSi, Pioggia.attivo(this))
         scegli(chipPioggiaNo, !Pioggia.attivo(this))
+        scegli(chipPngLeggero, PngLeggero.attivo(this))
+        scegli(chipPngPieno, !PngLeggero.attivo(this))
         val prepara = PreparaJob.modo(this)
         chipPrepara.forEach { (k, v) -> scegli(v, k == prepara) }
         aggiornaNotaPrepara()
