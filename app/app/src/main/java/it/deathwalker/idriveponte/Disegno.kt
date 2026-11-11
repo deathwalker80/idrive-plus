@@ -65,6 +65,11 @@ class Disegno(private val ctx: Context) {
     }
 
     private fun png(b: Bitmap): ByteArray {
+        // 2.33: PNG a 256 colori (circa 5 volte piu' piccolo); "Immagini per l'iDrive: piene" torna come prima
+        if (PngLeggero.attivo(ctx)) {
+            val leggero = try { PngLeggero.codifica(b) } catch (e: Throwable) { null }
+            if (leggero != null) { b.recycle(); return leggero }
+        }
         val out = ByteArrayOutputStream()
         b.compress(Bitmap.CompressFormat.PNG, 100, out)
         b.recycle()

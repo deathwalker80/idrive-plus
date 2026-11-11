@@ -19,8 +19,8 @@ android {
         applicationId "it.deathwalker.nbtplus"
         minSdk 26
         targetSdk 36
-        versionCode 453
-        versionName "3.27"
+        versionCode 454
+        versionName "3.28"
     }
 
     buildFeatures {
