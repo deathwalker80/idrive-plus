@@ -27,7 +27,12 @@ class EventoTraffico(
     val codaKm: Double, val ora: String, val gravita: Int      // 2 rosso (chiuso/incidente/coda), 1 arancio (lavori/rallentamenti), 0 giallo
 )
 
-class Allerta(val zona: String, val oggi: Int, val oggiRischi: String, val domani: Int, val domaniRischi: String) {
+/** il bollettino letto non vale per oggi: nessuna allerta da mostrare (non quella vecchia) */
+class BollettinoNonValido(msg: String) : Exception(msg)
+
+/** domaniNoto = false: il bollettino con la giornata di domani non e' ancora uscito (domani = 0 vuol dire "non si sa") */
+class Allerta(val zona: String, val oggi: Int, val oggiRischi: String, val domani: Int, val domaniRischi: String,
+              val domaniNoto: Boolean = true) {
     /** 0 nessuna, 1 gialla, 2 arancione, 3 rossa */
     fun massima() = maxOf(oggi, domani)
 
@@ -388,7 +393,7 @@ object Fonti {
      */
     fun allerta(ctx: Context, comune: String, lat: Double, lon: Double): Allerta? {
         val adesso = System.currentTimeMillis()
-        if (adesso - bollettinoLetto > 3 * 60 * 60 * 1000L || zoneOggi == null) {
+        if (adesso - bollettinoLetto > intervalloBollettino(bollettinoNome, adesso) || zoneOggi == null) {
             val nome = ultimoBollettino(ctx)
             if (nome.isEmpty()) throw IllegalStateException("nessun bollettino trovato negli ultimi aggiornamenti del repository")
             if (nome != bollettinoNome || zoneOggi == null) {
@@ -403,8 +408,50 @@ object Fonti {
             }
             bollettinoLetto = adesso
         }
-        return allertaDa(zoneOggi!!, zoneDomani, comune, lat, lon)
+        return allertaDelGiorno(zoneOggi!!, zoneDomani, bollettinoNome, adesso, comune, lat, lon)
     }
+
+    /**
+     * "oggi" e "domani" del bollettino sono quelli del giorno in cui e' uscito (verso le 15): fino all'uscita del
+     * bollettino nuovo, quello di ieri dice "domani" per la giornata di oggi, e per domani non si sa ancora niente
+     */
+    fun allertaDelGiorno(oggiBoll: Zone, domaniBoll: Zone?, nome: String, adesso: Long, comune: String, lat: Double, lon: Double): Allerta? =
+        when (giornoBollettino(nome, adesso)) {
+            0 -> allertaDa(oggiBoll, domaniBoll, comune, lat, lon)
+            1 -> {
+                val z = domaniBoll ?: throw BollettinoNonValido("il bollettino di ieri ($nome) non ha la giornata di oggi")
+                allertaDa(z, null, comune, lat, lon)?.let { Allerta(it.zona, it.oggi, it.oggiRischi, 0, "", domaniNoto = false) }
+            }
+            else -> throw BollettinoNonValido("l'ultimo bollettino ($nome) non è né di oggi né di ieri")
+        }
+
+    fun giornoItalia(ms: Long): String =
+        SimpleDateFormat("yyyyMMdd", Locale.ITALY).apply { timeZone = java.util.TimeZone.getTimeZone("Europe/Rome") }.format(Date(ms))
+
+    /** 0 = bollettino di oggi, 1 = di ieri, -1 = piu' vecchio (o nome non valido); nome AAAAMMGG_HHMM, giorni in ora italiana */
+    fun giornoBollettino(nome: String, adesso: Long): Int {
+        val giorno = nome.take(8)
+        if (giorno.length < 8) return -1
+        if (giorno == giornoItalia(adesso)) return 0
+        val ieri = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("Europe/Rome")).apply {
+            timeInMillis = adesso; add(java.util.Calendar.DAY_OF_MONTH, -1)
+        }.timeInMillis
+        return if (giorno == giornoItalia(ieri)) 1 else -1
+    }
+
+    /**
+     * ogni quanto rileggere l'elenco dei bollettini: 3 ore se quello letto e' di oggi; se non lo e', dalle 15 (il
+     * bollettino esce di solito tra le 15 e le 16) ogni 20 minuti, prima delle 15 ogni 3 ore
+     */
+    fun intervalloBollettino(nome: String, adesso: Long): Long {
+        if (nome.isNotEmpty() && giornoBollettino(nome, adesso) == 0) return 3 * 60 * 60 * 1000L
+        val ora = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("Europe/Rome")).apply { timeInMillis = adesso }
+            .get(java.util.Calendar.HOUR_OF_DAY)
+        return if (ora >= 15) 20 * 60 * 1000L else 3 * 60 * 60 * 1000L
+    }
+
+    /** nome dell'ultimo bollettino letto (AAAAMMGG_HHMM), vuoto se nessuno */
+    fun bollettinoLetto(): String = bollettinoNome
 
     fun allertaDa(oggi: Zone, domani: Zone?, comune: String, lat: Double, lon: Double): Allerta? {
         val o = oggi.perPunto(lat, lon) ?: oggi.perComune(comune) ?: return null

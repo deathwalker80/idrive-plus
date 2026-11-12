@@ -46,17 +46,25 @@ object Preparazione {
         val qui = gps ?: salvata
         Stato.fonteCitta = if (gps != null) "posizione del telefono" else "città salvata"
 
-        // allerta della Protezione Civile (comune dove sei), riletta ogni 3 ore: finisce nella pagina meteo
-        if (tutto || System.currentTimeMillis() - allertaLetta > 3 * 60 * MIN) {
+        // allerta della Protezione Civile (comune dove sei), riletta ogni 3 ore, ogni 20 minuti dalle 15 finche' non
+        // c'e' il bollettino del giorno: finisce nella pagina meteo
+        // e a ogni cambio di giorno, perche' "oggi" e "domani" si spostano anche con lo stesso bollettino
+        val ogniAllerta = Fonti.intervalloBollettino(Fonti.bollettinoLetto(), System.currentTimeMillis())
+        val altroGiorno = Fonti.giornoItalia(allertaLetta) != Fonti.giornoItalia(System.currentTimeMillis())
+        if (tutto || altroGiorno || System.currentTimeMillis() - allertaLetta > ogniAllerta) {
             allertaLetta = System.currentTimeMillis()
             try {
                 val a = Fonti.allerta(ctx, qui.nome, qui.lat, qui.lon)
                 allerta = a
                 Stato.allerta = if (a == null) "il comune \"${qui.nome}\" non c'è nelle zone del bollettino"
-                else a.testoBreve().ifEmpty { "nessuna allerta oggi e domani (zona ${a.zona})" }
+                else a.testoBreve().ifEmpty {
+                    if (a.domaniNoto) "nessuna allerta oggi e domani (zona ${a.zona})"
+                    else "nessuna allerta oggi; per domani il bollettino non è ancora uscito (zona ${a.zona})"
+                }
             } catch (e: Exception) {
+                if (e is BollettinoNonValido) allerta = null          // niente allerta vecchia nella pagina
                 Stato.allerta = "ERRORE nel leggere il bollettino: ${e.message ?: e.javaClass.simpleName}"
-                allertaLetta = System.currentTimeMillis() - 3 * 60 * MIN + 10 * MIN      // si riprova tra 10 minuti
+                allertaLetta = System.currentTimeMillis() - ogniAllerta + 10 * MIN      // si riprova tra 10 minuti
             }
             Stato.meteo.ultimo = 0L                                  // ridisegna il meteo con l'allerta nuova
         }
