@@ -92,6 +92,14 @@ class ProvaPagineTest {
         val m = Dati.meteoDaJson(File("src/test/resources/dati/meteo.json").readText(), "La Spezia")
         val meteo = d.paginaMeteo(m, Allerta("Bacini Liguri Marittimi di Levante", 1, "temporali", 2, "idrogeologico"))
         File(uscita, "meteo.png").writeBytes(meteo)
+        // la pastiglia dell'allerta sta tutta nei 400 della colonna sinistra (prima "temporali" era tagliato)
+        val lunga = Allerta("Bacini Liguri Marittimi di Levante", 2, "idrogeologico, temporali", 0, "", domaniNoto = false)
+        assertEquals("⚠ Allerta arancione oggi", d.testoPastiglia(lunga))
+        File(uscita, "meteo_allerta_lunga.png").writeBytes(d.paginaMeteo(m, lunga))
+        val corta = Allerta("Bacini Liguri Marittimi di Levante", 1, "temporali", 0, "")
+        assertEquals("⚠ Allerta gialla oggi · temporali", d.testoPastiglia(corta))
+        val due = Allerta("Bacini Liguri Marittimi di Levante", 1, "temporali", 3, "idrogeologico")
+        assertEquals("⚠ Allerta gialla oggi, rossa domani", d.testoPastiglia(due))
         // plugin Meteo v12: pagina col giorno 2 evidenziato, colonna del giorno 2, pagina di oggi e di un giorno coi
         // dettagli; i pulsanti del plugin devono stare esattamente sulle colonne disegnate
         File(uscita, "meteo_sfondo2.png").writeBytes(d.paginaMeteo(m, null, 2))
