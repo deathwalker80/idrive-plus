@@ -64,7 +64,18 @@ class Disegno(private val ctx: Context) {
         return b to c
     }
 
+    /**
+     * copyright quasi invisibile in basso a destra delle pagine intere (1280x480), nello stesso punto di MINI Sport:
+     * x fino a 1136, testo tra y 444 e 456, sotto a tutto quello che le pagine disegnano
+     */
+    private fun firma(b: Bitmap) {
+        if (b.width != W || b.height != H) return
+        val p = pennello(12f, false, 0x24FFFFFF, Paint.Align.RIGHT).apply { clearShadowLayer() }
+        Canvas(b).drawText("© DeathWalkeR", 1136f, 456f - p.descent(), p)
+    }
+
     private fun png(b: Bitmap): ByteArray {
+        firma(b)
         // 2.33: PNG a 256 colori (circa 5 volte piu' piccolo); "Immagini per l'iDrive: piene" torna come prima
         if (PngLeggero.attivo(ctx)) {
             val leggero = try { PngLeggero.codifica(b) } catch (e: Throwable) { null }
