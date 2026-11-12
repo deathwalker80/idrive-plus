@@ -36,12 +36,13 @@ class Allerta(val zona: String, val oggi: Int, val oggiRischi: String, val doman
     /** 0 nessuna, 1 gialla, 2 arancione, 3 rossa */
     fun massima() = maxOf(oggi, domani)
 
-    fun testoBreve(): String {
+    /** rischi = false: senza "· idrogeologico, temporali" (la pastiglia della pagina dell'iDrive, larga 400) */
+    fun testoBreve(rischi: Boolean = true): String {
         val nomi = arrayOf("", "gialla", "arancione", "rossa")
         return when {
             oggi > 0 && domani > oggi -> "Allerta ${nomi[oggi]} oggi, ${nomi[domani]} domani"
-            oggi > 0 -> "Allerta ${nomi[oggi]} oggi" + (if (oggiRischi.isNotEmpty()) " · $oggiRischi" else "")
-            domani > 0 -> "Allerta ${nomi[domani]} domani" + (if (domaniRischi.isNotEmpty()) " · $domaniRischi" else "")
+            oggi > 0 -> "Allerta ${nomi[oggi]} oggi" + (if (rischi && oggiRischi.isNotEmpty()) " · $oggiRischi" else "")
+            domani > 0 -> "Allerta ${nomi[domani]} domani" + (if (rischi && domaniRischi.isNotEmpty()) " · $domaniRischi" else "")
             else -> ""
         }
     }

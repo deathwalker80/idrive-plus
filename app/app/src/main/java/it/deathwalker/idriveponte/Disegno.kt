@@ -212,6 +212,16 @@ class Disegno(private val ctx: Context) {
         return png(b)
     }
 
+    /**
+     * testo della pastiglia dell'allerta (larga al massimo 400, 14 di margine per parte): coi rischi se ci stanno,
+     * altrimenti senza (i rischi restano nell'app), all'ultimo coi puntini
+     */
+    fun testoPastiglia(allerta: Allerta, pa: Paint = pennello(17f, true, BIANCO)): String {
+        val spazio = 400f - 28f
+        return listOf("⚠ ${allerta.testoBreve()}", "⚠ ${allerta.testoBreve(false)}").firstOrNull { pa.measureText(it) <= spazio }
+            ?: ellissi("⚠ ${allerta.testoBreve(false)}", pa, spazio)
+    }
+
     private fun bitmapMeteo(m: Meteo, allerta: Allerta?, evidenzia: Int): Bitmap {
         val (b, c) = nuovaTela()
 
@@ -220,17 +230,15 @@ class Disegno(private val ctx: Context) {
         val pc = pennello(32f, true, BIANCO)
         scrivi(c, ellissi(m.citta, pc, 400f), 0f, 24f, pc)
         // allerta della Protezione Civile: pastiglia colorata sotto il nome della citta'
-        val avviso = allerta?.testoBreve().orEmpty()
-        if (avviso.isNotEmpty()) {
-            val colore = when (allerta!!.massima()) { 3 -> 0xFFE53935.toInt(); 2 -> 0xFFFB8C00.toInt(); else -> 0xFFFDD835.toInt() }
+        if (allerta != null && allerta.testoBreve().isNotEmpty()) {
+            val colore = when (allerta.massima()) { 3 -> 0xFFE53935.toInt(); 2 -> 0xFFFB8C00.toInt(); else -> 0xFFFDD835.toInt() }
             val testo = if (allerta.massima() >= 2) BIANCO else 0xFF1A1A1A.toInt()
             val pa = pennello(17f, true, testo).apply { clearShadowLayer() }
-            val larg = minOf(pa.measureText("⚠ $avviso") + 28f, 400f)
+            val avviso = testoPastiglia(allerta, pa)
+            val larg = pa.measureText(avviso) + 28f
             val fondo = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = colore; setShadowLayer(3f, 0f, 1f, OMBRA) }
             c.drawRoundRect(RectF(0f, 70f, larg, 104f), 17f, 17f, fondo)
-            c.save(); c.clipRect(0f, 70f, larg - 12f, 104f)
-            scrivi(c, "⚠ $avviso", 14f, 75f, pa)
-            c.restore()
+            scrivi(c, avviso, 14f, 75f, pa)
         }
         disegnaIcona(c, Dati.iconaMeteo(m.codice, m.giorno, m.raffiche >= 60 || m.vento >= 45), -8f, 110f, 236f)
         scrivi(c, "${m.temp} °C", 400f, 140f, pennello(64f, true, BIANCO, Paint.Align.RIGHT), 70f)
