@@ -75,12 +75,14 @@ object Preparazione {
         sezione("Meteo", if (altroComune) 0L else Stato.meteo.ultimo, 60 * MIN, tutto, continua) {
             try {
                 val m = try { Dati.meteo(ctx, qui) } catch (e: Exception) { Dati.meteoMet(ctx, qui) }
-                Stato.meteo.metti(disegno.paginaMeteo(m, allerta))
-                // plugin Meteo v12: un giorno per riga, con colonna, pagina del giorno e pagina col giorno evidenziato
+                val paginaMeteo = disegno.paginaMeteo(m, allerta)
+                Stato.meteo.metti(paginaMeteo)
+                // plugin Meteo v12: un giorno per riga, con colonna, pagina del giorno e la pagina (la stessa per tutti
+                // i giorni: l'evidenza del giorno scelto la mette l'iDrive)
                 Stato.meteoGiorni.metti(disegno.giorniMeteo(m).indices.map { i ->
                     val g = disegno.giorniMeteo(m)[i]
                     NotiziaPronta("${g.nome} ${g.max}°/${g.min}°", "", disegno.paginaGiornoMeteo(m, i),
-                        disegno.colonnaMeteo(m, i), disegno.paginaMeteo(m, allerta, i))
+                        disegno.colonnaMeteo(m, i), paginaMeteo)
                 })
                 Stato.meteo.ultimo = System.currentTimeMillis()
                 meteoComune = qui.nome
@@ -125,7 +127,8 @@ object Preparazione {
             val nome = Fonti.CARBURANTI[tipo] ?: "Benzina"
             try {
                 val lista = Fonti.carburanti(ctx, qui.lat, qui.lon, tipo, raggio)
-                Stato.carburanti.metti(disegno.paginaCarburanti(lista, nome, qui.nome, raggio))
+                val paginaCarburanti = disegno.paginaCarburanti(lista, nome, qui.nome, raggio)
+                Stato.carburanti.metti(paginaCarburanti)
                 // plugin Carburanti v13: un distributore per riga, la sua scheda quando lo premi
                 val sei = lista.take(6)
                 val media = if (lista.size > 1) lista.map { it.prezzo }.average() else null
@@ -133,7 +136,7 @@ object Preparazione {
                     if (sei.isEmpty()) listOf(NotiziaPronta("Nessun distributore", "", Stato.carburanti.png!!, Stato.carburanti.png!!, Stato.carburanti.png!!))
                     else sei.indices.map { i ->
                         NotiziaPronta(sei[i].marchio, "", disegno.paginaDistributore(sei[i], nome, media),
-                            disegno.schedaDistributore(lista, nome, qui.nome, raggio, i), disegno.paginaCarburanti(lista, nome, qui.nome, raggio, i))
+                            disegno.schedaDistributore(lista, nome, qui.nome, raggio, i), paginaCarburanti)   // l'evidenza la mette l'iDrive
                     }
                 )
                 Stato.carburanti.ultimo = System.currentTimeMillis()
