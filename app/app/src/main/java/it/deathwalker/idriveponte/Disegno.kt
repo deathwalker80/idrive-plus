@@ -386,7 +386,7 @@ class Disegno(private val ctx: Context) {
     /** dove cade sullo schermo la riga i dell'elenco: li' il plugin mette il pulsante (Notizie.xml, Locali.xml) */
     fun rettangoloRigaNotizia(i: Int): IntArray = suSchermo(ppX, ppY + i * ppRiga, TELA_W - ppX, ppRiga)
 
-    /** la pagina con la notizia "scelta" in grande e la sua riga evidenziata */
+    /** la pagina con la notizia "scelta" in grande; la sua riga solo col testo in risalto (la barra di selezione e' quella dell'iDrive) */
     fun primoPiano(lista: List<Notizia>, titolo: String, fonte: String, scelta: Int): ByteArray =
         png(bitmapPrimoPiano(lista, titolo, fonte, scelta))
 
@@ -430,12 +430,11 @@ class Disegno(private val ctx: Context) {
             c.save(); c.translate(grande.left + 20f, grande.centerY() - l.height / 2f); l.draw(c); c.restore()
         }
 
-        // a destra: una riga per notizia (miniatura, ora, titolo), la scelta evidenziata
+        // a destra: una riga per notizia (miniatura, ora, titolo), la scelta col testo in risalto; nessuna barra
+        // disegnata: quella della selezione la mette l'iDrive sul pulsante della riga
         lista.take(8).forEachIndexed { i, nn ->
             val y = ppY + i * ppRiga
-            val riga = RectF(ppX, y + 2f, TELA_W, y + ppRiga - 2f)
             val sel = i == scelta
-            if (sel) evidenziaScheda(c, riga, 12f)
             val mr = RectF(ppX + 8f, y + 6f, ppX + 64f, y + ppRiga - 6f)
             val f = nn.foto
             if (f != null) disegnaCopertina(c, f, mr, 6f)
