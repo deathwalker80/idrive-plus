@@ -131,7 +131,7 @@ class Disegno(private val ctx: Context) {
      * pagina Meteo come quella di serie dell'iDrive (Foreca): a sinistra il tempo di adesso con l'icona grande,
      * a destra una colonna per giorno con data, giorno, icona, massima e minima (senza evidenziare: la pagina non si scorre)
      */
-    fun paginaMeteo(m: Meteo, allerta: Allerta? = null, evidenzia: Int = -1): ByteArray = png(bitmapMeteo(m, allerta, evidenzia))
+    fun paginaMeteo(m: Meteo, allerta: Allerta? = null): ByteArray = png(bitmapMeteo(m, allerta))
 
     /** oggi + i 5 giorni seguenti: le sei colonne della pagina Meteo */
     fun giorniMeteo(m: Meteo): List<Giorno> {
@@ -159,7 +159,7 @@ class Disegno(private val ctx: Context) {
 
     /** la colonna del giorno i ritagliata dalla pagina (immagine del pulsante) */
     fun colonnaMeteo(m: Meteo, i: Int): ByteArray {
-        val pagina = bitmapMeteo(m, null, -1)
+        val pagina = bitmapMeteo(m, null)
         val r = rettangoloGiorno(i)
         val col = Bitmap.createBitmap(pagina, r[0], r[1], r[2], r[3])
         pagina.recycle()
@@ -233,7 +233,7 @@ class Disegno(private val ctx: Context) {
             ?: ellissi("⚠ ${allerta.testoBreve(false)}", pa, spazio)
     }
 
-    private fun bitmapMeteo(m: Meteo, allerta: Allerta?, evidenzia: Int): Bitmap {
+    private fun bitmapMeteo(m: Meteo, allerta: Allerta?): Bitmap {
         val (b, c) = nuovaTela()
 
         // ---- adesso (colonna sinistra, larga 400)
@@ -267,11 +267,8 @@ class Disegno(private val ctx: Context) {
         val giorni = giorniMeteo(m)
         val x0 = 424f
         val lc = (TELA_W - x0) / 6f
-        // il giorno scelto con la manopola evidenziato (plugin Meteo v12)
-        if (evidenzia in giorni.indices) {
-            val fondo = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x33FFFFFF; setShadowLayer(6f, 0f, 2f, 0x33000000) }
-            c.drawRoundRect(RectF(x0 + evidenzia * lc + 4f, 0f, x0 + (evidenzia + 1) * lc - 4f, TELA_H - 8f), 14f, 14f, fondo)
-        }
+        // il giorno scelto con la manopola: nessuna evidenza disegnata, la mette l'iDrive sul pulsante della colonna
+        // (quella disegnata restava indietro rispetto alla sua)
         val pData = pennello(28f, true, BIANCO, Paint.Align.CENTER)
         val pNome = pennello(23f, false, TENUE, Paint.Align.CENTER)
         val pMax = pennello(32f, true, BIANCO, Paint.Align.CENTER)
@@ -449,17 +446,17 @@ class Disegno(private val ctx: Context) {
     }
 
     // ------------------------------------------------------------------------------ carburanti ----
-    fun paginaCarburanti(lista: List<Distributore>, carburante: String, luogo: String, raggio: Int, scelto: Int = -1): ByteArray =
-        png(bitmapCarburanti(lista, carburante, luogo, raggio, scelto))
+    fun paginaCarburanti(lista: List<Distributore>, carburante: String, luogo: String, raggio: Int): ByteArray =
+        png(bitmapCarburanti(lista, carburante, luogo, raggio))
 
     /** dove cade sullo schermo la scheda del distributore i: li' il plugin mette il pulsante (Carburanti.xml) */
     fun rettangoloDistributore(i: Int): IntArray = suSchermo((i % 3) * (388f + 18f), 74f + (i / 3) * (172f + 18f), 388f, 172f)
 
     /** la scheda del distributore i senza evidenza (immagine del pulsante) */
     fun schedaDistributore(lista: List<Distributore>, carburante: String, luogo: String, raggio: Int, i: Int): ByteArray =
-        ritaglio(bitmapCarburanti(lista, carburante, luogo, raggio, -1), rettangoloDistributore(i))
+        ritaglio(bitmapCarburanti(lista, carburante, luogo, raggio), rettangoloDistributore(i))
 
-    private fun bitmapCarburanti(lista: List<Distributore>, carburante: String, luogo: String, raggio: Int, scelto: Int): Bitmap {
+    private fun bitmapCarburanti(lista: List<Distributore>, carburante: String, luogo: String, raggio: Int): Bitmap {
         val (b, c) = nuovaTela()
         intestazione(c, "$carburante · $luogo", "MIMIT Osservaprezzi · entro $raggio km")
         if (lista.isEmpty()) {
@@ -476,7 +473,8 @@ class Disegno(private val ctx: Context) {
             val y = 74f + (i / 3) * (lh + gap)
             val r = RectF(x, y, x + lw, y + lh)
             val migliore = d.prezzo == minimo
-            if (i == scelto) evidenziaScheda(c, RectF(r.left - 3f, r.top - 3f, r.right + 3f, r.bottom + 3f), 20f)
+            // la scheda scelta con la manopola: nessuna evidenza disegnata, la mette l'iDrive sul pulsante della scheda
+            // (quella disegnata restava indietro rispetto alla sua)
             val fondo = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = if (migliore) 0x3343A047 else 0x24FFFFFF; setShadowLayer(6f, 0f, 2f, 0x40000000) }
             c.drawRoundRect(r, 18f, 18f, fondo)
             val bordo = Paint(Paint.ANTI_ALIAS_FLAG).apply {

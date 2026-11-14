@@ -53,7 +53,7 @@ class ProvaPagineTest {
         lista[0].foto = Dati.decodificaFoto(File("src/test/resources/dati/foto0.jpg").readBytes())
         val pagine = listOf<Pair<String, () -> ByteArray>>(
             "meteo" to { d.paginaMeteo(m, null) },
-            "meteo_sfondo2" to { d.paginaMeteo(m, null, 2) },
+            "meteo_sfondo2" to { d.paginaMeteo(m, null) },
             "meteo_oggi" to { d.paginaGiornoMeteo(m, 0) },
             "notizia0" to { d.paginaNotizia(lista[0]) },
             "pp_scelta2" to { d.primoPiano(lista, "Notizie", "ANSA", 2) })
@@ -102,7 +102,7 @@ class ProvaPagineTest {
         assertEquals("⚠ Allerta gialla oggi, rossa domani", d.testoPastiglia(due))
         // plugin Meteo v12: pagina col giorno 2 evidenziato, colonna del giorno 2, pagina di oggi e di un giorno coi
         // dettagli; i pulsanti del plugin devono stare esattamente sulle colonne disegnate
-        File(uscita, "meteo_sfondo2.png").writeBytes(d.paginaMeteo(m, null, 2))
+        File(uscita, "meteo_sfondo2.png").writeBytes(d.paginaMeteo(m, null))
         File(uscita, "meteo_colonna2.png").writeBytes(d.colonnaMeteo(m, 2))
         File(uscita, "meteo_oggi.png").writeBytes(d.paginaGiornoMeteo(m, 0))
         File(uscita, "meteo_giorno3.png").writeBytes(d.paginaGiornoMeteo(m, 3))
@@ -157,7 +157,7 @@ class ProvaPagineTest {
         File(uscita, "pp_riga2.png").writeBytes(d.rigaNotizia(lista, "Notizie", "ANSA", 2))
         carb[1].prezzi = listOf(Prezzo("Benzina", true, 1.979), Prezzo("Benzina", false, 2.119), Prezzo("Gasolio", true, 1.899),
             Prezzo("Gasolio", false, 2.039), Prezzo("Gpl", false, 0.719))
-        File(uscita, "carb_scelta1.png").writeBytes(d.paginaCarburanti(carb, "Benzina", "La Spezia", 5, 1))
+        File(uscita, "carb_scelta1.png").writeBytes(d.paginaCarburanti(carb, "Benzina", "La Spezia", 5))
         File(uscita, "carb_scheda1.png").writeBytes(d.schedaDistributore(carb, "Benzina", "La Spezia", 5, 1))
         File(uscita, "carb_distributore0.png").writeBytes(d.paginaDistributore(carb[1], "Benzina", carb.map { it.prezzo }.average()))
         File(uscita, "carb_distributore_solo.png").writeBytes(d.paginaDistributore(carb[0], "Benzina", null))
