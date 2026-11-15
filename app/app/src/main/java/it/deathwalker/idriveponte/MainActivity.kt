@@ -223,9 +223,13 @@ class MainActivity : Activity() {
             testoFoto = piccolo(s, "")
             val tasti = rigaTasti(s)
             tasto(tasti, "Scegli foto", false) { scegliFoto() }
-            tasto(tasti, "Sistema i punti", false) { calibraPunti(Parco.ultima(this).orEmpty()) }
-            tastoTogliFoto = tasto(tasti, "Togli foto", false) {
-                Foto.togliAvatar(this, Parco.ultima(this).orEmpty())
+            tasto(tasti, "Scegli sagoma", false) { scegliSagoma(Parco.ultima(this).orEmpty()) }
+            val tasti2 = rigaTasti(s)
+            tasto(tasti2, "Sistema i punti", false) { calibraPunti(Parco.ultima(this).orEmpty()) }
+            tastoTogliFoto = tasto(tasti2, "Togli foto", false) {
+                val bt = Parco.ultima(this).orEmpty()
+                Foto.togliAvatar(this, bt)
+                Foto.togliSagoma(this, bt)
                 aggiornaSchermo()
             }
         }
@@ -1131,13 +1135,19 @@ class MainActivity : Activity() {
         if (firma == firmaFoto) return
         firmaFoto = firma
         val avatar = Foto.haAvatar(this, bt)
+        val sagoma = if (avatar) null else Foto.sagoma(this, bt)
         testoFoto.text = when {
             avatar -> "Foto: la tua. Sistema i punti perché ogni pallino cada sulla parte giusta dell'auto."
-            Foto.haFotoDiSerie(this) -> "Foto: quella di serie della ${Marca.AUTO}. Puoi sceglierne una della tua auto."
-            else -> "Nessuna foto: scegline una della tua auto (meglio con lo sfondo trasparente, vista di 3/4 dal lato destro)."
+            sagoma != null -> "Sagoma: ${Sagome.nome(this, sagoma.id)}, ${Sagome.nomeColore(this, sagoma.colore).lowercase(Locale.ITALY)}" +
+                (sagoma.tetto?.let { ", tetto ${Sagome.nomeColore(this, it).lowercase(Locale.ITALY)}" } ?: "") +
+                ". I punti sono già al loro posto."
+            Foto.haFotoDiSerie(this) -> "Foto: quella di serie della ${Marca.AUTO}. Puoi sceglierne una della tua auto o una sagoma."
+            else -> "Nessuna foto: scegline una della tua auto (lo sfondo si può togliere) oppure una sagoma."
         } + if (porte == null) "\nL'anteprima compare quando l'app è accesa." else ""
-        tastoTogliFoto.isEnabled = avatar
-        tastoTogliFoto.setTextColor(if (avatar) TESTO else TENUE)
+        val togli = avatar || sagoma != null
+        tastoTogliFoto.text = if (sagoma != null) "Togli sagoma" else "Togli foto"
+        tastoTogliFoto.isEnabled = togli
+        tastoTogliFoto.setTextColor(if (togli) TESTO else TENUE)
     }
 
     private fun scegliFoto() {
@@ -1157,15 +1167,114 @@ class MainActivity : Activity() {
         val uri = data?.data
         if (requestCode != SCEGLI_FOTO || resultCode != RESULT_OK || uri == null) return
         val bt = Parco.ultima(this).orEmpty()
-        testoFoto.text = "Sto preparando la foto..."
+        // lo sfondo: lo toglie il telefono (la foto non esce dal telefono), oppure si tiene la foto com'e'
+        val (d, s) = finestra(R.drawable.ic_auto, "Sfondo della foto")
+        piccolo(s, "Nell'iDrive l'auto sta meglio senza sfondo. Il telefono può toglierlo da solo: la foto non esce " +
+            "dal telefono. La prima volta Google Play services scarica il riconoscimento (serve la connessione).")
+        val tasti = rigaTasti(s)
+        tasto(tasti, "Togli lo sfondo", true) { d.dismiss(); usaFoto(bt, uri, true) }
+        tasto(tasti, "Tienila così", false) { d.dismiss(); usaFoto(bt, uri, false) }
+        mostraFinestra(d, s)
+    }
+
+    private fun usaFoto(bt: String, uri: Uri, togliSfondo: Boolean) {
+        testoFoto.text = if (togliSfondo) "Sto togliendo lo sfondo..." else "Sto preparando la foto..."
         Thread({
-            val errore = try { Foto.impostaAvatar(this, bt, uri) } catch (e: Throwable) { e.javaClass.simpleName }
+            val errore = try { Foto.impostaAvatar(this, bt, uri, togliSfondo) } catch (e: Throwable) { e.javaClass.simpleName }
             runOnUiThread {
                 firmaFoto = ""
                 aggiornaSchermo()
                 if (errore == null) calibraPunti(bt) else testoFoto.text = "Non riesco a usare questa foto: $errore. Provane un'altra."
             }
         }, "foto").start()
+    }
+
+    /** sagoma generica: carrozzeria, colore e tetto, con l'anteprima; i punti sono gia' al loro posto */
+    private fun scegliSagoma(bt: String) {
+        val el = Sagome.elenco(this)
+        val carrozzerie = Sagome.ordinate(this)
+        val attuale = Foto.sagoma(this, bt)
+        var id = attuale?.id ?: carrozzerie.first().id
+        var colore = attuale?.colore ?: el.colori.first().rgb
+        var tetto = attuale?.tetto
+        val (d, s) = finestra(R.drawable.ic_auto, "Sagoma dell'auto")
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        s.addView(ScrollView(this).apply { addView(box) }, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+        val anteprima = ImageView(this).apply {
+            adjustViewBounds = true
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            background = tondo(Color.rgb(24, 66, 84), 10)
+            minimumHeight = px(110)
+        }
+        box.addView(anteprima, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+        piccolo(box, "Una sagoma generica del tipo della tua auto, non il modello esatto, senza loghi. " +
+            "I punti di porte, finestrini e tetto sono già al loro posto.")
+        var giro = 0
+        fun ridisegna() {
+            val n = ++giro
+            val scelta = Sagome.Scelta(id, colore, tetto)
+            Thread({
+                val b = try { Sagome.componi(this, scelta) } catch (e: Throwable) { null }
+                runOnUiThread { if (n == giro && b != null) anteprima.setImageBitmap(b) }
+            }, "sagoma").start()
+        }
+
+        etichetta(box, "Carrozzeria")
+        val chipCarrozzeria = LinkedHashMap<String, TextView>()
+        var riga: LinearLayout? = null
+        carrozzerie.forEachIndexed { k, c ->
+            if (k % 2 == 0) riga = rigaChip(box).apply { setPadding(0, if (k > 0) px(8) else 0, 0, 0) }
+            chipCarrozzeria[c.id] = chip(riga!!, c.nome) {
+                id = c.id
+                chipCarrozzeria.forEach { (kk, v) -> scegli(v, kk == id) }
+                ridisegna()
+            }.apply { textSize = 13f }
+        }
+        riga?.let { r -> while (r.childCount < 2) r.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f).apply { marginStart = px(8) }) }
+
+        etichetta(box, "Colore")
+        val chipColore = LinkedHashMap<Int, TextView>()
+        fun stileColore(v: TextView, rgb: Int, acceso: Boolean) {
+            val luce = 0.299 * Color.red(rgb) + 0.587 * Color.green(rgb) + 0.114 * Color.blue(rgb)
+            v.setTextColor(if (luce > 150) Color.BLACK else Color.WHITE)
+            v.typeface = if (acceso) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+            v.background = tondo(rgb, 18, if (acceso) ACCENTO else BORDO).apply { if (acceso) setStroke(px(3), ACCENTO) }
+        }
+        riga = null
+        el.colori.forEachIndexed { k, c ->
+            if (k % 3 == 0) riga = rigaChip(box).apply { setPadding(0, if (k > 0) px(8) else 0, 0, 0) }
+            chipColore[c.rgb] = chip(riga!!, c.nome) {
+                colore = c.rgb
+                chipColore.forEach { (kk, v) -> stileColore(v, kk, kk == colore) }
+                ridisegna()
+            }.apply { textSize = 13f }
+        }
+        riga?.let { r -> while (r.childCount < 3) r.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f).apply { marginStart = px(8) }) }
+
+        etichetta(box, "Tetto")
+        val chipTetto = ArrayList<Pair<Int?, TextView>>()
+        val rigaTetto = rigaChip(box)
+        el.tetti.forEach { (nome, rgb) ->
+            chipTetto += rgb to chip(rigaTetto, nome) {
+                tetto = rgb
+                chipTetto.forEach { (kk, v) -> scegli(v, kk == tetto) }
+                ridisegna()
+            }.apply { textSize = 13f }
+        }
+
+        chipCarrozzeria.forEach { (kk, v) -> scegli(v, kk == id) }
+        chipColore.forEach { (kk, v) -> stileColore(v, kk, kk == colore) }
+        chipTetto.forEach { (kk, v) -> scegli(v, kk == tetto) }
+        ridisegna()
+        val tasti = rigaTasti(box)
+        tasto(tasti, "Salva", true) {
+            Foto.impostaSagoma(this, bt, Sagome.Scelta(id, colore, tetto))
+            d.dismiss()
+            firmaFoto = ""
+            aggiornaSchermo()
+        }
+        tasto(tasti, "Annulla", false) { d.dismiss() }
+        mostraFinestra(d, s)
     }
 
     /** sposta gli 11 punti sulla foto: trascina, tocca per spostare il punto scelto, tieni premuto per "non visibile" */

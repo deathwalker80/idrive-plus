@@ -1,0 +1,60 @@
+{
+ "nome": "SUV",
+ "punti": {
+  "portellone": {
+   "x": 0.1233,
+   "y": 0.3985,
+   "nascosto": false
+  },
+  "finestrino_post_dx": {
+   "x": 0.38,
+   "y": 0.4058,
+   "nascosto": false
+  },
+  "porta_post_dx": {
+   "x": 0.3717,
+   "y": 0.6154,
+   "nascosto": false
+  },
+  "finestrino_ant_dx": {
+   "x": 0.5742,
+   "y": 0.4058,
+   "nascosto": false
+  },
+  "porta_ant_dx": {
+   "x": 0.5825,
+   "y": 0.6154,
+   "nascosto": false
+  },
+  "tetto": {
+   "x": 0.3808,
+   "y": 0.2637,
+   "nascosto": false
+  },
+  "cofano": {
+   "x": 0.7667,
+   "y": 0.5068,
+   "nascosto": false
+  },
+  "finestrino_post_sx": {
+   "x": 0.355,
+   "y": 0.2525,
+   "nascosto": true
+  },
+  "porta_post_sx": {
+   "x": 0.3925,
+   "y": 0.2521,
+   "nascosto": true
+  },
+  "finestrino_ant_sx": {
+   "x": 0.5492,
+   "y": 0.2543,
+   "nascosto": true
+  },
+  "porta_ant_sx": {
+   "x": 0.6033,
+   "y": 0.2832,
+   "nascosto": true
+  }
+ }
+}

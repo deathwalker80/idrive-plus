@@ -1,0 +1,60 @@
+{
+ "nome": "Cabrio",
+ "punti": {
+  "portellone": {
+   "x": 0.2275,
+   "y": 0.584,
+   "nascosto": false
+  },
+  "finestrino_post_dx": {
+   "x": 0.25,
+   "y": 0.4923,
+   "nascosto": false
+  },
+  "porta_post_dx": {
+   "x": 0.4083,
+   "y": 0.6731,
+   "nascosto": false
+  },
+  "finestrino_ant_dx": {
+   "x": 0.5608,
+   "y": 0.4885,
+   "nascosto": false
+  },
+  "porta_ant_dx": {
+   "x": 0.5608,
+   "y": 0.6731,
+   "nascosto": false
+  },
+  "tetto": {
+   "x": 0.45,
+   "y": 0.5154,
+   "nascosto": false
+  },
+  "cofano": {
+   "x": 0.6875,
+   "y": 0.5478,
+   "nascosto": false
+  },
+  "finestrino_post_sx": {
+   "x": 0.225,
+   "y": 0.5346,
+   "nascosto": true
+  },
+  "porta_post_sx": {
+   "x": 0.4292,
+   "y": 0.5346,
+   "nascosto": true
+  },
+  "finestrino_ant_sx": {
+   "x": 0.5358,
+   "y": 0.5346,
+   "nascosto": true
+  },
+  "porta_ant_sx": {
+   "x": 0.5817,
+   "y": 0.5346,
+   "nascosto": true
+  }
+ }
+}

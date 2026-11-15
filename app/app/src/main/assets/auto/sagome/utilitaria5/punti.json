@@ -1,0 +1,60 @@
+{
+ "nome": "Utilitaria 5 porte",
+ "punti": {
+  "portellone": {
+   "x": 0.2025,
+   "y": 0.5201,
+   "nascosto": false
+  },
+  "finestrino_post_dx": {
+   "x": 0.3917,
+   "y": 0.4827,
+   "nascosto": false
+  },
+  "porta_post_dx": {
+   "x": 0.3833,
+   "y": 0.6731,
+   "nascosto": false
+  },
+  "finestrino_ant_dx": {
+   "x": 0.5542,
+   "y": 0.4827,
+   "nascosto": false
+  },
+  "porta_ant_dx": {
+   "x": 0.5625,
+   "y": 0.6731,
+   "nascosto": false
+  },
+  "tetto": {
+   "x": 0.415,
+   "y": 0.3685,
+   "nascosto": false
+  },
+  "cofano": {
+   "x": 0.7,
+   "y": 0.5526,
+   "nascosto": false
+  },
+  "finestrino_post_sx": {
+   "x": 0.3667,
+   "y": 0.3577,
+   "nascosto": true
+  },
+  "porta_post_sx": {
+   "x": 0.4042,
+   "y": 0.3571,
+   "nascosto": true
+  },
+  "finestrino_ant_sx": {
+   "x": 0.5292,
+   "y": 0.3575,
+   "nascosto": true
+  },
+  "porta_ant_sx": {
+   "x": 0.5833,
+   "y": 0.3745,
+   "nascosto": true
+  }
+ }
+}

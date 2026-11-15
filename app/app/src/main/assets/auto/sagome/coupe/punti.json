@@ -1,0 +1,60 @@
+{
+ "nome": "Coupé",
+ "punti": {
+  "portellone": {
+   "x": 0.14,
+   "y": 0.6355,
+   "nascosto": false
+  },
+  "finestrino_post_dx": {
+   "x": 0.3471,
+   "y": 0.5135,
+   "nascosto": false
+  },
+  "porta_post_dx": {
+   "x": 0.3317,
+   "y": 0.6942,
+   "nascosto": false
+  },
+  "finestrino_ant_dx": {
+   "x": 0.5275,
+   "y": 0.5096,
+   "nascosto": false
+  },
+  "porta_ant_dx": {
+   "x": 0.5275,
+   "y": 0.6942,
+   "nascosto": false
+  },
+  "tetto": {
+   "x": 0.4646,
+   "y": 0.3908,
+   "nascosto": false
+  },
+  "cofano": {
+   "x": 0.7542,
+   "y": 0.5928,
+   "nascosto": false
+  },
+  "finestrino_post_sx": {
+   "x": 0.3221,
+   "y": 0.4165,
+   "nascosto": true
+  },
+  "porta_post_sx": {
+   "x": 0.3525,
+   "y": 0.3971,
+   "nascosto": true
+  },
+  "finestrino_ant_sx": {
+   "x": 0.5025,
+   "y": 0.3798,
+   "nascosto": true
+  },
+  "porta_ant_sx": {
+   "x": 0.5483,
+   "y": 0.3858,
+   "nascosto": true
+  }
+ }
+}

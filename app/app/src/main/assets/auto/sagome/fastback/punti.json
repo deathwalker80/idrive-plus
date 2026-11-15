@@ -1,0 +1,60 @@
+{
+ "nome": "Berlina coupé 4 porte",
+ "punti": {
+  "portellone": {
+   "x": 0.1275,
+   "y": 0.6432,
+   "nascosto": false
+  },
+  "finestrino_post_dx": {
+   "x": 0.3879,
+   "y": 0.5058,
+   "nascosto": false
+  },
+  "porta_post_dx": {
+   "x": 0.3796,
+   "y": 0.6904,
+   "nascosto": false
+  },
+  "finestrino_ant_dx": {
+   "x": 0.5725,
+   "y": 0.5058,
+   "nascosto": false
+  },
+  "porta_ant_dx": {
+   "x": 0.5808,
+   "y": 0.6904,
+   "nascosto": false
+  },
+  "tetto": {
+   "x": 0.4583,
+   "y": 0.3878,
+   "nascosto": false
+  },
+  "cofano": {
+   "x": 0.7625,
+   "y": 0.5877,
+   "nascosto": false
+  },
+  "finestrino_post_sx": {
+   "x": 0.3629,
+   "y": 0.3861,
+   "nascosto": true
+  },
+  "porta_post_sx": {
+   "x": 0.4004,
+   "y": 0.38,
+   "nascosto": true
+  },
+  "finestrino_ant_sx": {
+   "x": 0.5475,
+   "y": 0.3783,
+   "nascosto": true
+  },
+  "porta_ant_sx": {
+   "x": 0.6017,
+   "y": 0.4265,
+   "nascosto": true
+  }
+ }
+}

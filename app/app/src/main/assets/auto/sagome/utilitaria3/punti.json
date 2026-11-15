@@ -1,0 +1,60 @@
+{
+ "nome": "Utilitaria 3 porte",
+ "punti": {
+  "portellone": {
+   "x": 0.2275,
+   "y": 0.5201,
+   "nascosto": false
+  },
+  "finestrino_post_dx": {
+   "x": 0.3767,
+   "y": 0.4865,
+   "nascosto": false
+  },
+  "porta_post_dx": {
+   "x": 0.4183,
+   "y": 0.6731,
+   "nascosto": false
+  },
+  "finestrino_ant_dx": {
+   "x": 0.5658,
+   "y": 0.4827,
+   "nascosto": false
+  },
+  "porta_ant_dx": {
+   "x": 0.5658,
+   "y": 0.6731,
+   "nascosto": false
+  },
+  "tetto": {
+   "x": 0.4225,
+   "y": 0.3685,
+   "nascosto": false
+  },
+  "cofano": {
+   "x": 0.6875,
+   "y": 0.5521,
+   "nascosto": false
+  },
+  "finestrino_post_sx": {
+   "x": 0.3517,
+   "y": 0.3585,
+   "nascosto": true
+  },
+  "porta_post_sx": {
+   "x": 0.4392,
+   "y": 0.3568,
+   "nascosto": true
+  },
+  "finestrino_ant_sx": {
+   "x": 0.5408,
+   "y": 0.3582,
+   "nascosto": true
+  },
+  "porta_ant_sx": {
+   "x": 0.5867,
+   "y": 0.4005,
+   "nascosto": true
+  }
+ }
+}

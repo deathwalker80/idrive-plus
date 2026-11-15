@@ -1,0 +1,60 @@
+{
+ "nome": "Berlina",
+ "punti": {
+  "portellone": {
+   "x": 0.1275,
+   "y": 0.628,
+   "nascosto": false
+  },
+  "finestrino_post_dx": {
+   "x": 0.3833,
+   "y": 0.4981,
+   "nascosto": false
+  },
+  "porta_post_dx": {
+   "x": 0.375,
+   "y": 0.6865,
+   "nascosto": false
+  },
+  "finestrino_ant_dx": {
+   "x": 0.5708,
+   "y": 0.4981,
+   "nascosto": false
+  },
+  "porta_ant_dx": {
+   "x": 0.5792,
+   "y": 0.6865,
+   "nascosto": false
+  },
+  "tetto": {
+   "x": 0.455,
+   "y": 0.3742,
+   "nascosto": false
+  },
+  "cofano": {
+   "x": 0.7625,
+   "y": 0.5839,
+   "nascosto": false
+  },
+  "finestrino_post_sx": {
+   "x": 0.3583,
+   "y": 0.3686,
+   "nascosto": true
+  },
+  "porta_post_sx": {
+   "x": 0.3958,
+   "y": 0.3646,
+   "nascosto": true
+  },
+  "finestrino_ant_sx": {
+   "x": 0.5458,
+   "y": 0.3668,
+   "nascosto": true
+  },
+  "porta_ant_sx": {
+   "x": 0.6,
+   "y": 0.407,
+   "nascosto": true
+  }
+ }
+}

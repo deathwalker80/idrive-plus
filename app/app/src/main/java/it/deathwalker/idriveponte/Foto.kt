@@ -19,7 +19,11 @@ import kotlin.math.roundToInt
  * - MINI Plus ha di serie la foto della MINI dell'autore (res/drawable-nodpi/foto_auto.png, solo in quella versione) coi
  *   punti gia' messi (assets/auto/punti-predefiniti.json); le altre app partono senza foto.
  * - Chiunque puo' scegliere una foto sua (avatar): si salva sul telefono, ridotta a 1400 px al massimo; i punti
- *   ripartono da quelli predefiniti e si spostano a mano dall'app (Sistema i punti).
+ *   ripartono da quelli predefiniti e si spostano a mano dall'app (Sistema i punti). Lo sfondo si puo' togliere sul
+ *   telefono (Scontorno).
+ * - Oppure una sagoma generica (Sagome): carrozzeria, colore e tetto; i punti sono gia' al loro posto.
+ * Ordine: foto propria, altrimenti sagoma scelta, altrimenti foto di serie (solo MINI Plus). La foto di serie non cambia
+ * finche' non si sceglie una foto o una sagoma.
  * Punti: x e y da 0 a 1 sulla foto intera; nascosto = parte sul lato che la foto non mostra (anello vuoto).
  */
 object Foto {
@@ -39,6 +43,26 @@ object Foto {
 
     private fun kPunti(bt: String) = "punti:${bt.trim()}"
 
+    private fun kSagoma(bt: String) = "sagoma:${bt.trim()}"
+
+    /** la sagoma scelta per l'auto (null = nessuna) */
+    fun sagoma(ctx: Context, bt: String?): Sagome.Scelta? = Sagome.leggi(prefs(ctx).getString(kSagoma(bt.orEmpty()), null))
+
+    fun haSagoma(ctx: Context, bt: String?): Boolean = sagoma(ctx, bt) != null
+
+    /** sceglie una sagoma: via la foto propria e i punti sistemati a mano (la sagoma ha i suoi) */
+    fun impostaSagoma(ctx: Context, bt: String?, s: Sagome.Scelta) {
+        file(ctx, bt.orEmpty()).delete()
+        prefs(ctx).edit().remove(kPunti(bt.orEmpty())).putString(kSagoma(bt.orEmpty()), s.codice()).apply()
+        synchronized(this) { cacheChiave = "" }
+    }
+
+    /** torna alla foto di serie (o a nessuna foto) */
+    fun togliSagoma(ctx: Context, bt: String?) {
+        prefs(ctx).edit().remove(kSagoma(bt.orEmpty())).remove(kPunti(bt.orEmpty())).apply()
+        synchronized(this) { cacheChiave = "" }
+    }
+
     /** la foto di serie (solo MINI Plus); 0 = nessuna */
     private fun risorsa(ctx: Context): Int = ctx.resources.getIdentifier("foto_auto", "drawable", ctx.packageName)
 
@@ -46,24 +70,27 @@ object Foto {
 
     fun haFotoDiSerie(ctx: Context): Boolean = risorsa(ctx) != 0
 
-    /** c'e' una foto da mostrare (avatar o di serie) */
-    fun haFoto(ctx: Context, bt: String?): Boolean = haAvatar(ctx, bt) || haFotoDiSerie(ctx)
+    /** c'e' una foto da mostrare (avatar, sagoma o di serie) */
+    fun haFoto(ctx: Context, bt: String?): Boolean = haAvatar(ctx, bt) || haSagoma(ctx, bt) || haFotoDiSerie(ctx)
 
     /** firma che cambia quando cambia la foto o i punti (per ridisegnare la pagina) */
     fun firma(ctx: Context, bt: String?): String {
         val f = file(ctx, bt.orEmpty())
-        return (if (f.isFile) "a${f.lastModified()}" else if (haFotoDiSerie(ctx)) "serie" else "nessuna") +
+        val s = sagoma(ctx, bt)
+        return (if (f.isFile) "a${f.lastModified()}" else if (s != null) "s${s.codice()}" else if (haFotoDiSerie(ctx)) "serie" else "nessuna") +
             "/" + (prefs(ctx).getString(kPunti(bt.orEmpty()), "") ?: "")
     }
 
-    /** la foto dell'auto (avatar, altrimenti quella di serie), null se non c'e' */
+    /** la foto dell'auto (avatar, altrimenti la sagoma scelta, altrimenti quella di serie), null se non c'e' */
     @Synchronized
     fun immagine(ctx: Context, bt: String?): Bitmap? {
         val f = file(ctx, bt.orEmpty())
-        val chiave = if (f.isFile) f.path + f.lastModified() else "serie"
+        val s = if (f.isFile) null else sagoma(ctx, bt)
+        val chiave = if (f.isFile) f.path + f.lastModified() else if (s != null) "sagoma:" + s.codice() else "serie"
         if (chiave == cacheChiave && cache != null) return cache
         val opz = BitmapFactory.Options().apply { inScaled = false; inPreferredConfig = Bitmap.Config.ARGB_8888 }
         val b = if (f.isFile) BitmapFactory.decodeFile(f.path, opz)
+        else if (s != null) Sagome.componi(ctx, s)
         else risorsa(ctx).takeIf { it != 0 }?.let { BitmapFactory.decodeResource(ctx.resources, it, opz) }
         cache = b
         cacheChiave = chiave
@@ -100,7 +127,7 @@ object Foto {
      *  Torna null se e' andata bene, altrimenti il motivo (si mostra nell'app). Il file si legge una volta sola
      *  (alcune app di foto, Google Foto o le gallerie con le foto nel cloud, non lo riaprono una seconda volta) e se
      *  BitmapFactory non lo capisce (HEIC, AVIF, ...) ci prova ImageDecoder. */
-    fun impostaAvatar(ctx: Context, bt: String?, uri: Uri): String? {
+    fun impostaAvatar(ctx: Context, bt: String?, uri: Uri, togliSfondo: Boolean = false): String? {
         val dati = try {
             ctx.contentResolver.openInputStream(uri)?.use { leggiTutto(it) }
         } catch (e: Exception) {
@@ -111,7 +138,14 @@ object Foto {
         val letta = try { decodifica(dati) } catch (e: OutOfMemoryError) { null }
             ?: return "formato non letto (${ctx.contentResolver.getType(uri) ?: "sconosciuto"})"
         val s = min(1f, LATO_MASSIMO.toFloat() / max(letta.width, letta.height))
-        val b = if (s < 1f) Bitmap.createScaledBitmap(letta, (letta.width * s).roundToInt(), (letta.height * s).roundToInt(), true) else letta
+        val ridotta = if (s < 1f) Bitmap.createScaledBitmap(letta, (letta.width * s).roundToInt(), (letta.height * s).roundToInt(), true) else letta
+        val b = if (togliSfondo) {
+            try {
+                Scontorno.togliSfondo(ctx, ridotta)
+            } catch (e: Scontorno.NonRiuscito) {
+                return "non riesco a togliere lo sfondo: ${e.message}"
+            }
+        } else ridotta
         try {
             val f = file(ctx, bt.orEmpty())
             f.parentFile?.mkdirs()
@@ -119,7 +153,7 @@ object Foto {
         } catch (e: Exception) {
             return "non riesco a salvarla (${e.javaClass.simpleName})"
         }
-        prefs(ctx).edit().remove(kPunti(bt.orEmpty())).apply()
+        prefs(ctx).edit().remove(kPunti(bt.orEmpty())).remove(kSagoma(bt.orEmpty())).apply()
         synchronized(this) { cacheChiave = "" }
         return null
     }
@@ -187,9 +221,11 @@ object Foto {
         return m
     }
 
-    /** i punti dell'auto: quelli sistemati a mano, altrimenti i predefiniti (le parti mancanti dai predefiniti) */
+    /** i punti dell'auto: quelli sistemati a mano, altrimenti i predefiniti (le parti mancanti dai predefiniti);
+     *  con una sagoma (e senza foto propria) i predefiniti sono quelli della sagoma */
     fun punti(ctx: Context, bt: String?): Map<DatiAuto.Parte, Punto> {
-        val base = predefiniti(ctx)
+        val s = if (haAvatar(ctx, bt)) null else sagoma(ctx, bt)
+        val base = if (s != null) Sagome.punti(ctx, s.id).ifEmpty { predefiniti(ctx) } else predefiniti(ctx)
         val salvati = prefs(ctx).getString(kPunti(bt.orEmpty()), null)?.let { s -> try { leggi(JSONObject(s)) } catch (e: Exception) { null } }
         return if (salvati == null) base else base + salvati
     }
@@ -204,6 +240,9 @@ object Foto {
         prefs(ctx).edit().remove(kPunti(bt.orEmpty())).apply()
     }
 
-    /** l'auto tolta dal parco: via anche foto e punti */
-    fun cancella(ctx: Context, bt: String) = togliAvatar(ctx, bt)
+    /** l'auto tolta dal parco: via anche foto, sagoma e punti */
+    fun cancella(ctx: Context, bt: String) {
+        togliAvatar(ctx, bt)
+        togliSagoma(ctx, bt)
+    }
 }

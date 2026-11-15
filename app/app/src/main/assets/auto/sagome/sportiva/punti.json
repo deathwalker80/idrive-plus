@@ -1,0 +1,60 @@
+{
+ "nome": "Coupé sportiva",
+ "punti": {
+  "portellone": {
+   "x": 0.1567,
+   "y": 0.6056,
+   "nascosto": false
+  },
+  "finestrino_post_dx": {
+   "x": 0.3688,
+   "y": 0.5269,
+   "nascosto": false
+  },
+  "porta_post_dx": {
+   "x": 0.3167,
+   "y": 0.7,
+   "nascosto": false
+  },
+  "finestrino_ant_dx": {
+   "x": 0.5008,
+   "y": 0.5231,
+   "nascosto": false
+  },
+  "porta_ant_dx": {
+   "x": 0.5008,
+   "y": 0.7,
+   "nascosto": false
+  },
+  "tetto": {
+   "x": 0.4708,
+   "y": 0.4192,
+   "nascosto": false
+  },
+  "cofano": {
+   "x": 0.7417,
+   "y": 0.6322,
+   "nascosto": false
+  },
+  "finestrino_post_sx": {
+   "x": 0.3438,
+   "y": 0.4194,
+   "nascosto": true
+  },
+  "porta_post_sx": {
+   "x": 0.3375,
+   "y": 0.4224,
+   "nascosto": true
+  },
+  "finestrino_ant_sx": {
+   "x": 0.4758,
+   "y": 0.4088,
+   "nascosto": true
+  },
+  "porta_ant_sx": {
+   "x": 0.5217,
+   "y": 0.4303,
+   "nascosto": true
+  }
+ }
+}

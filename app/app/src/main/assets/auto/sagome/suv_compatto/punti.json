@@ -1,0 +1,60 @@
+{
+ "nome": "SUV compatto",
+ "punti": {
+  "portellone": {
+   "x": 0.1775,
+   "y": 0.4445,
+   "nascosto": false
+  },
+  "finestrino_post_dx": {
+   "x": 0.3925,
+   "y": 0.4269,
+   "nascosto": false
+  },
+  "porta_post_dx": {
+   "x": 0.3842,
+   "y": 0.6269,
+   "nascosto": false
+  },
+  "finestrino_ant_dx": {
+   "x": 0.5633,
+   "y": 0.4269,
+   "nascosto": false
+  },
+  "porta_ant_dx": {
+   "x": 0.5717,
+   "y": 0.6269,
+   "nascosto": false
+  },
+  "tetto": {
+   "x": 0.4075,
+   "y": 0.2951,
+   "nascosto": false
+  },
+  "cofano": {
+   "x": 0.7208,
+   "y": 0.5117,
+   "nascosto": false
+  },
+  "finestrino_post_sx": {
+   "x": 0.3675,
+   "y": 0.2841,
+   "nascosto": true
+  },
+  "porta_post_sx": {
+   "x": 0.405,
+   "y": 0.2835,
+   "nascosto": true
+  },
+  "finestrino_ant_sx": {
+   "x": 0.5383,
+   "y": 0.2842,
+   "nascosto": true
+  },
+  "porta_ant_sx": {
+   "x": 0.5925,
+   "y": 0.2874,
+   "nascosto": true
+  }
+ }
+}

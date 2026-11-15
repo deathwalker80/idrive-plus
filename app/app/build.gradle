@@ -83,6 +83,8 @@ android {
 }
 
 dependencies {
+    // scontorno della foto dell'auto sul telefono (Scontorno.kt): ML Kit Subject Segmentation, via Google Play services
+    implementation 'com.google.android.gms:play-services-mlkit-subject-segmentation:16.0.0-beta1'
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.robolectric:robolectric:4.13'
 }

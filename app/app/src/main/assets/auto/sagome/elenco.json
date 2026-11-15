@@ -1,0 +1,205 @@
+{
+ "carrozzerie": [
+  {
+   "id": "utilitaria3",
+   "nome": "Utilitaria 3 porte",
+   "marche": [
+    "MINI"
+   ]
+  },
+  {
+   "id": "utilitaria5",
+   "nome": "Utilitaria 5 porte",
+   "marche": [
+    "MINI"
+   ]
+  },
+  {
+   "id": "familiare_compatta",
+   "nome": "Station wagon compatta",
+   "marche": [
+    "MINI",
+    "BMW"
+   ]
+  },
+  {
+   "id": "suv_compatto",
+   "nome": "SUV compatto",
+   "marche": [
+    "MINI",
+    "BMW"
+   ]
+  },
+  {
+   "id": "cabrio",
+   "nome": "Cabrio",
+   "marche": [
+    "MINI",
+    "BMW"
+   ]
+  },
+  {
+   "id": "berlina",
+   "nome": "Berlina",
+   "marche": [
+    "BMW"
+   ]
+  },
+  {
+   "id": "familiare",
+   "nome": "Station wagon",
+   "marche": [
+    "BMW"
+   ]
+  },
+  {
+   "id": "coupe",
+   "nome": "Coupé",
+   "marche": [
+    "BMW"
+   ]
+  },
+  {
+   "id": "fastback",
+   "nome": "Berlina coupé 4 porte",
+   "marche": [
+    "BMW"
+   ]
+  },
+  {
+   "id": "suv",
+   "nome": "SUV",
+   "marche": [
+    "BMW"
+   ]
+  },
+  {
+   "id": "sportiva",
+   "nome": "Coupé sportiva",
+   "marche": [
+    "Supra",
+    "BMW"
+   ]
+  }
+ ],
+ "colori": [
+  {
+   "nome": "Bianco",
+   "rgb": [
+    236,
+    238,
+    240
+   ]
+  },
+  {
+   "nome": "Nero",
+   "rgb": [
+    22,
+    24,
+    28
+   ]
+  },
+  {
+   "nome": "Argento",
+   "rgb": [
+    176,
+    182,
+    188
+   ]
+  },
+  {
+   "nome": "Grigio scuro",
+   "rgb": [
+    78,
+    82,
+    88
+   ]
+  },
+  {
+   "nome": "Blu",
+   "rgb": [
+    28,
+    58,
+    128
+   ]
+  },
+  {
+   "nome": "Azzurro",
+   "rgb": [
+    70,
+    150,
+    210
+   ]
+  },
+  {
+   "nome": "Rosso",
+   "rgb": [
+    186,
+    24,
+    32
+   ]
+  },
+  {
+   "nome": "Verde scuro",
+   "rgb": [
+    24,
+    70,
+    48
+   ]
+  },
+  {
+   "nome": "Giallo",
+   "rgb": [
+    240,
+    196,
+    30
+   ]
+  },
+  {
+   "nome": "Arancio",
+   "rgb": [
+    232,
+    110,
+    30
+   ]
+  },
+  {
+   "nome": "Bordeaux",
+   "rgb": [
+    110,
+    20,
+    36
+   ]
+  },
+  {
+   "nome": "Sabbia",
+   "rgb": [
+    196,
+    176,
+    142
+   ]
+  }
+ ],
+ "tetti": [
+  {
+   "nome": "Come la carrozzeria",
+   "rgb": null
+  },
+  {
+   "nome": "Bianco",
+   "rgb": [
+    236,
+    238,
+    240
+   ]
+  },
+  {
+   "nome": "Nero",
+   "rgb": [
+    22,
+    24,
+    28
+   ]
+  }
+ ]
+}
