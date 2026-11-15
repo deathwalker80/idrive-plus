@@ -84,7 +84,7 @@ class SagomeTest {
             val colore = el.colori[k % el.colori.size].rgb
             Foto.impostaSagoma(ctx, bt, Sagome.Scelta(c.id, colore, if (k == 0) el.tetti[1].second else null))
             val foto = Foto.immagine(ctx, bt)
-            val pagina = d.paginaPorte(foto, Foto.contornoAuto(ctx, bt), Foto.punti(ctx, bt), parti, System.currentTimeMillis())
+            val pagina = d.paginaPorte(foto, Foto.contornoAuto(ctx, bt), Foto.punti(ctx, bt), parti, System.currentTimeMillis(), ordina = true)
             File(uscita, "porte_${c.id}.png").writeBytes(pagina)
             File(uscita, "mini_${c.id}.png").writeBytes(d.miniaturaPorte(foto, Foto.contornoAuto(ctx, bt), parti))
             Foto.togliSagoma(ctx, bt)

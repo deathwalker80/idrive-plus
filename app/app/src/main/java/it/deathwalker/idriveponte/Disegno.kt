@@ -237,7 +237,7 @@ class Disegno(private val ctx: Context) {
         val (b, c) = nuovaTela()
 
         // ---- adesso (colonna sinistra, larga 400)
-        scrivi(c, "Meteo attuale:", 0f, 0f, pennello(20f, false, TENUE))
+        scrivi(c, "Meteo attuale:" + if (m.fonte != "open-meteo") " · dati ${m.fonte}" else "", 0f, 0f, pennello(20f, false, TENUE))
         val pc = pennello(32f, true, BIANCO)
         scrivi(c, ellissi(m.citta, pc, 400f), 0f, 24f, pc)
         // allerta della Protezione Civile: pastiglia colorata sotto il nome della citta'
@@ -256,12 +256,25 @@ class Disegno(private val ctx: Context) {
         val pd = pennello(22f, false, BIANCO, Paint.Align.RIGHT)
         scrivi(c, ellissi(Dati.cielo(m.codice), pd, 190f), 400f, 216f, pd)
         scrivi(c, "Percepita ${m.percepita}°", 400f, 250f, pennello(18f, false, TENUE, Paint.Align.RIGHT))
-        val pl = pennello(18f, false, TENUE)
-        scrivi(c, "Umidità ${m.umidita}% · Vento ${m.vento} km/h ${m.direzione}".trim(), 0f, 356f, pl)
-        scrivi(c, if (m.inMillimetri) "Nuvole ${m.nuvole}% · Pressione ${m.pressione} hPa"
-            else "Raffiche ${m.raffiche} km/h · Pressione ${m.pressione} hPa", 0f, 382f, pl)
-        // MET Norway (dati CC BY 4.0) va citato: accanto ad alba e tramonto
-        scrivi(c, "Alba ${m.alba} · Tramonto ${m.tramonto}" + if (m.fonte != "open-meteo") " · dati ${m.fonte}" else "", 0f, 408f, pl)
+        // i dettagli di adesso: sei celle (etichetta piccola, valore in grassetto) su due righe; la fonte (MET Norway,
+        // dati CC BY 4.0, va citata) e' nella prima riga della pagina
+        linea(c, 0f, 344f, 400f, 345f)
+        val celle = listOf(
+            "Umidità" to "${m.umidita}%",
+            "Vento" to "${m.vento} km/h ${m.direzione}".trim(),
+            if (m.inMillimetri) "Nuvole" to "${m.nuvole}%" else "Raffiche" to "${m.raffiche} km/h",
+            "Pressione" to "${m.pressione} hPa",
+            "Alba" to m.alba,
+            "Tramonto" to m.tramonto,
+        )
+        val pEt = pennello(15f, false, TENUE)
+        val pVal = pennello(21f, true, BIANCO)
+        celle.forEachIndexed { k, (et, v) ->
+            val x = (k % 3) * 134f
+            val y = 350f + (k / 3) * 46f
+            scrivi(c, et, x, y, pEt)
+            scrivi(c, ellissi(v, pVal, 128f), x, y + 17f, pVal)
+        }
 
         // ---- giorni (a destra): oggi + i 5 seguenti, una colonna ciascuno
         val giorni = giorniMeteo(m)
@@ -295,7 +308,7 @@ class Disegno(private val ctx: Context) {
         val foto = n.foto
         val largTesto = if (foto != null) 690 else 1200
         if (foto != null) {
-            val r = RectF(730f, top, 1200f, top + 314f)
+            val r = RectF(730f, top, 1200f, TELA_H - 2f)
             val ombra = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x1FFFFFFF; setShadowLayer(6f, 0f, 2f, 0x59000000) }
             c.drawRoundRect(r, 6f, 6f, ombra)
             disegnaCopertina(c, foto, r, 6f)
@@ -305,8 +318,11 @@ class Disegno(private val ctx: Context) {
         c.save(); c.translate(0f, top); lt.draw(c); c.restore()
         if (n.testo.isNotEmpty()) {
             val pd = pennello(25f, false, TENUE)
-            val ld = blocco(n.testo, pd, largTesto, 33f, 4)
-            c.save(); c.translate(0f, top + lt.height + 20f); ld.draw(c); c.restore()
+            val righe = ((TELA_H - (top + lt.height + 20f)) / 33f).toInt()
+            if (righe > 0) {
+                val ld = blocco(n.testo, pd, largTesto, 33f, righe)
+                c.save(); c.translate(0f, top + lt.height + 20f); ld.draw(c); c.restore()
+            }
         }
         return png(b)
     }
@@ -314,8 +330,12 @@ class Disegno(private val ctx: Context) {
     fun paginaAvviso(titolo: String, testo: String): ByteArray {
         val (b, c) = nuovaTela()
         intestazione(c, titolo, "")
-        val l = blocco(testo, pennello(25f, false, TENUE), 1200, 33f, 4)
-        c.save(); c.translate(0f, 78f); l.draw(c); c.restore()
+        // un tondo con la "i" nel colore della marca e il testo accanto, centrati nello spazio sotto il titolo
+        val l = blocco(testo, pennello(28f, false, BIANCO), 1040, 37f, 6)
+        val cy = 58f + (TELA_H - 58f) / 2f
+        c.drawCircle(60f, cy, 46f, Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 5f; color = Marca.ACCENTO; setShadowLayer(3f, 0f, 1f, OMBRA) })
+        scrivi(c, "i", 60f, cy - 34f, pennello(56f, true, Marca.ACCENTO, Paint.Align.CENTER), 68f)
+        c.save(); c.translate(140f, cy - l.height / 2f); l.draw(c); c.restore()
         return png(b)
     }
 
@@ -413,12 +433,16 @@ class Disegno(private val ctx: Context) {
             scrivi(c, testata, grande.left + 20f, y, pennello(18f, true, Marca.ACCENTO))
             y += 26f
             val lw = (grande.width() - 40f).toInt()
-            val lt = blocco(n.titolo, pennello(26f, true, BIANCO), lw, 31f, if (foto != null) 2 else 4)
+            // senza foto il riquadro e' tutto del testo: titolo e inizio della notizia piu' grandi
+            val lt = if (foto != null) blocco(n.titolo, pennello(26f, true, BIANCO), lw, 31f, 2)
+                else blocco(n.titolo, pennello(34f, true, BIANCO), lw, 41f, 4)
             c.save(); c.translate(grande.left + 20f, y); lt.draw(c); c.restore()
-            y += lt.height + 8f
-            val righe = ((grande.bottom - 10f - y) / 23f).toInt()
+            y += lt.height + (if (foto != null) 8f else 14f)
+            val dimTesto = if (foto != null) 18f else 23f
+            val rigaTesto = if (foto != null) 23f else 30f
+            val righe = ((grande.bottom - 10f - y) / rigaTesto).toInt()
             if (n.testo.isNotEmpty() && righe > 0) {
-                val ld = blocco(n.testo, pennello(18f, false, TENUE), lw, 23f, righe)
+                val ld = blocco(n.testo, pennello(dimTesto, false, TENUE), lw, rigaTesto, righe)
                 c.save(); c.translate(grande.left + 20f, y); ld.draw(c); c.restore()
             }
         } else {
@@ -775,6 +799,7 @@ class Disegno(private val ctx: Context) {
         foto: Bitmap?, ritaglio: android.graphics.Rect?, punti: Map<DatiAuto.Parte, Foto.Punto>,
         parti: Map<DatiAuto.Parte, DatiAuto.Stato>, quando: Long,
         mostra: Set<DatiAuto.Parte> = DatiAuto.Parte.values().toSet(),
+        ordina: Boolean = false,
     ): ByteArray {
         val (b, c) = nuovaTela()
         intestazione(c, "Porte, finestrini e tetto",
@@ -833,7 +858,8 @@ class Disegno(private val ctx: Context) {
             scrivi(c, s?.let { DatiAuto.parola(p, it) } ?: "–", x, top + 20f,
                 pennello(21f, aperto, if (aperto) arancio else if (s == null) TENUE else BIANCO, allinea))
             val q = punti[p]
-            val punto = pos[p]
+            // con una sagoma le parti del lato che non si vede non hanno il richiamo sull'auto: il pallino sta accanto al nome
+            val punto = if (ordina && q?.nascosto == true) null else pos[p]
             if (punto != null) {
                 val ax = if (aSinistra) x + 6f else x - 14f
                 val gomito = if (aSinistra) ax + 18f else ax - 18f
@@ -848,8 +874,15 @@ class Disegno(private val ctx: Context) {
         scrivi(c, "DX · PASSEGGERO", 244f, 66f, pennello(15f, true, TENUE, Paint.Align.RIGHT).apply { letterSpacing = 0.06f })
         scrivi(c, "SX · GUIDATORE", 945f, 66f, pennello(15f, true, TENUE).apply { letterSpacing = 0.06f })
         // solo le parti da mostrare, ricompattate dall'alto (il tetto non c'e' su tutte le auto)
-        sinistraPorte.filter { it in mostra }.forEachIndexed { k, p -> richiamo(p, 244f, 92f + k * 58f, true) }
-        destraPorte.filter { it in mostra }.forEachIndexed { k, p -> richiamo(p, 945f, 96f + k * 68f, false) }
+        // con una sagoma (ordina) le righe di sinistra seguono i punti, cosi' i richiami non si incrociano: dall'alto in
+        // basso a fasce di 30, e nella stessa fascia da sinistra a destra; la colonna destra resta nel suo ordine
+        var sx = sinistraPorte.filter { it in mostra }
+        val dx = destraPorte.filter { it in mostra }
+        if (ordina && pos.isNotEmpty()) {
+            sx = sx.sortedWith(compareBy({ ((pos[it]?.second ?: 0f) / 30f).toInt() }, { pos[it]?.first ?: 0f }))
+        }
+        sx.forEachIndexed { k, p -> richiamo(p, 244f, 92f + k * 58f, true) }
+        dx.forEachIndexed { k, p -> richiamo(p, 945f, 96f + k * 68f, false) }
         return png(b)
     }
 

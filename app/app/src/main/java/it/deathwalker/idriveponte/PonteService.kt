@@ -176,7 +176,7 @@ class PonteService : Service() {
             val ritaglio = Foto.contornoAuto(this, bt)
             firmaPorte = firmaP
             porteDisegnate = adesso
-            NotiziaPronta("Porte, finestrini e tetto", "", disegno.paginaPorte(foto, ritaglio, Foto.punti(this, bt), parti, quando, mostra),
+            NotiziaPronta("Porte, finestrini e tetto", "", disegno.paginaPorte(foto, ritaglio, Foto.punti(this, bt), parti, quando, mostra, !Foto.haAvatar(this, bt) && Foto.haSagoma(this, bt)),
                 disegno.miniaturaPorte(foto, ritaglio, parti), ByteArray(0), max(adesso / 1000, (vecchie.getOrNull(1)?.versione ?: 0) + 1))
         }
         val versioneR = max(adesso / 1000, (vecchie.getOrNull(0)?.versione ?: 0) + 1)

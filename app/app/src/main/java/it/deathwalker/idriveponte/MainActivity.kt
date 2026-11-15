@@ -549,25 +549,57 @@ class MainActivity : Activity() {
         null
     }
 
-    /** la griglia si ricompone solo quando compare o sparisce un'icona (3 per riga, sempre nello stesso ordine) */
+    /** i gruppi della home, nell'ordine in cui compaiono: titolo e chiavi delle sezioni */
+    private val gruppiHome = listOf(
+        "La tua auto" to setOf("auto", "viaggio", "vettura", "parcheggio", "storico", "rifornimenti", "parco"),
+        "Nell'iDrive" to setOf("meteo", "notizie", "locali", "carburanti", "traffico"),
+        "App" to setOf("impostazioni", "permessi"),
+    )
+
+    /**
+     * la griglia si ricompone solo quando compare o sparisce un'icona o l'avviso dei permessi: in alto l'avviso (se
+     * mancano permessi), poi le icone a gruppi col loro titolo, due per riga, sempre nello stesso ordine
+     */
     private fun aggiornaHome() {
         val visibili = sezioni.filter { it.visibile() }
-        val firma = visibili.joinToString(",") { it.chiave }
+        val firma = visibili.joinToString(",") { it.chiave } + "|" + permessiMancanti
         if (firma != firmaGriglia) {
             firmaGriglia = firma
             griglia.removeAllViews()
             tessere.clear()
-            visibili.chunked(2).forEach { gruppo ->
-                val riga = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-                for (k in 0 until 2) {
-                    val lp = LinearLayout.LayoutParams(0, MATCH_PARENT, 1f).apply { if (k > 0) marginStart = px(10) }
-                    val z = gruppo.getOrNull(k)
-                    if (z == null) { riga.addView(View(this), lp); continue }
-                    val t = tessera(z)
-                    tessere[z.chiave] = t
-                    riga.addView(t.vista, lp)
+            if (permessiMancanti > 0) {
+                val arancio = Color.rgb(255, 167, 38)
+                griglia.addView(TextView(this).apply {
+                    text = (if (permessiMancanti == 1) "Manca 1 permesso" else "Mancano $permessiMancanti permessi") +
+                        ": senza, qualcosa nell'iDrive non funziona. Tocca qui per concederli."
+                    setTextColor(arancio); textSize = 14f; typeface = Typeface.DEFAULT_BOLD
+                    background = tondo(Color.rgb(46, 34, 16), 14, arancio)
+                    setPadding(px(14), px(12), px(14), px(12))
+                    isClickable = true
+                    setOnClickListener { apriSezione("permessi") }
+                }, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { topMargin = px(10) })
+            }
+            val gruppi = gruppiHome.map { (titolo, chiavi) -> titolo to visibili.filter { it.chiave in chiavi } } +
+                listOf("Altro" to visibili.filter { z -> gruppiHome.none { z.chiave in it.second } })
+            for ((titolo, lista) in gruppi) {
+                if (lista.isEmpty()) continue
+                griglia.addView(TextView(this).apply {
+                    text = titolo.uppercase(Locale.ITALY); setTextColor(TENUE); textSize = 12f; typeface = Typeface.DEFAULT_BOLD
+                    letterSpacing = 0.08f
+                    setPadding(px(4), 0, 0, 0)
+                }, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { topMargin = px(18) })
+                lista.chunked(2).forEach { coppia ->
+                    val riga = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+                    for (k in 0 until 2) {
+                        val lp = LinearLayout.LayoutParams(0, MATCH_PARENT, 1f).apply { if (k > 0) marginStart = px(10) }
+                        val z = coppia.getOrNull(k)
+                        if (z == null) { riga.addView(View(this), lp); continue }
+                        val t = tessera(z)
+                        tessere[z.chiave] = t
+                        riga.addView(t.vista, lp)
+                    }
+                    griglia.addView(riga, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { topMargin = px(8) })
                 }
-                griglia.addView(riga, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { topMargin = px(10) })
             }
         }
         for (z in visibili) {
