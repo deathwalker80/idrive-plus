@@ -87,7 +87,8 @@ class Server(private val quandoChiede: () -> Unit) {
             try {
                 s.soTimeout = 8000
                 if (!locale(s)) return
-                val riga = leggiRichiesta(BufferedInputStream(s.getInputStream())) ?: return
+                val agente = StringBuilder()
+                val riga = leggiRichiesta(BufferedInputStream(s.getInputStream()), agente) ?: return
                 val parti = riga.split(' ')
                 if (parti.size < 2 || parti[0] != "GET") { rispondi(s.getOutputStream(), 405, "text/plain", "solo GET\n".toByteArray()); return }
                 val percorso = parti[1].substringBefore('?')
@@ -95,6 +96,10 @@ class Server(private val quandoChiede: () -> Unit) {
                 Stato.ultimaRichiestaAuto = System.currentTimeMillis()
                 Stato.ipAuto = s.inetAddress?.hostAddress ?: ""
                 Stato.richiesteAuto++
+                // la pagina chiesta, oppure il plugin che chiede /ponte: un plugin che ha gia' la pagina con quell'epoch
+                // non la richiede piu', e senza questo la sua sezione non verrebbe piu' aggiornata (servizio riavviato
+                // a testata accesa: le pagine restavano ferme fino al riavvio dell'iDrive)
+                (sezioneDi(percorso) ?: sezioneDelPlugin(agente.toString()))?.let { Stato.sezioniChieste.add(it) }
                 quandoChiede()
                 val out = s.getOutputStream()
                 instrada(out, percorso, query)
@@ -102,6 +107,17 @@ class Server(private val quandoChiede: () -> Unit) {
                 // connessione chiusa dall'iDrive o tempo scaduto: niente da fare
             }
         }
+    }
+
+    /** la sezione di Preparazione a cui appartiene la pagina chiesta (null: /ponte, che non e' una pagina) */
+    private fun sezioneDi(percorso: String): String? = when {
+        percorso == "/ponte" -> null
+        percorso == "/meteo.png" || percorso == "/riquadro.txt" || percorso == "/riquadro.png" || percorso.startsWith("/meteogiorni/") -> "Meteo"
+        percorso == "/carburanti.png" || percorso.startsWith("/carburantisel/") -> "Carburanti"
+        percorso == "/traffico.png" -> "Traffico"
+        percorso == "/auto.png" || percorso == "/auto" || percorso.startsWith("/vettura/") -> "Auto"
+        percorso.startsWith("/locali/") || percorso.startsWith("/localisel/") -> "Notizie locali"
+        else -> "Notizie"
     }
 
     private fun instrada(out: OutputStream, percorso: String, query: String) {
@@ -117,6 +133,20 @@ class Server(private val quandoChiede: () -> Unit) {
                     "auto=${Stato.auto.epoch} vettura=${Stato.vettura.epoch} avvio=${Stato.avvio} meteogiorni=${Stato.meteoGiorni.epoch} " +
                     "notiziesel=${Stato.notizieScelta.epoch} localisel=${Stato.localiScelta.epoch} carburantisel=${Stato.carburantiScelta.epoch}\n").toByteArray()
             )
+            // riquadro vivo della casella ConnectedDrive / MINI Connected (plugin Riquadro, prova da banco): nome
+            // dell'icona (assets/meteo), riga in alto e riga in basso, corte, in ISO-8859-1
+            percorso == "/riquadro.txt" -> {
+                val m = Stato.meteoBreve
+                if (m == null) rispondi(out, 503, "text/plain", "meteo in preparazione\n".toByteArray())
+                else rispondi(out, 200, "text/plain; charset=iso-8859-1",
+                    latino1("RIQUADRO 1\n${m.icona}\n${m.temp}\u00B0 ${cieloRiquadro(m.cielo)}\n${m.citta}\n"))
+            }
+            // riquadro vivo: il meteo gia' composto in un'immagine 360x225 (plugin PlusTile da plustile11)
+            percorso == "/riquadro.png" -> {
+                val png = Stato.riquadroPng
+                if (png == null) rispondi(out, 503, "text/plain", "riquadro in preparazione\n".toByteArray())
+                else rispondi(out, 200, "image/png", png)
+            }
             pagina != null -> {
                 val png = pagina.png
                 if (png == null) rispondi(out, 503, "text/plain", "${pagina.nome} in preparazione\n".toByteArray())
@@ -180,7 +210,8 @@ class Server(private val quandoChiede: () -> Unit) {
     }
 
     /** legge la prima riga e salta le intestazioni fino alla riga vuota (massimo 8 KB) */
-    private fun leggiRichiesta(ing: BufferedInputStream): String? {
+    /** la prima riga della richiesta; in agente l'intestazione User-Agent ("iDrive-<plugin>/1"), se c'e' */
+    private fun leggiRichiesta(ing: BufferedInputStream, agente: StringBuilder): String? {
         val sb = StringBuilder()
         var prima: String? = null
         var letti = 0
@@ -191,6 +222,7 @@ class Server(private val quandoChiede: () -> Unit) {
             if (ch == '\n'.code) {
                 val r = sb.toString().trimEnd('\r')
                 if (prima == null) prima = r else if (r.isEmpty()) return prima
+                else if (r.startsWith("User-Agent:", ignoreCase = true)) { agente.setLength(0); agente.append(r.substring(11).trim()) }
                 if (prima.isEmpty()) return null
                 sb.setLength(0)
             } else sb.append(ch.toChar())
@@ -205,5 +237,51 @@ class Server(private val quandoChiede: () -> Unit) {
         out.write(testa.toByteArray(Charsets.US_ASCII))
         out.write(corpo)
         out.flush()
+    }
+}
+
+/**
+ * La sezione di Preparazione del plugin che si presenta come "iDrive-<plugin>/1" (lo fanno tutti i plugin, dalla
+ * prima versione pubblicata): chi interroga /ponte e' installato sulla testata, quindi la sua sezione va tenuta
+ * aggiornata anche se non richiede la pagina. null: intestazione assente o plugin che non ha una sezione sua.
+ */
+internal fun sezioneDelPlugin(agente: String): String? {
+    if (!agente.startsWith("iDrive-")) return null
+    return when (agente.removePrefix("iDrive-").substringBefore('/')) {
+        "Meteo" -> "Meteo"
+        "Notizie" -> "Notizie"
+        "Locali" -> "Notizie locali"
+        "Carburanti" -> "Carburanti"
+        "Traffico" -> "Traffico"
+        "Auto" -> "Auto"
+        else -> null
+    }
+}
+
+/** il cielo per il riquadro: in italiano col telefono in italiano, altrimenti in inglese (testi corti) */
+internal fun cieloRiquadro(cielo: String): String {
+    if (java.util.Locale.getDefault().language == "it") return cielo
+    return when (cielo) {
+        "Sereno" -> "Clear"
+        "Poco nuvoloso" -> "Mostly clear"
+        "Parz. nuvoloso" -> "Partly cloudy"
+        "Nuvoloso" -> "Cloudy"
+        "Nebbia" -> "Fog"
+        "Pioviggine" -> "Drizzle"
+        "Pioviggine gelata" -> "Freezing drizzle"
+        "Pioggia debole" -> "Light rain"
+        "Pioggia" -> "Rain"
+        "Pioggia forte" -> "Heavy rain"
+        "Pioggia gelata" -> "Freezing rain"
+        "Pioggia e neve" -> "Sleet"
+        "Neve debole" -> "Light snow"
+        "Neve" -> "Snow"
+        "Neve forte" -> "Heavy snow"
+        "Nevischio" -> "Snow grains"
+        "Rovesci" -> "Showers"
+        "Rovesci forti" -> "Heavy showers"
+        "Rovesci di neve" -> "Snow showers"
+        "Temporale" -> "Thunderstorm"
+        else -> cielo
     }
 }

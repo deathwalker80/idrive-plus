@@ -87,6 +87,44 @@ class Disegno(private val ctx: Context) {
         return out.toByteArray()
     }
 
+    /**
+     * Il meteo per il riquadro vivo (360x225, fondo trasparente), layout A: icona grande al centro, minima/massima
+     * in basso a destra, temperatura di adesso e cielo in basso a sinistra. Sempre PNG a tavolozza: e' il formato
+     * dell'immagine di prova che il riquadro ha disegnato sul banco quando e' arrivata come dati.
+     */
+    fun riquadroMeteo(m: Meteo, icona: String, cielo: String): ByteArray {
+        val w = 360
+        val h = 225
+        val b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val c = Canvas(b)
+        val lato = (h - 40 - 30).toFloat()
+        disegnaIcona(c, icona, (w - lato) / 2f - 10f, 38f, lato)
+        val massima = m.max.toIntOrNull() ?: m.temp
+        val minima = m.min.toIntOrNull() ?: m.temp
+        val pGradi = pennello(19f, true, BIANCO, Paint.Align.RIGHT)
+        c.drawText("°C", w - 8f, h - 38f, pGradi)
+        val pTemp = TextPaint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG).apply {
+            textSize = 54f
+            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+            color = BIANCO
+            textAlign = Paint.Align.RIGHT
+            setShadowLayer(3f, 0f, 1f, OMBRA)
+        }
+        val destraTemp = w - 8f - 32f
+        val testoTemp = "$minima/$massima"
+        c.drawText(testoTemp, destraTemp, h - 14f, pTemp)
+        val pSotto = pennello(15f, true, TENUE)
+        val spazio = destraTemp - pTemp.measureText(testoTemp) - 8f - 12f
+        if (spazio > 30f) c.drawText(ellissi("${m.temp}° $cielo", pSotto, spazio), 8f, h - 10f, pSotto)
+        val out = try { PngLeggero.codifica(b) } catch (e: Throwable) {
+            val pieno = ByteArrayOutputStream()
+            b.compress(Bitmap.CompressFormat.PNG, 100, pieno)
+            pieno.toByteArray()
+        }
+        b.recycle()
+        return out
+    }
+
     private fun pennello(dim: Float, bold: Boolean, colore: Int, allinea: Paint.Align = Paint.Align.LEFT): TextPaint =
         TextPaint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG).apply {
             textSize = dim

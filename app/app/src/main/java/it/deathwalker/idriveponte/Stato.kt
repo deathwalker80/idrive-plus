@@ -75,6 +75,11 @@ object Stato {
     /** in breve, per le icone della home dell'app: temperatura e cielo, il distributore migliore, il traffico */
     class MeteoBreve(val citta: String, val temp: Int, val cielo: String, val icona: String)
     @Volatile var meteoBreve: MeteoBreve? = null
+    /**
+     * Il meteo per il riquadro vivo della casella ConnectedDrive / MINI Connected come un'unica immagine 360x225
+     * (PNG a tavolozza): icona grande, minima/massima, temperatura e cielo. Il plugin la manda al riquadro come dati.
+     */
+    @Volatile var riquadroPng: ByteArray? = null
     @Volatile var carburantiBreve: Pair<String, String>? = null     // "Benzina 1,975 €" to "Q8 · 1,2 km"
     @Volatile var trafficoBreve: Pair<String, String>? = null       // "3 eventi entro 100 km" to "A12: coda 2 km"
 
@@ -86,5 +91,10 @@ object Stato {
     @Volatile var ultimaRichiestaAuto = 0L      // millisecondi
     @Volatile var ipAuto = ""
     @Volatile var richiesteAuto = 0L
+    /**
+     * Le sezioni che l'iDrive ha chiesto da quando il servizio e' acceso (nomi come in Preparazione): in auto si
+     * aggiornano solo quelle, cosi' il telefono non scarica e non disegna pagine per plugin che sulla testata non ci sono.
+     */
+    val sezioniChieste: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
     @Volatile var erroreServer = ""
 }

@@ -25,17 +25,37 @@ object Preparazione {
         return adesso - ultimo > ogni && adesso - tentativo > 2 * MIN
     }
 
+    // modo leggero (servizio in auto): solo le sezioni che l'iDrive ha chiesto (o mai preparate), una per giro
+    private var chieste: Set<String>? = null
+    private var unaPerGiro = false
+    private var fatte = 0
+    private var rimaste = false
+
+    /** in auto: la sezione serve se l'iDrive l'ha chiesta, o se non e' mai stata preparata (senza epoch l'iDrive non la chiede) */
+    private fun serve(nome: String, ultimo: Long): Boolean { val c = chieste; return c == null || ultimo == 0L || nome in c }
+
     private inline fun sezione(nome: String, ultimo: Long, ogni: Long, tutto: Boolean, continua: () -> Boolean, corpo: () -> Unit) {
         if (!continua()) return
         if (!tutto && !scaduta(ultimo, ogni, tentativi[nome] ?: 0L)) return
+        if (!tutto && !serve(nome, ultimo)) return
+        if (!tutto && unaPerGiro && fatte > 0) { rimaste = true; return }
         tentativi[nome] = System.currentTimeMillis()
         Stato.aggiornamentoInCorso = nome
         corpo()
+        fatte++
     }
 
-    /** continua: false appena chi l'ha chiamata deve fermarsi (servizio spento, lavoro interrotto da Android) */
+    /**
+     * continua: false appena chi l'ha chiamata deve fermarsi (servizio spento, lavoro interrotto da Android).
+     * soloChieste (servizio in auto): si aggiornano solo le sezioni di quell'insieme, una per chiamata; ritorna true
+     * se ne sono rimaste altre da fare (chi chiama torna presto). null (lontano dall'auto, o "tutto"): come sempre.
+     */
     @Synchronized
-    fun aggiorna(ctx: Context, disegno: Disegno, tutto: Boolean, continua: () -> Boolean) {
+    fun aggiorna(ctx: Context, disegno: Disegno, tutto: Boolean, soloChieste: Set<String>? = null, continua: () -> Boolean): Boolean {
+        chieste = soloChieste
+        unaPerGiro = soloChieste != null
+        fatte = 0
+        rimaste = false
         val prefs = ctx.getSharedPreferences("ponte", Context.MODE_PRIVATE)
         val salvata = Citta(
             prefs.getString("citta", "La Spezia") ?: "La Spezia",
@@ -51,9 +71,14 @@ object Preparazione {
         // e a ogni cambio di giorno, perche' "oggi" e "domani" si spostano anche con lo stesso bollettino
         val ogniAllerta = Fonti.intervalloBollettino(Fonti.bollettinoLetto(), System.currentTimeMillis())
         val altroGiorno = Fonti.giornoItalia(allertaLetta) != Fonti.giornoItalia(System.currentTimeMillis())
-        if (tutto || altroGiorno || System.currentTimeMillis() - allertaLetta > ogniAllerta) {
+        if (tutto || ((altroGiorno || System.currentTimeMillis() - allertaLetta > ogniAllerta) && serve("Meteo", Stato.meteo.ultimo))) {
             allertaLetta = System.currentTimeMillis()
-            try {
+            // il bollettino della Protezione Civile copre solo l'Italia: fuori non si scarica nemmeno
+            val inItalia = qui.lat in 35.4..47.2 && qui.lon in 6.5..18.6
+            if (!inItalia) {
+                allerta = null
+                Stato.allerta = "fuori dall'Italia: nessun bollettino"
+            } else try {
                 val a = Fonti.allerta(ctx, qui.nome, qui.lat, qui.lon)
                 allerta = a
                 Stato.allerta = if (a == null) "il comune \"${qui.nome}\" non c'è nelle zone del bollettino"
@@ -79,8 +104,9 @@ object Preparazione {
                 Stato.meteo.metti(paginaMeteo)
                 // plugin Meteo v12: un giorno per riga, con colonna, pagina del giorno e la pagina (la stessa per tutti
                 // i giorni: l'evidenza del giorno scelto la mette l'iDrive)
-                Stato.meteoGiorni.metti(disegno.giorniMeteo(m).indices.map { i ->
-                    val g = disegno.giorniMeteo(m)[i]
+                val giorni = disegno.giorniMeteo(m)
+                Stato.meteoGiorni.metti(giorni.indices.map { i ->
+                    val g = giorni[i]
                     NotiziaPronta("${g.nome} ${g.max}°/${g.min}°", "", disegno.paginaGiornoMeteo(m, i),
                         disegno.colonnaMeteo(m, i), paginaMeteo)
                 })
@@ -88,6 +114,10 @@ object Preparazione {
                 meteoComune = qui.nome
                 Stato.meteoBreve = Stato.MeteoBreve(m.citta, m.temp, Dati.cielo(m.codice),
                     Dati.iconaMeteo(m.codice, m.giorno, ventoForte(m)))
+                // riquadro vivo: se il disegno fallisce il plugin torna all'icona con le due righe di testo
+                Stato.riquadroPng = try {
+                    disegno.riquadroMeteo(m, Dati.iconaMeteo(m.codice, m.giorno, ventoForte(m)), cieloRiquadro(Dati.cielo(m.codice)))
+                } catch (e: Throwable) { null }
                 Stato.meteo.esito = "OK alle ${ora()} - ${m.citta} ${m.temp}° (${Stato.fonteCitta}, ${m.fonte})"
             } catch (e: Exception) {
                 Stato.meteo.esito = "ERRORE alle ${ora()}: ${e.message ?: e.javaClass.simpleName}"
@@ -170,6 +200,7 @@ object Preparazione {
                 }
             }
         }
+        return rimaste
     }
 
     /**

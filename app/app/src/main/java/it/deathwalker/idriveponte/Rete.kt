@@ -66,11 +66,16 @@ object Rete {
      * il corpo per ogni elemento, fino a "fili" alla volta (articoli delle notizie, schede dei distributori):
      * una pagina lenta non ferma le altre. Gli errori del singolo elemento restano suoi.
      */
+    /** il thread che la chiama passa in priorita' di sfondo: download e disegno non tolgono tempo ad Android Auto */
+    fun prioritaBassa() {
+        try { android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND) } catch (e: Throwable) { }
+    }
+
     fun <T> ognuno(lista: List<T>, fili: Int = 4, corpo: (T) -> Unit) {
         if (lista.size <= 1) { lista.forEach { try { corpo(it) } catch (e: Exception) { } }; return }
         val pool = java.util.concurrent.Executors.newFixedThreadPool(minOf(fili, lista.size))
         try {
-            lista.map { x -> pool.submit { try { corpo(x) } catch (e: Exception) { } } }
+            lista.map { x -> pool.submit { prioritaBassa(); try { corpo(x) } catch (e: Exception) { } } }
                 .forEach { try { it.get() } catch (e: Exception) { } }
         } finally {
             pool.shutdown()

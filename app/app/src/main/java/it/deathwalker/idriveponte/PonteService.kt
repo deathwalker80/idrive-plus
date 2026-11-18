@@ -33,6 +33,7 @@ class PonteService : Service() {
         private const val ID_NOTIFICA = 1
         private const val MIN = 60 * 1000L
         private const val RICHIESTA_RECENTE_MS = 15 * MIN
+        private const val ATTESA_WIFI_MS = 40 * 1000L
 
         fun avvia(ctx: Context, da: String) {
             val i = Intent(ctx, PonteService::class.java).setAction(AZIONE_AVVIA).putExtra(EXTRA_DA, da)
@@ -66,7 +67,7 @@ class PonteService : Service() {
         creaCanale()
         val da = intent?.getStringExtra(EXTRA_DA) ?: "riavvio di Android"
         if (Stato.avviatoDa.isEmpty() || intent?.action == AZIONE_AVVIA) Stato.avviatoDa = da
-        val n = notifica("In attesa del Wi-Fi della macchina")
+        val n = notifica(testo("In attesa del Wi-Fi della macchina", "Waiting for the car's Wi-Fi"))
         if (Build.VERSION.SDK_INT >= 29) startForeground(ID_NOTIFICA, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
         else startForeground(ID_NOTIFICA, n)
 
@@ -77,6 +78,7 @@ class PonteService : Service() {
             Cache.carica(this)
             // i dati dell'auto arrivano dal plugin Meteo dell'iDrive e vanno nel viaggio dell'auto attuale
             DatiAuto.azzera()
+            Stato.sezioniChieste.clear()
             server = Server { synchronized(sveglia) { sveglia.notifyAll() } }.also {
                 it.datiAuto = { g ->
                     // un rifornimento appena riconosciuto: dove e a che prezzo (rete, fuori dal thread del server)
@@ -108,24 +110,31 @@ class PonteService : Service() {
     }
 
     private fun ciclo() {
+        Rete.prioritaBassa()
         val disegno = Disegno(this)
+        var wifiDa = 0L                 // da quando il telefono e' sul Wi-Fi della macchina
         while (attivo) {
             val wifi = Rete.ipWifiAuto()
             Stato.wifiAuto = wifi
             val adesso = System.currentTimeMillis()
+            if (wifi == null) wifiDa = 0L else if (wifiDa == 0L) wifiDa = adesso
+            // Il telefono entra nel Wi-Fi della macchina proprio mentre Android Auto si collega e avvia la proiezione:
+            // per i primi 40 secondi niente download e niente disegno (l'iDrive ha gia' le pagine salvate)
+            val appenaCollegato = wifi != null && adesso - wifiDa < ATTESA_WIFI_MS
+            var rimaste = false
             val chiestoDaPoco = adesso - Stato.ultimaRichiestaAuto < RICHIESTA_RECENTE_MS
             aggiornaNotifica(
                 when {
-                    wifi != null && chiestoDaPoco -> "Collegato all'iDrive"
-                    wifi != null -> "Sul Wi-Fi della macchina, in attesa dell'iDrive"
-                    else -> "In attesa del Wi-Fi della macchina"
+                    wifi != null && chiestoDaPoco -> testo("Collegato all'iDrive", "Connected to iDrive")
+                    wifi != null -> testo("Sul Wi-Fi della macchina, in attesa dell'iDrive", "On the car's Wi-Fi, waiting for iDrive")
+                    else -> testo("In attesa del Wi-Fi della macchina", "Waiting for the car's Wi-Fi")
                 }
             )
-            if (forza || wifi != null || chiestoDaPoco) {
+            if (forza || ((wifi != null || chiestoDaPoco) && !appenaCollegato)) {
                 val tutto = forza
                 forza = false
                 try {
-                    aggiorna(disegno, tutto)
+                    rimaste = aggiorna(disegno, tutto)
                 } catch (e: Exception) {
                     // nessun errore deve fermare il ciclo
                 } finally {
@@ -133,7 +142,8 @@ class PonteService : Service() {
                 }
             }
             synchronized(sveglia) {
-                if (attivo && !forza) try { sveglia.wait(15000) } catch (e: InterruptedException) { }
+                // altre sezioni da fare: una ogni 5 secondi invece che tutte di fila
+                if (attivo && !forza) try { sveglia.wait(if (rimaste) 5000 else 15000) } catch (e: InterruptedException) { }
             }
         }
     }
@@ -191,17 +201,23 @@ class PonteService : Service() {
         Stato.vettura.esito = if (grezzi.isEmpty()) Stato.auto.esito else "OK alle ${oraAdesso()} - ${disegno.riassuntoAperture(parti)}"
     }
 
-    private fun aggiorna(disegno: Disegno, tutto: Boolean) {
+    private fun aggiorna(disegno: Disegno, tutto: Boolean): Boolean {
         try {
-            paginaAuto(disegno, tutto)
+            if (tutto || "Auto" in Stato.sezioniChieste) paginaAuto(disegno, tutto)
         } catch (e: Exception) {
             Stato.auto.esito = "ERRORE alle ${oraAdesso()}: ${e.message ?: e.javaClass.simpleName}"
         }
-        Preparazione.aggiorna(this, disegno, tutto) { attivo }
+        // in auto: solo le sezioni che l'iDrive ha chiesto, una per giro ("tutto", dal tasto dell'app: tutte)
+        val rimaste = Preparazione.aggiorna(this, disegno, tutto, if (tutto) null else Stato.sezioniChieste) { attivo }
         Cache.salva(this)
+        return rimaste
     }
 
     private fun oraAdesso(): String = Preparazione.ora()
+
+    /** testo della notifica: italiano sui telefoni in italiano, inglese sugli altri */
+    private fun testo(italiano: String, inglese: String): String =
+        if (java.util.Locale.getDefault().language == "it") italiano else inglese
 
     // ------------------------------------------------------------------------- notifica ----
     private fun creaCanale() {
